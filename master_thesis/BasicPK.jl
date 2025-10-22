@@ -1,8 +1,10 @@
 using ModelingToolkit
+using ModelingToolkit: t_nounits as t, D_nounits as D
 using DifferentialEquations
+using Plots
 
 #Theta_PK = [k_el, k_abs], Dose=dose (once daily), endpoint = until when ODE problem
-function ODE_system(Theta_PK::Vector{<:Real}, Dose; endpoint = 10)
+function ODE_PK(Theta_PK::Vector{<:Real}, Dose; endpoint = 10)
     @mtkmodel Internal begin
         @parameters begin
             k_el
@@ -24,7 +26,13 @@ function ODE_system(Theta_PK::Vector{<:Real}, Dose; endpoint = 10)
     end
     @mtkcompile internal_model = Internal(; k_el = Theta_PK[1], k_abs = Theta_PK[2], dose = Dose)
     problem = ODEProblem(internal_model, [], (0,endpoint)) #system, list of reset parameter defaults, timeframe
-    return problem
+    #sol = solve(problem)
+    #print(sol[internal_model.i]) #pretty sure events don't work as planned
+    return problem #basically only want i here
 end
 
+prob = ODE_PK([1.0,2.0], 5)
+plot(solve(prob)) #This doesn't do anything somehow?
 print("Done")
+
+#Questions: Why doesn't it plot? How to use discrete_events correctly, how to access only i and t?
