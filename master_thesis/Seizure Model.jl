@@ -19,7 +19,8 @@ abstract type Seizure_Model_nonrandom <: Seizure_Model_discrete end
 #Every model specification should have: Named tuple of parameters, list of keys of required covariates
 #Every model should have function returning intensity
 
-#Within discrete/continuous returning seizure probability, likelihoods and generating data can be handled once
+#Within discrete/continuous and (non)random returning seizure probability, likelihoods and 
+#generating data can be handled once
 
 #1)Specific model instances with their intensities
 
@@ -29,33 +30,44 @@ abstract type Seizure_Model_nonrandom <: Seizure_Model_discrete end
 end
 
 #function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)
-
-
-#Old stuff
-#Theta_Seizure = [a_0, list of b_d], i(t) = vector of i_d(t) solutions of ODE problem internal, n = day
-function intensity(Theta_Seizure, i, n)
-    intense = Theta_Seizure[1]
-    for d in 1:length(i)
-        integral = 0 #solve integral over [n,n+1) of i_d(t) here
-        intense = intense + Theta_Seizure[d+1] * integral
-    end
-    return intense
+function intensity(m::Seizure_Basic, sol, n::AbstractFloat; covariates = nothing)
+    intensity = m.θ.a
+    intensity = intensity + m.θ.b*(sol(n, idxs = S)-sol(n-1,idxs = S))
+    #on day n natural number beginning with 1 are exposed to drug from time n-1 to n
+    #day 1 ist interval (0,1]
+    return intensity
 end
 
+#2) Implement Seizure Probabilities, Likelihoods and Data Generators for discrete, nonrandom
+
 #k_n number of seizures on day n
-function Seizure_prob_day(Theta_Seizure, i, n, k_n)
-    lambda = intensity(Theta_Seizure, i, n)
+function Seizure_prob_day(m::Seizure_Model_nonrandom, sol, n::AbstractFloat, k_n::AbstractFloat; covariates = nothing)
+    lambda = intensity(m,sol,n, covariates = covariates)
     return (lambda^k_n/factorial(k_n))*exp(-lambda)
 end
 
-#N vector of days, k vector of number of seizures on days
-function Seizure_prob(Theta_Seizure, i, N, k)
+function Seizure_prob(m::Seizure_Model_nonrandom, sol, person::Person)
     prob = 1
-    for n in N #is this allowed syntax in Julia?
-        k_n = k[n]
-        prob = prob * Seizure_prob_day(Theta_Seizure, i, n, k_n)
+    for i in eachindex(person.seizure_counts) 
+        time = person.seizure_counts[i].time #get timepoint out of named tuple
+        count = person.seizure_counts[i].count #get count out of tuple
+        cov = NamedTuple{m.cov}(person.covariates) #create cov via person covariates and keys
+        prob = prob * Seizure_prob_day(m::Seizure_Model_nonrandom, sol, time, count, covariates = cov)
     end
     return prob
 end
 
-print("Done")
+function get_seizure_loglikelihood(θ::NamedTuple, m::Seizure_Model, sol, person::Person)
+    m_set = typeof(m)(θ = θ) 
+    likeli = Seizure_prob(m_set, sol, person)
+    return log(likeli)
+end
+
+#3) Implement generation of seizures for discrete, nonrandom models
+
+#generates and appends seizures to person for given number of days start
+function generate_seizures!(m::Seizure_Model_nonrandom, sol, person::Person, start::AbstractFloat; day_number::AbstractFloat = 10.0)
+    cov = NamedTuple{m.cov}(person.covariates)
+    new_seizures = [rand(Poisson(intensity(m, sol, n, covariates=cov))) for n in start:(start+day_number)]
+    append!(person.seizure_counts, new_seizures)
+end

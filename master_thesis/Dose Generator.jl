@@ -5,8 +5,15 @@ abstract type Dose_Generator end
 
 struct Basic_Doses <: Dose_Generator end
 
-function assign_dose!(m::Basic_Doses, person::Person; timeframe::AbstractFloat = 10.0)
-    #assign same dose to all for next timeframe days
+#assign same dose (default 1.0) to all for next timeframe days
+function assign_dose!(m::Basic_Doses, person::Person; timeframe::AbstractFloat = 10.0, dose::AbstractFloat = 1.0)
+    if isempty(person.dosing)
+        last_dosetime = -1
+    else
+        last_dosetime = person.dosing[end].t
+    end
+    next_doses = [(time = i+1, dose = dose, state = d) for i in last_dosetime:(last_dosetime+timeframe)]
+    append!(person.dosing,next_doses)
 end
 
 struct Dose_Leitlinie <: Dose_Generator end

@@ -5,6 +5,7 @@ using Distributions
     covariates::T = NamedTuple() #named tuple of covariates
     dosing<:AbstractVector{T2} = [] #vector of NamedTuples of the form t, dose, state
     seizure_counts<:AbstractVector{T3} = [] #vector of NamedTuples of the form time, count
+    #later make attribute with individual values of random effects
 end
 
 abstract type Person_Generator end
