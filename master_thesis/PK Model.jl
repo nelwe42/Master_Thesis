@@ -61,7 +61,7 @@ function dose_affect!(integrator; idx_d, dose_amount)
         integrator.u[idx_d] += dose_amount  # Add dose to depot (d)
 end
 
-function create_dosing_callbacks(dosing::Tuple, ode_system)
+function create_dosing_callbacks(dosing::AbstractVector, ode_system)
     callbacks = [
         PresetTimeCallback(
             dosing[i].t,
@@ -89,7 +89,7 @@ end
 #3)Global functions for multiple models
 
 #Problem creation and solution for nonrandom models, for random effects might have to do differently?
-function create_problem(mod::PK_Model_nonrandom; dosing::Tuple, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
+function create_problem(mod::PK_Model_nonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
     ode_system = create_ode_system(mod, covariates=covariates)
 
@@ -103,7 +103,7 @@ function create_problem(mod::PK_Model_nonrandom; dosing::Tuple, covariates<:Name
     return problem
 end
 
-function solve_ODE(mod::PK_Model_nonrandom; dosing::Tuple, covariates<:NamedTuple=NamedTuple, endpoint::AbstractFloat=10.0)
+function solve_ODE(mod::PK_Model_nonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple, endpoint::AbstractFloat=10.0)
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     sol = solve(prob,Tsit5())
     return sol

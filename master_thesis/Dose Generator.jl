@@ -3,6 +3,12 @@ using Distributions
 
 abstract type Dose_Generator end
 
+struct Basic_Doses <: Dose_Generator end
+
+function assign_dose!(m::Basic_Doses, person::Person; timeframe::AbstractFloat = 10.0)
+    #assign same dose to all for next timeframe days
+end
+
 struct Dose_Leitlinie <: Dose_Generator end
 #note: epileptic syndromes not considered
 
