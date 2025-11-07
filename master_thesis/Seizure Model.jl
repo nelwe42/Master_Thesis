@@ -66,8 +66,8 @@ end
 #3) Implement generation of seizures for discrete, nonrandom models
 
 #generates and appends seizures to person for given number of days start
-function generate_seizures!(m::Seizure_Model_nonrandom, sol, person::Person, start::AbstractFloat; day_number::AbstractFloat = 10.0)
+function generate_seizures!(m::Seizure_Model_nonrandom, sol, person::Person; start::AbstractFloat = 1, day_number::AbstractFloat = 10.0)
     cov = NamedTuple{m.cov}(person.covariates)
-    new_seizures = [rand(Poisson(intensity(m, sol, n, covariates=cov))) for n in start:(start+day_number)]
+    new_seizures = [rand(Poisson(intensity(m, sol, n, covariates=cov))) for n in start:(start+day_number-1)]
     append!(person.seizure_counts, new_seizures)
 end
