@@ -32,9 +32,9 @@ end
 #function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)
 function intensity(m::Seizure_Basic, sol, n::AbstractFloat; covariates = nothing)
     intensity = m.θ.a
-    intensity = intensity + m.θ.b*(sol(n, idxs = S)-sol(n-1,idxs = S))
-    #on day n natural number beginning with 1 are exposed to drug from time n-1 to n
-    #day 1 ist interval (0,1]
+    intensity = intensity + m.θ.b*(sol(n+1, idxs = S)-sol(n,idxs = S))
+    #on day n natural number beginning with 0 are exposed to drug from time n to n+1
+    #day 0 ist interval (0,1], day named after first number
     return intensity
 end
 
@@ -66,7 +66,7 @@ end
 #3) Implement generation of seizures for discrete, nonrandom models
 
 #generates and appends seizures to person for given number of days start
-function generate_seizures!(m::Seizure_Model_nonrandom, sol, person::Person; start::AbstractFloat = 1, day_number::AbstractFloat = 10.0)
+function generate_seizures!(m::Seizure_Model_nonrandom, sol, person::Person; start::AbstractFloat = 0, day_number::AbstractFloat = 10.0)
     cov = NamedTuple{m.cov}(person.covariates)
     new_seizures = [rand(Poisson(intensity(m, sol, n, covariates=cov))) for n in start:(start+day_number-1)]
     append!(person.seizure_counts, new_seizures)

@@ -28,28 +28,28 @@ function get_loglikelihood(m::FullModel, data::Tuple)
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector)
-    #make timepoints default linspace
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14:time)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
         assign_dose!(m.dose_gen, person, time)
         sol = generate_measurements!(m.pk_model, person, timepoints)
-        generate_seizures!(m.seizure_model, sol, person, start = 1, day_number = time)
+        generate_seizures!(m.seizure_model, sol, person, start = 0, day_number = time)
+        #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)
     end
     return population
 end
 
 
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat, timepoints::AbstractVector)
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat, timepoints::AbstractVector = 0:14:time)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
         passed_time = 0
         while passed_time < time
-            current_timepoints = [] #filter timepoints in this interval
             increment = max(time, passed_time + update_reg)
             passed_time = passed_time + increment
+            current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
             assign_dose!(m.dose_gen, person, increment)
             sol = generate_measurements!(m.pk_model, person, current_timepoints)
             generate_seizures!(m.seizure_model, sol, person, start = passed_time+1, day_number = increment)
