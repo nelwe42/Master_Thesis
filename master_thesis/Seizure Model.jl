@@ -67,7 +67,9 @@ end
 
 #generates and appends seizures to person for given number of days start
 function generate_seizures!(m::Seizure_Model_nonrandom, sol, person::Person; start::AbstractFloat = 0, day_number::AbstractFloat = 10.0)
+    if day_number >=1
     cov = NamedTuple{m.cov}(person.covariates)
     new_seizures = [rand(Poisson(intensity(m, sol, n, covariates=cov))) for n in start:(start+day_number-1)]
     append!(person.seizure_counts, new_seizures)
+    end
 end

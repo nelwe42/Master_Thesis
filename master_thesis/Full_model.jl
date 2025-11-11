@@ -1,5 +1,7 @@
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
+using Optimization
+using ComponentArrays
 
 struct FullModel
     pk_model::PK_Model
@@ -25,6 +27,7 @@ function get_loglikelihood(m::FullModel, data::Tuple)
         end
         return loglikeli
     end
+    return loglikelihood
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
@@ -40,19 +43,19 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
     return population
 end
 
-
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat, timepoints::AbstractVector = 0:14:time)
+#for later when want to update doses etc regularly, update_reg better as int for seizure model
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14:time)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
         passed_time = 0
         while passed_time < time
-            increment = max(time, passed_time + update_reg)
+            increment = max(time, passed_time + update_reg) - passed_time
             passed_time = passed_time + increment
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
             assign_dose!(m.dose_gen, person, increment)
             sol = generate_measurements!(m.pk_model, person, current_timepoints)
-            generate_seizures!(m.seizure_model, sol, person, start = passed_time+1, day_number = increment)
+            generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment)
         end
     end
 end
