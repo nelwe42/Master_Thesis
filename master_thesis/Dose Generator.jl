@@ -1,6 +1,9 @@
 using Random
 using Distributions
 
+#set seed
+Random.seed!(42)
+
 abstract type DoseGenerator end
 
 struct BasicDoses <: DoseGenerator end

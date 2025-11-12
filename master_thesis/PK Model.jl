@@ -33,7 +33,7 @@ abstract type PKModelRandom <: PKModel end
 
 #A specific model instance, here very basic
 @with_kw struct BasicModel{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
-    θ::T=ComponentArray((θ_PK=(k_el = 0.0, k_abs = 0.0), θ_measure=(σ=1.0))) #σ is standard deviation
+    θ::T=ComponentArray((k_el = 0.0, k_abs = 0.0, σ=1.0)) #σ is standard deviation
     cov::T2 = () #no covariates required
 end
 
@@ -42,6 +42,7 @@ function create_ode_system(mod::BasicModel; covariates=nothing) #does not actual
         @parameters begin
             k_el
             k_abs
+            σ
         end
         @variables begin
             d(t) = 0.0  # depot compartment - no drug at beginning
@@ -52,11 +53,12 @@ function create_ode_system(mod::BasicModel; covariates=nothing) #does not actual
             D(d) ~ -k_abs * d
             D(s) ~ k_abs * d - k_el * s
             D(S) ~ s
+            obs ~ Normal(s, σ)
         end
     end
     
     # Create the model with parameters
-    θ = mod.θ.θ_PK
+    θ = mod.θ
     @mtkcompile internal_model = Internal(; θ...)
 
     return internal_model
@@ -125,25 +127,21 @@ end
 
 #likelihood when solution not given
 function get_PK_loglikelihood(θ::ComponentArray, m::PK_Model, person::Person)
-    sol = solve_PK(m,θ,person, endpoint = person.measurements[end].timepoint)
-    σ = θ.θ_measure.σ
+    sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint)
     loglikeli = 0
     for i in eachindex(person.measurements)
-        loglikeli = loglikeli - 
-         (person.measurements[i].measurement - sol(person.measurements[i].timepoint, idxs = s))^2/(2σ^2)
-         - log(sqrt(2*pi)*σ) #here later add dimension of s as factor
+        measure = person.measurements[i]
+        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = obs), measure.measurement)
     end
     return loglikeli
 end
 
 #likelihood when solution given
 function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
-    σ = θ.θ_measure.σ
     loglikeli = 0
     for i in eachindex(person.measurements)
-        loglikeli = loglikeli - 
-         (person.measurements[i].measurement - sol(person.measurements[i].timepoint, idxs = s))^2/(2σ^2)
-         - log(sqrt(2*pi)*σ) #here later add dimension of s as factor
+        measure = person.measurements[i]
+        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = obs), measure.measurement)
     end
     return loglikeli
 end
@@ -151,11 +149,9 @@ end
 #assumed that timepoints are increasing, returns solution for use in seizure model
 function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, options = [Tsit5()])
     endpoint = timepoints[end]
-    sol = solve_PK(mod, mod.θ.θ_PK,person, endpoint=endpoint, options=options)
-    d = Normal(0,mod.θ.θ_measure.σ) #potentially need multivariate normal later when s vector
+    sol = solve_PK(mod, mod.θ, person, endpoint=endpoint, options=options)
     for i in eachindex(timepoints)
-        value = sol(timepoints[i], idxs = s)
-        value = value + rand(d)
+        value = rand(sol(timepoints[i], idxs = obs))
         pair = (timepoint = timepoints[i], measurement = value)
         push!(person.measurements,pair)
     end

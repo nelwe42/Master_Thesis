@@ -1,8 +1,17 @@
+module EpilepsyModels
+
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using Optimization
 using ForwardDiff
 using ComponentArrays
+
+export optimise, generate_data
+
+include("Person Generator.jl")
+include("Dose Generator.jl")
+include("PK Model.jl")
+include("Seizure Model.jl")
 
 struct FullModel
     pk_model::PKModel
@@ -73,4 +82,6 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; up
             generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment)
         end
     end
+end
+
 end

@@ -1,6 +1,9 @@
 using Random
 using Distributions
 
+#set seed
+Random.seed!(42)
+
 @with_kw struct Person{T<:NamedTuple}
     covariates::T = NamedTuple() #named tuple of covariates
     dosing<:AbstractVector = [] #vector of NamedTuples of the form t, dose, state
