@@ -12,12 +12,13 @@ end
 
 
 #data should be [person structs], save seizure, measurement and dosing data in persons
-function get_loglikelihood(m::FullModel, data::Tuple) 
+function get_negloglikelihood(m::FullModel, data::Tuple) 
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
-    #    return loglikeli
-    function loglikelihood(θ)
+    #    return negloglikeli
+    function negloglikelihood(θ::ComponentArray)
+        θ = NamedTuple(θ)
         loglikeli = 0
         for i in eachindex(data)
             person = data[i]
@@ -25,9 +26,22 @@ function get_loglikelihood(m::FullModel, data::Tuple)
             loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
                 + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
         end
-        return loglikeli
+        return -loglikeli
     end
-    return loglikelihood
+    return negloglikelihood
+end
+
+function optimise(m::FullModel, data::Tuple)
+    #check if either model has random effects
+    #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
+        #do something to handle them
+    negloglikeli(x,p) = get_negloglikelihood(m, data)(x) #what to do with p?
+    θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
+    objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
+    problem = OptimizationProblem(objective, θ_0)
+    estimate = solve(problem) #pick solver, probably set maxiter?
+    println("Estimate:", estimate)
+    return estimate
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
