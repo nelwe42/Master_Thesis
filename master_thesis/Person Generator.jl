@@ -9,11 +9,11 @@ using Distributions
     #later make attribute with individual values of random effects
 end
 
-abstract type Person_Generator end
+abstract type PersonGenerator end
 
-struct Basic_Person_Generator <: Person_Generator end
+struct BasicPersonGenerator <: PersonGenerator end
 
-function generate_population(m::Basic_Person_Generator, n::Int = 10)
+function generate_population(m::BasicPersonGenerator, n::Int = 10)
     population = [Person() for i in 1:n]
     return population
 end

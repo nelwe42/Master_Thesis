@@ -5,6 +5,7 @@ using Plots
 using Parameters
 using Distributions
 using Random
+using ComponentArrays
 
 #set seed
 Random.seed!(42)
@@ -12,15 +13,15 @@ Random.seed!(42)
 #Overtype of PK Models that will go into full model
 #Potentially make step in between, PK_model_component
 #then PK_model becomes list of drugs and corresponding model component, can switch out
-abstract type PK_Model end
+abstract type PKModel end
 
 #later for checking if random effects need to be handled in inference
-abstract type PK_Model_nonrandom <: PK_Model end
+abstract type PKModelNonrandom <: PKModel end
 
-abstract type PK_Model_random <: PK_Model end
+abstract type PKModelRandom <: PKModel end
 #For this need some sort of getter for which are random effects?
 
-#Every model specification should have: Named tuple of parameters, list of keys of required covariates
+#Every model specification should have: ComponentArray of parameters, list of keys of required covariates
 #Every model needs create problem function
 
 #Can that be handled globally?: Solve ODE system function given params, required covariates and doses
@@ -31,8 +32,8 @@ abstract type PK_Model_random <: PK_Model end
 #1)Specific model instances with their create problems
 
 #A specific model instance, here very basic
-@with_kw struct BasicModel{T<:NamedTuple, T2<:Tuple} <: PK_model_nonrandom
-    θ::T=(θ_PK=(k_el = 0.0, k_abs = 0.0), θ_measure=(ε=1.0)) #ε is standard deviation
+@with_kw struct BasicModel{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
+    θ::T=ComponentArray((θ_PK=(k_el = 0.0, k_abs = 0.0), θ_measure=(σ=1.0))) #σ is standard deviation
     cov::T2 = () #no covariates required
 end
 
@@ -74,7 +75,7 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system)
                 integrator,
                 idx_d = ModelingToolkit.variable_index(ode_system, dosing[i].state),
                 dose_amount = dosing[i].dose
-            ),
+            ), save_positions = (false, false),
             initialize = (cb, t, u, integrator) -> begin
                 if cb.condition(t, u, integrator)
                     dose_affect!(
@@ -94,7 +95,7 @@ end
 #3)Global functions for nonrandom models
 
 #Problem creation and solution for nonrandom models, for random effects might have to do differently?
-function create_problem(mod::PK_Model_nonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
+function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
     ode_system = create_ode_system(mod, covariates=covariates)
 
@@ -108,14 +109,14 @@ function create_problem(mod::PK_Model_nonrandom; dosing::AbstractVector, covaria
     return problem
 end
 
-function solve_ODE(mod::PK_Model_nonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [Tsit5()])
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [Tsit5()])
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     sol = solve(prob,options...)
     return sol
 end
 
 #θ all PK Model parameters
-function solve_PK(mod::PK_Model_nonrandom, θ::NamedTuple, person::Person; endpoint::AbstractFloat = 10.0, options = [Tsit5()])
+function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [Tsit5()])
     m_set = typeof(mod)(θ = θ)
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(m_set; dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
@@ -123,35 +124,35 @@ function solve_PK(mod::PK_Model_nonrandom, θ::NamedTuple, person::Person; endpo
 end
 
 #likelihood when solution not given
-function get_PK_loglikelihood(θ::NamedTuple, m::PK_Model, person::Person)
+function get_PK_loglikelihood(θ::ComponentArray, m::PK_Model, person::Person)
     sol = solve_PK(m,θ,person, endpoint = person.measurements[end].timepoint)
-    ε = θ.θ_measure.ε
+    σ = θ.θ_measure.σ
     loglikeli = 0
     for i in eachindex(person.measurements)
         loglikeli = loglikeli - 
-         (person.measurements[i].measurement - sol(person.measurements[i].timepoint, idxs = s))^2/(2ε^2)
-         - log(sqrt(2*pi)*ε) #here later add dimension of s as factor
+         (person.measurements[i].measurement - sol(person.measurements[i].timepoint, idxs = s))^2/(2σ^2)
+         - log(sqrt(2*pi)*σ) #here later add dimension of s as factor
     end
     return loglikeli
 end
 
 #likelihood when solution given
-function get_PK_loglikelihood(θ::NamedTuple, person::Person; sol)
-    ε = θ.θ_measure.ε
+function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
+    σ = θ.θ_measure.σ
     loglikeli = 0
     for i in eachindex(person.measurements)
         loglikeli = loglikeli - 
-         (person.measurements[i].measurement - sol(person.measurements[i].timepoint, idxs = s))^2/(2ε^2)
-         - log(sqrt(2*pi)*ε) #here later add dimension of s as factor
+         (person.measurements[i].measurement - sol(person.measurements[i].timepoint, idxs = s))^2/(2σ^2)
+         - log(sqrt(2*pi)*σ) #here later add dimension of s as factor
     end
     return loglikeli
 end
 
 #assumed that timepoints are increasing, returns solution for use in seizure model
-function generate_measurements!(mod::PK_Model, person::Person; timepoints::AbstractVector, options = [Tsit5()])
+function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, options = [Tsit5()])
     endpoint = timepoints[end]
     sol = solve_PK(mod, mod.θ.θ_PK,person, endpoint=endpoint, options=options)
-    d = Normal(0,mod.θ.θ_measure.ε) #potentially need multivariate normal later when s vector
+    d = Normal(0,mod.θ.θ_measure.σ) #potentially need multivariate normal later when s vector
     for i in eachindex(timepoints)
         value = sol(timepoints[i], idxs = s)
         value = value + rand(d)

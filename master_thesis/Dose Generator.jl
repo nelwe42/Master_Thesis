@@ -1,12 +1,12 @@
 using Random
 using Distributions
 
-abstract type Dose_Generator end
+abstract type DoseGenerator end
 
-struct Basic_Doses <: Dose_Generator end
+struct BasicDoses <: DoseGenerator end
 
 #assign same dose (default 1.0) to all for next timeframe days
-function assign_dose!(m::Basic_Doses, person::Person; timeframe::AbstractFloat = 10.0, dose::AbstractFloat = 1.0)
+function assign_dose!(m::BasicDoses, person::Person; timeframe::AbstractFloat = 10.0, dose::AbstractFloat = 1.0)
     if isempty(person.dosing)
         last_dosetime = -1
     else
@@ -16,7 +16,7 @@ function assign_dose!(m::Basic_Doses, person::Person; timeframe::AbstractFloat =
     append!(person.dosing,next_doses)
 end
 
-struct Dose_Leitlinie <: Dose_Generator end
+struct DoseLeitlinie <: DoseGenerator end
 #note: epileptic syndromes not considered
 
 

@@ -1,45 +1,46 @@
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using Optimization
+using ForwardDiff
 using ComponentArrays
 
 struct FullModel
-    pk_model::PK_Model
-    seizure_model::Seizure_Model
-    population_gen::Person_Generator
-    dose_gen::Dose_Generator
+    pk_model::PKModel
+    seizure_model::SeizureModel
+    population_gen::PersonGenerator
+    dose_gen::DoseGenerator
 end
 
 
 #data should be [person structs], save seizure, measurement and dosing data in persons
-function get_negloglikelihood(m::FullModel, data::Tuple) 
+#p contains m: model and data: tuple
+function get_negloglikelihood(θ::ComponentArray, p::NamedTuple) 
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
     #    return negloglikeli
-    function negloglikelihood(θ::ComponentArray)
-        θ = NamedTuple(θ)
-        loglikeli = 0
-        for i in eachindex(data)
-            person = data[i]
-            sol = sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
-            loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
-                + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
-        end
-        return -loglikeli
-    end
-    return negloglikelihood
+    m = p.m
+    data = p.data
+    loglikeli = 0
+    for i in eachindex(data)
+        person = data[i]
+        sol = sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
+        loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
+            + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
+       end
+    return -loglikeli
 end
 
 function optimise(m::FullModel, data::Tuple)
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
-    negloglikeli(x,p) = get_negloglikelihood(m, data)(x) #what to do with p?
+    negloglikeli = get_negloglikelihood
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
+    p = (m = m, data = data)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
-    problem = OptimizationProblem(objective, θ_0)
-    estimate = solve(problem) #pick solver, probably set maxiter?
+    problem = OptimizationProblem(objective, θ_0, p)
+    estimate = solve(problem, Optimization.LBFGS()) #pick solver, probably set maxiter?
     println("Estimate:", estimate)
     return estimate
 end
