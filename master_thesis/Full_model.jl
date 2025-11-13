@@ -5,8 +5,10 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 using Optimization
 using ForwardDiff
 using ComponentArrays
+using OptimizationOptimJL
 
-export optimise, generate_data
+export optimise, generate_data, generate_data_updating, BasicDoses, PKBasic, BasicPersonGenerator, 
+SeizureBasic, FullModel
 
 include("Person Generator.jl")
 include("Dose Generator.jl")
@@ -40,7 +42,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     return -loglikeli
 end
 
-function optimise(m::FullModel, data::Tuple)
+function optimise(m::FullModel, data::AbstractVector)
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
@@ -49,26 +51,26 @@ function optimise(m::FullModel, data::Tuple)
     p = (m = m, data = data)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
-    estimate = solve(problem, Optimization.LBFGS()) #pick solver, probably set maxiter?
+    estimate = solve(problem, LBFGS()) #pick solver, probably set maxiter?
     println("Estimate:", estimate)
     return estimate
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14:time)
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
-        assign_dose!(m.dose_gen, person, time)
-        sol = generate_measurements!(m.pk_model, person, timepoints)
-        generate_seizures!(m.seizure_model, sol, person, start = 0, day_number = time)
+        assign_dose!(m.dose_gen, person, timeframe = time)
+        sol = generate_measurements!(m.pk_model, person, timepoints = timepoints)
+        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time)
         #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)
     end
     return population
 end
 
 #for later when want to update doses etc regularly, update_reg better as int for seizure model
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14:time)
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14:time)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
@@ -77,8 +79,8 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; up
             increment = max(time, passed_time + update_reg) - passed_time
             passed_time = passed_time + increment
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
-            assign_dose!(m.dose_gen, person, increment)
-            sol = generate_measurements!(m.pk_model, person, current_timepoints)
+            assign_dose!(m.dose_gen, person, timeframe = increment)
+            sol = generate_measurements!(m.pk_model, person, timepoints = current_timepoints)
             generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment)
         end
     end

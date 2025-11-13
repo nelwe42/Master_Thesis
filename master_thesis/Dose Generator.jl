@@ -15,7 +15,7 @@ function assign_dose!(m::BasicDoses, person::Person; timeframe::AbstractFloat = 
     else
         last_dosetime = person.dosing[end].t
     end
-    next_doses = [(time = i+1, dose = dose, state = d) for i in last_dosetime:(last_dosetime+timeframe)]
+    next_doses = [(t = i+1, dose = dose, state = :d) for i in last_dosetime:(last_dosetime+timeframe)]
     append!(person.dosing,next_doses)
 end
 

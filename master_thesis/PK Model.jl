@@ -32,12 +32,12 @@ abstract type PKModelRandom <: PKModel end
 #1)Specific model instances with their create problems
 
 #A specific model instance, here very basic
-@with_kw struct BasicModel{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
+@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_el = 0.0, k_abs = 0.0, σ=1.0)) #σ is standard deviation
     cov::T2 = () #no covariates required
 end
 
-function create_ode_system(mod::BasicModel; covariates=nothing) #does not actually need covariates, just for later
+function create_ode_system(mod::PKBasic; covariates=nothing) #does not actually need covariates, just for later
         @mtkmodel Internal begin
         @parameters begin
             k_el
@@ -48,6 +48,7 @@ function create_ode_system(mod::BasicModel; covariates=nothing) #does not actual
             d(t) = 0.0  # depot compartment - no drug at beginning
             s(t) = 0.0  # internal/central compartment
             S(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
+            obs(t)
         end
         @equations begin
             D(d) ~ -k_abs * d
@@ -97,7 +98,7 @@ end
 #3)Global functions for nonrandom models
 
 #Problem creation and solution for nonrandom models, for random effects might have to do differently?
-function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
+function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
     ode_system = create_ode_system(mod, covariates=covariates)
 
@@ -111,7 +112,7 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
     return problem
 end
 
-function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates<:NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [Tsit5()])
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [Tsit5()])
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     sol = solve(prob,options...)
     return sol
@@ -121,17 +122,17 @@ end
 function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [Tsit5()])
     m_set = typeof(mod)(θ = θ)
     cov = NamedTuple{mod.cov}(person.covariates)
-    sol = solve_ODE(m_set; dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
+    sol = solve_ODE(m_set, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
     return sol
 end
 
 #likelihood when solution not given
-function get_PK_loglikelihood(θ::ComponentArray, m::PK_Model, person::Person)
+function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person)
     sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint)
     loglikeli = 0
     for i in eachindex(person.measurements)
         measure = person.measurements[i]
-        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = obs), measure.measurement)
+        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
     end
     return loglikeli
 end
@@ -141,7 +142,7 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     loglikeli = 0
     for i in eachindex(person.measurements)
         measure = person.measurements[i]
-        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = obs), measure.measurement)
+        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
     end
     return loglikeli
 end
@@ -151,7 +152,7 @@ function generate_measurements!(mod::PKModel, person::Person; timepoints::Abstra
     endpoint = timepoints[end]
     sol = solve_PK(mod, mod.θ, person, endpoint=endpoint, options=options)
     for i in eachindex(timepoints)
-        value = rand(sol(timepoints[i], idxs = obs))
+        value = rand(sol(timepoints[i], idxs = :obs))
         pair = (timepoint = timepoints[i], measurement = value)
         push!(person.measurements,pair)
     end
