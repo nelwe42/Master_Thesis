@@ -35,7 +35,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     loglikeli = 0
     for i in eachindex(data)
         person = data[i]
-        sol = sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
+        sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
         loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
             + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
        end
@@ -70,7 +70,7 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
 end
 
 #for later when want to update doses etc regularly, update_reg better as int for seizure model
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14:time)
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14.0:time)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]

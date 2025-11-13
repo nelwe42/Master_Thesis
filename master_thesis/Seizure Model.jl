@@ -31,9 +31,9 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 end
 
 #function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)
-function intensity(m::SeizureBasic, sol, n::AbstractFloat; covariates = nothing)
-    intensity = m.θ.a
-    intensity = intensity + m.θ.b*(sol(n+1, idxs = :S)-sol(n,idxs = :S))
+function intensity(m::SeizureBasic, sol, n::AbstractFloat; covariates = nothing, θ::ComponentArray = m.θ)
+    intensity = θ.a
+    intensity = intensity + θ.b*(sol(n+1, idxs = :S)-sol(n,idxs = :S))
     #on day n natural number beginning with 0 are exposed to drug from time n to n+1
     #day 0 ist interval (0,1], day named after first number
     return intensity
@@ -42,25 +42,24 @@ end
 #2) Implement Seizure Probabilities, Likelihoods and Data Generators for discrete, nonrandom
 
 #k_n number of seizures on day n
-function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::AbstractFloat; covariates = nothing)
-    lambda = intensity(m,sol,n, covariates = covariates)
+function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::AbstractFloat; covariates = nothing, θ::ComponentArray = m.θ)
+    lambda = intensity(m,sol,n, covariates = covariates, θ = θ)
     return (lambda^k_n/factorial(k_n))*exp(-lambda)
 end
 
-function Seizure_prob(m::SeizureModelNonrandom, sol, person::Person)
+function Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ)
     prob = 1
     for i in eachindex(person.seizure_counts) 
         time = person.seizure_counts[i].time #get timepoint out of named tuple
         count = person.seizure_counts[i].count #get count out of tuple
         cov = NamedTuple{m.cov}(person.covariates) #create cov via person covariates and keys
-        prob = prob * Seizure_prob_day(m, sol, time, count, covariates = cov)
+        prob = prob * Seizure_prob_day(m, sol, time, count, covariates = cov, θ=θ)
     end
     return prob
 end
 
 function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, person::Person)
-    m_set = typeof(m)(θ = θ) 
-    likeli = Seizure_prob(m_set, sol, person)
+    likeli = Seizure_prob(m, sol, person, θ=θ)
     return log(likeli)
 end
 

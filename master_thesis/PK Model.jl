@@ -6,6 +6,7 @@ using Parameters
 using Distributions
 using Random
 using ComponentArrays
+using Accessors
 
 #set seed
 Random.seed!(42)
@@ -120,9 +121,22 @@ end
 
 #θ all PK Model parameters
 function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [Tsit5()])
-    m_set = typeof(mod)(θ = θ)
     cov = NamedTuple{mod.cov}(person.covariates)
-    sol = solve_ODE(m_set, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
+    #Magic stuff that will hopefully fix AutoDiff
+    ode_system = create_ode_system(mod)
+    prob = create_problem(mod, dosing=person.dosing, covariates=cov, endpoint=endpoint)
+    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
+    #tunable parameters only interested in not initial of a trajectory
+    mkt_parameters = prob.p
+    #println(mkt_parameters)
+    #println(mkt_parameters.tunable)
+    #println(indices_θ)
+    #println(tunable_parameters(ode_system))
+    new_mkt_parameters  =  Accessors.@set mkt_parameters.tunable[indices_θ] = θ
+    new_prob = remake(prob, p=new_mkt_parameters)
+    T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
+    prob_use = remake(new_prob; u0 = T.(new_prob.u0))
+    sol = solve(prob_use, options...)
     return sol
 end
 
@@ -150,7 +164,8 @@ end
 #assumed that timepoints are increasing, returns solution for use in seizure model
 function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, options = [Tsit5()])
     endpoint = timepoints[end]
-    sol = solve_PK(mod, mod.θ, person, endpoint=endpoint, options=options)
+    cov = NamedTuple{mod.cov}(person.covariates)
+    sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
     for i in eachindex(timepoints)
         value = rand(sol(timepoints[i], idxs = :obs))
         pair = (timepoint = timepoints[i], measurement = value)
