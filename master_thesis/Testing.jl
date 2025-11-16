@@ -7,8 +7,8 @@ using ComponentArrays
 
 
 println("Test")
-Input_θ = (PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=1.0)), 
-            Seizure = ComponentArray((a = 6.0, b = 2.0)))
+Input_θ = (PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.5)), 
+            Seizure = ComponentArray((a = 4.0, b = -0.005)))
 pk_model = PKBasic(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
 mod = FullModel(pk_model, seizure_model, BasicPersonGenerator(), BasicDoses())

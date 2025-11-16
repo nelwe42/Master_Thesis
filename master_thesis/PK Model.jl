@@ -34,7 +34,7 @@ abstract type PKModelRandom <: PKModel end
 
 #A specific model instance, here very basic
 @with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_el = 0.0, k_abs = 0.0, σ=1.0)) #σ is standard deviation
+    θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) #σ is standard deviation
     cov::T2 = () #no covariates required
 end
 
@@ -153,7 +153,7 @@ end
 
 #temporary workaround logpdf
 function my_logpdf(mean, obs, θ)
-    logpdf = -(1/2)log(2*pi*θ.σ^2) - (mean-obs)^2/2(θ.σ^2)
+    logpdf = -(1/2)log(2*pi*θ.σ^2) - (mean-obs)^2/(2(θ.σ^2))
     return logpdf
 end
 
