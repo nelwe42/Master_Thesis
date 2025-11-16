@@ -42,9 +42,9 @@ end
 #2) Implement Seizure Probabilities, Likelihoods and Data Generators for discrete, nonrandom
 
 #k_n number of seizures on day n
-function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::AbstractFloat; covariates = nothing, θ::ComponentArray = m.θ)
+function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Int64; covariates = nothing, θ::ComponentArray = m.θ)
     lambda = intensity(m,sol,n, covariates = covariates, θ = θ)
-    return (lambda^k_n/factorial(k_n))*exp(-lambda)
+    return ((lambda^k_n)/factorial(k_n))*exp(-lambda)
 end
 
 function Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ)
@@ -59,8 +59,7 @@ function Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Compone
 end
 
 function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, person::Person)
-    likeli = Seizure_prob(m, sol, person, θ=θ)
-    return log(likeli)
+    return log(Seizure_prob(m, sol, person, θ=θ))
 end
 
 #3) Implement generation of seizures for discrete, nonrandom models

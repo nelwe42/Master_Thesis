@@ -37,7 +37,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
         person = data[i]
         sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
         loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
-            + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
+        loglikeli = loglikeli + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
        end
     return -loglikeli
 end
@@ -51,7 +51,7 @@ function optimise(m::FullModel, data::AbstractVector)
     p = (m = m, data = data)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
-    estimate = solve(problem, LBFGS()) #pick solver, probably set maxiter?
+    estimate = solve(problem, LBFGS(), maxiters = 500) #later set maxiters higher
     println("Estimate:", estimate)
     return estimate
 end
