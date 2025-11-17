@@ -26,7 +26,7 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 #1)Specific model instances with their intensities
 
 @with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
-    θ::T=ComponentArray((a = 2.0, b = -1.0)) #a base rate, b coefficient of drug (how to handle more later?)
+    θ::T=ComponentArray((a = 2.0, b = 0.0)) #a base rate, b coefficient of drug (how to handle more later?)
     cov::T2 = () #no covariates required
 end
 
