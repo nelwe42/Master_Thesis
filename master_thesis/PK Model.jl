@@ -143,12 +143,7 @@ end
 #likelihood when solution not given
 function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person)
     sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint)
-    loglikeli = 0
-    for i in eachindex(person.measurements)
-        measure = person.measurements[i]
-        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
-    end
-    return loglikeli
+    return get_PK_loglikelihood(θ, person, sol)
 end
 
 #temporary workaround logpdf

@@ -42,7 +42,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     return -loglikeli
 end
 
-function optimise(m::FullModel, data::AbstractVector)
+function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4)
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
@@ -51,7 +51,7 @@ function optimise(m::FullModel, data::AbstractVector)
     p = (m = m, data = data)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
-    estimate = solve(problem, LBFGS(), maxiters = 500) #later set maxiters higher
+    estimate = solve(problem, LBFGS(), maxiters = maxiters) 
     println("Estimate:", estimate)
     return estimate
 end
