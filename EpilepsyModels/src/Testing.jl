@@ -9,8 +9,8 @@ using Plots
 
 
 println("Test")
-Input_θ = (PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
-            Seizure = ComponentArray((a = 4.0, b = -0.05)))
+Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
+            Seizure = ComponentArray((a = 4.0, b = -0.05))))
 #For these values integrated drug exposure in one day roughly 2.5
 #Likelihood value at Input_θ 1220.4461938648478
 pk_model = PKBasic(θ=Input_θ.PK)
@@ -20,7 +20,7 @@ data = generate_data(mod, 20, 30.0, timepoints = 0:3.75:30, wo_treatment = 3.0)
 println("Generated")
 
 test_mod = FullModel(PKBasic(), SeizureBasic(), BasicPersonGenerator(), BasicDoses())
-estimate = optimise(test_mod, data, maxiters = 10)
+estimate = optimise(test_mod, data, maxiters = 1000, logscale = ("σ",))
 println("True θ:", Input_θ)
 
 #Plot PK behavior

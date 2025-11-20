@@ -128,11 +128,7 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
     indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
     #tunable parameters only interested in not initial of a trajectory
     mkt_parameters = prob.p
-    #println(mkt_parameters)
-    #println(mkt_parameters.tunable)
-    #println(indices_θ)
-    #println(tunable_parameters(ode_system))
-    new_mkt_parameters  =  Accessors.@set mkt_parameters.tunable[indices_θ] = θ
+    new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
     new_prob = remake(prob, p=new_mkt_parameters)
     T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
     prob_use = remake(new_prob; u0 = T.(new_prob.u0))
@@ -149,9 +145,8 @@ end
 #likelihood when solution given
 function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     loglikeli = 0
-    for i in eachindex(person.measurements)
-        measure = person.measurements[i]
-        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
+    for measure in person.measurements
+        loglikeli += logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
     end
     return loglikeli
 end
@@ -161,9 +156,9 @@ function generate_measurements!(mod::PKModel, person::Person; timepoints::Abstra
     endpoint = timepoints[end]
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
-    for i in eachindex(timepoints)
-        value = rand(sol(timepoints[i], idxs = :obs))
-        pair = (timepoint = timepoints[i], measurement = value)
+    for timepoint in timepoints
+        value = rand(sol(timepoint, idxs = :obs))
+        pair = (timepoint = timepoint, measurement = value)
         push!(person.measurements,pair)
     end
     return sol

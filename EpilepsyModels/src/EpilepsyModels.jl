@@ -23,6 +23,32 @@ struct FullModel
     dose_gen::DoseGenerator
 end
 
+#For (de)transfering certain components in parameter vector into logscale
+function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{String} = (), detransform::Bool = false)
+    #set whether transform or detransform
+    if detransform
+        f = exp
+    else 
+        f = log
+    end
+    #search for matching labels, label2index returns vector of matching
+    for label in labels(θ.PK)
+        if label in logscale
+            indices = label2index(θ.PK,label)
+            for index in indices
+                θ.PK[index] = f(θ.PK[index])
+            end
+        end
+    end
+    for label in labels(θ.Seizure)
+        if label in logscale
+            indices = label2index(θ.Seizure,label)
+            for index in indices
+                θ.Seizure[index] = f(θ.Seizure[index])
+            end
+        end
+    end
+end
 
 #data should be [person structs], save seizure, measurement and dosing data in persons
 #p contains m: model and data: tuple
@@ -33,38 +59,44 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     #    return negloglikeli
     m = p.m
     data = p.data
+    logscale = p.logscale
+    #for keys in logscale take exponential in θ
+    partial_transform_to_logscale!(θ, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ))
-    for i in eachindex(data)
-        person = data[i]
+    for person in data
         sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
         if !(SciMLBase.successful_retcode(sol))
             return Inf
         end
-        loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
-        loglikeli = loglikeli + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
+        loglikeli += get_PK_loglikelihood(θ.PK, person; sol=sol)
+        loglikeli += + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
     end
     return -loglikeli
 end
 
-function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4)
+function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4, logscale::Tuple{String} = ())
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
     negloglikeli = get_negloglikelihood
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
-    p = (m = m, data = data)
+    #for keys in logscale transform to logscale in θ_0
+    partial_transform_to_logscale!(θ_0, logscale = logscale)
+    p = (m = m, data = data, logscale = logscale)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
     estimate = solve(problem, LBFGS(linesearch = LineSearches.BackTracking()), maxiters = maxiters) 
-    println("Estimate:", estimate)
+    #transform parameters back into non logscale
+    partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
+    println("Estimate: ", estimate)
+    println("Estimated in logscale: ", logscale)
     return estimate
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
 function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0)
     population = generate_population(m.population_gen, n)
-    for i in eachindex(population)
-        person = population[i]
+    for person in population
         assign_dose!(m.dose_gen, person, timeframe = time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, person, timepoints = timepoints)
         generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time)
@@ -76,8 +108,7 @@ end
 #for later when want to update doses etc regularly, update_reg better as int for seizure model
 function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0)
     population = generate_population(m.population_gen, n)
-    for i in eachindex(population)
-        person = population[i]
+    for person in population
         passed_time = min(wo_treatment, time)
         #here generate for min(wo_treatment,time)
         assign_dose!(m.dose_gen, person, timeframe = passed_time, wo_treatment = wo_treatment)

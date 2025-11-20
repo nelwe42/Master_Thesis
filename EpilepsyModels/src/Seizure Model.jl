@@ -39,7 +39,7 @@ end
 #function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)
 function intensity(m::SeizureBasic, sol, n::AbstractFloat; covariates = nothing, θ::ComponentArray = m.θ)
     intensity = θ.a
-    intensity = intensity + θ.b*(sol(n+1, idxs = :S)-sol(n,idxs = :S))
+    intensity += θ.b*(sol(n+1, idxs = :S)-sol(n,idxs = :S))
     #on day n natural number beginning with 0 are exposed to drug from time n to n+1
     #day 0 ist interval (0,1], day named after first number
     return max(0,intensity)
@@ -59,7 +59,7 @@ function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Com
         time = person.seizure_counts[i].time #get timepoint out of named tuple
         count = person.seizure_counts[i].count #get count out of tuple
         cov = NamedTuple{m.cov}(person.covariates) #create cov via person covariates and keys
-        prob = prob + log(Seizure_prob_day(m, sol, time, count, covariates = cov, θ=θ))
+        prob += log(Seizure_prob_day(m, sol, time, count, covariates = cov, θ=θ))
     end
     return prob
 end
