@@ -25,10 +25,15 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 
 #1)Specific model instances with their intensities
 
-@with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
+@with_kw struct SeizureBasic{T<:ComponentArray} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = 2.0, b = 0.0)) #a base rate, b coefficient of drug (how to handle more later?)
-    cov::T2 = () #no covariates required
-    SeizureBasic(N::Int64) = new(θ = (a = 2.0, b = [0 for i in 1:N]))
+    cov::Tuple = () #no covariates required
+end
+
+#Outer Constructor to make default for N drugs
+function SeizureBasic(N::Int64)
+    obj = SeizureBasic(θ = ComponentArray((a = 2.0, b = [0 for i in 1:N])))
+    return obj
 end
 
 #function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)

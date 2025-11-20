@@ -6,6 +6,7 @@ using Optimization
 using ForwardDiff
 using ComponentArrays
 using OptimizationOptimJL
+using LineSearches
 
 export optimise, generate_data, generate_data_updating, BasicDoses, PKBasic, BasicPersonGenerator, 
 SeizureBasic, FullModel
@@ -32,13 +33,16 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     #    return negloglikeli
     m = p.m
     data = p.data
-    loglikeli = 0
+    loglikeli = zero(eltype(θ))
     for i in eachindex(data)
         person = data[i]
         sol = solve_PK(m.pk_model, θ.PK, person, endpoint = person.measurements[end].timepoint)
+        if !(SciMLBase.successful_retcode(sol))
+            return Inf
+        end
         loglikeli = loglikeli + get_PK_loglikelihood(θ.PK, person; sol=sol)
         loglikeli = loglikeli + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
-       end
+    end
     return -loglikeli
 end
 
@@ -51,7 +55,7 @@ function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4)
     p = (m = m, data = data)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
-    estimate = solve(problem, LBFGS(), maxiters = maxiters) 
+    estimate = solve(problem, LBFGS(linesearch = LineSearches.BackTracking()), maxiters = maxiters) 
     println("Estimate:", estimate)
     return estimate
 end

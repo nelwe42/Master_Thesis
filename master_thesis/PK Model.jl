@@ -34,7 +34,7 @@ abstract type PKModelRandom <: PKModel end
 
 #A specific model instance, here very basic
 @with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) #σ is standard deviation
+    θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) #σ is standard deviation in logscale
     cov::T2 = () #no covariates required
 end
 
@@ -113,14 +113,14 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
     return problem
 end
 
-function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [Tsit5()])
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [AutoTsit5(Rosenbrock23())])
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     sol = solve(prob,options...)
     return sol
 end
 
 #θ all PK Model parameters
-function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [Tsit5()])
+function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [AutoTsit5(Rosenbrock23())])
     cov = NamedTuple{mod.cov}(person.covariates)
     #Magic stuff that will hopefully fix AutoDiff
     ode_system = create_ode_system(mod)
@@ -157,13 +157,13 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     loglikeli = 0
     for i in eachindex(person.measurements)
         measure = person.measurements[i]
-        loglikeli = loglikeli + my_logpdf(sol(measure.timepoint, idxs = :s), measure.measurement, θ)
+        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)#my_logpdf(sol(measure.timepoint, idxs = :s), measure.measurement, θ)
     end
     return loglikeli
 end
 
 #assumed that timepoints are increasing, returns solution for use in seizure model
-function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, options = [Tsit5()])
+function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, options = [AutoTsit5(Rosenbrock23())])
     endpoint = timepoints[end]
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)

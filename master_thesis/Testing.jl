@@ -39,34 +39,3 @@ pl = plot!(sol2, idxs = (:s), labels=["Estimated concentration (s)"], linecolor 
 display(pl)
 
 println("Done")
-
-using ModelingToolkit
-using ModelingToolkit: t_nounits as t, D_nounits as D
-using Distributions
-using DifferentialEquations
-
-@mtkmodel Test begin
-    @parameters begin
-        k_el = 2.0
-        k_abs = 5.0
-        σ = 0.2
-    end
-    @variables begin
-        d(t)[1:1] = [0.0]  # depot compartment - no drug at beginning
-        s(t)[1:1] = [0.0]  # internal/central compartment
-        S(t)[1:1] = [0.0]  #Integral over dose, always compute since don't know what seizure model requires
-        obs(t)[1:1]
-    end
-    @equations begin
-        D(d[1]) ~ -k_abs * d[1]
-        D(s[1]) ~ k_abs * d[1] - k_el * s[1]
-        D(S[1]) ~ s[1]
-        obs[1] ~ Normal(s[1], σ)
-    end
-end
-
-@mtkcompile ode_system = Test()
-
-callback_set = EpilepsyModels.create_dosing_callbacks(data[1].dosing, ode_system)
-problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, [], (0.0, 30.0), callback = callback_set)
-sol = solve(problem, Tsit5())
