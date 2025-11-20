@@ -146,18 +146,12 @@ function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person)
     return get_PK_loglikelihood(θ, person, sol)
 end
 
-#temporary workaround logpdf
-function my_logpdf(mean, obs, θ)
-    logpdf = -(1/2)log(2*pi*θ.σ^2) - (mean-obs)^2/(2(θ.σ^2))
-    return logpdf
-end
-
 #likelihood when solution given
 function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     loglikeli = 0
     for i in eachindex(person.measurements)
         measure = person.measurements[i]
-        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)#my_logpdf(sol(measure.timepoint, idxs = :s), measure.measurement, θ)
+        loglikeli = loglikeli + logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
     end
     return loglikeli
 end

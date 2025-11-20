@@ -16,7 +16,7 @@ Input_θ = (PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)),
 pk_model = PKBasic(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
 mod = FullModel(pk_model, seizure_model, BasicPersonGenerator(), BasicDoses())
-data = generate_data(mod, 20, 30.0, timepoints = 0:3.75:30)
+data = generate_data(mod, 20, 30.0, timepoints = 0:3.75:30, wo_treatment = 3.0)
 println("Generated")
 
 test_mod = FullModel(PKBasic(), SeizureBasic(), BasicPersonGenerator(), BasicDoses())

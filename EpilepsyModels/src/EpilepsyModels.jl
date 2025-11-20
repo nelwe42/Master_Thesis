@@ -61,11 +61,11 @@ function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4)
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time)
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
-        assign_dose!(m.dose_gen, person, timeframe = time)
+        assign_dose!(m.dose_gen, person, timeframe = time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, person, timepoints = timepoints)
         generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time)
         #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)
@@ -74,20 +74,25 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
 end
 
 #for later when want to update doses etc regularly, update_reg better as int for seizure model
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14.0:time)
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0)
     population = generate_population(m.population_gen, n)
     for i in eachindex(population)
         person = population[i]
-        passed_time = 0
+        passed_time = min(wo_treatment, time)
+        #here generate for min(wo_treatment,time)
+        assign_dose!(m.dose_gen, person, timeframe = passed_time, wo_treatment = wo_treatment)
+        sol = generate_measurements!(m.pk_model, person, timepoints = timepoints)
+        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = passed_time)
         while passed_time < time
             increment = max(time, passed_time + update_reg) - passed_time
-            passed_time = passed_time + increment
+            passed_time += increment
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
             assign_dose!(m.dose_gen, person, timeframe = increment)
             sol = generate_measurements!(m.pk_model, person, timepoints = current_timepoints)
             generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment)
         end
     end
+    return population
 end
 
 end # module EpilepsyModels
