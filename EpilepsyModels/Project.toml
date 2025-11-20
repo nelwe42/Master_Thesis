@@ -1,3 +1,8 @@
+name = "EpilepsyModels"
+uuid = "177c6d38-058d-41a9-80be-05a491155458"
+authors = ["nelwe42 <nelewellesen@web.de>"]
+version = "0.1.0"
+
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"

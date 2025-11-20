@@ -90,4 +90,4 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
     end
 end
 
-end
+end # module EpilepsyModels

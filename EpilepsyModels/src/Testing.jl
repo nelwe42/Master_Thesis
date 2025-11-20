@@ -1,8 +1,9 @@
 using Pkg
 
-include("Full_model.jl")
+#Pkg.develop(path = ".//EpilepsyModels")
+include("EpilepsyModels.jl")
+
 using .EpilepsyModels
-using Parameters
 using ComponentArrays
 using Plots
 
