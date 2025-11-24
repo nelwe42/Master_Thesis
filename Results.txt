@@ -1,0 +1,21 @@
+Models: All Basic
+20 people over 30.0 days with 3.0 days without medication, PK measurement every 3.75 days
+True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05))
+For these values integrated drug exposure in one day roughly 2.5
+Likelihood value at Input_θ: 1220.4461938648478
+Maxiters optimise = 1000
+Estimate: retcode: Success
+u: (PK = (k_el = 1.998750833274919, k_abs = 5.249000655803962, σ = 0.19288788015087743), 
+Seizure = (a = 4.17827054835579, b = -0.13521243010823428))
+Final objective value:     1220.5315427631504
+Estimated in logscale: ("σ",)
+Optimiser: LBFGS(linesearch = LineSearches.BackTracking())
+ODE solver: AutoTsit5(Rosenbrock23()), gave warning:
+┌ Warning: Interrupted. Larger maxiters is needed. If you are using an integrator for non-stiff ODEs or an automatic switching algorithm (the default), you may want to consider using a method for stiff equations. See the solver pages for more details (e.g. https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/#Stiff-Problems).
+└ @ SciMLBase C:\Users\nelew\.julia\packages\SciMLBase\TZ9Rx\src\integrator_interface.jl:626
+
+-> Look at ODE Solver again, PK looks good though could use some more data, Seizure still noticable tradeoff
+    between a and b bc only three days without medication and daily medication exposure becomes constant fast
+
+Updated above to 6 days without medication and 40.0 days observation total, 
+additional adjustments to code structure likely make comparison difficult

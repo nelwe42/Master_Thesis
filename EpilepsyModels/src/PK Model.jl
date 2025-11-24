@@ -137,8 +137,8 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
 end
 
 #likelihood when solution not given
-function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person)
-    sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint)
+function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person; options = [AutoTsit5(Rosenbrock23())])
+    sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint, options = options)
     return get_PK_loglikelihood(θ, person, sol)
 end
 
@@ -152,8 +152,7 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
 end
 
 #assumed that timepoints are increasing, returns solution for use in seizure model
-function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, options = [AutoTsit5(Rosenbrock23())])
-    endpoint = timepoints[end]
+function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = [AutoTsit5(Rosenbrock23())])
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
     for timepoint in timepoints
