@@ -23,12 +23,11 @@ abstract type PKModelRandom <: PKModel end
 #For this need some sort of getter for which are random effects?
 
 #Every model specification should have: ComponentArray of parameters, list of keys of required covariates
-#Every model needs create problem function
-
-#Can that be handled globally?: Solve ODE system function given params, required covariates and doses
+#Every model needs create problem function, getter for keys of s, S, d
 
 #Given that can be handled once for all models: Creation of dosing callbacks, 
 #within group random effects Y/N also: creation of noisy measurements and returning likelihood 
+#solve ODE system given params, required covariates and doses
 
 #1)Specific model instances with their create problems
 

@@ -49,7 +49,8 @@ function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Stri
 end
 
 #data should be [person structs], save seizure, measurement and dosing data in persons
-#p contains m: model and data: tuple
+#p contains m: model, data: tuple, logscale: Tuple{String}
+#expects parameters in logscale tuple in logscale, internally detransforms in place
 function get_negloglikelihood(θ::ComponentArray, p::NamedTuple) 
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -87,8 +88,7 @@ function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4, lo
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
-    println("Estimate: ", estimate)
-    println("Estimated in logscale: ", logscale)
+    print("Estimate: ", estimate)
     return estimate
 end
 

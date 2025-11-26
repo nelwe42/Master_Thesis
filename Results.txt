@@ -19,3 +19,58 @@ ODE solver: AutoTsit5(Rosenbrock23()), gave warning:
 
 Updated above to 6 days without medication and 40.0 days observation total, 
 additional adjustments to code structure likely make comparison difficult
+
+Trial 2: All Basic Models
+Input_θ = (PK = (k_el = 2.0, k_abs = 5.0, σ=0.2), Seizure = (a = 4, b = -0.05))
+Maxiters_optimiser = 1000
+Population_size = 20
+Obs_Duration = 40.0
+wo_treatment = 6.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = [AutoTsit5(Rosenbrock23())]
+
+Estimate: retcode: Success
+u: (PK = (k_el = 2.01598299724358, k_abs = 4.935922113932357, σ = 0.2067100332056279), Seizure = (a = 4.264755819911465, b = -0.1765874683523042))
+Final objective value:     1660.4283293853268
+True Objective Value: 1662.6764764660636
+
+-> Still visible tradeoff between a and b
+
+
+Changed to 8 days wo_treatment: 
+Estimate: retcode: Success
+u: (PK = (k_el = 1.991017732488473, k_abs = 5.045410814035972, σ = 0.21194185931651963), Seizure = (a = 3.784384607307197, b = -0.047959347994617214))
+Final objective value:     1618.8861387035436
+True Objective Value: 1624.5299073910114
+True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05))
+
+-> b now estimated accurately, a underestimated
+
+Changed to 7 days wo_treatment:
+Estimate: retcode: Success
+u: (PK = (k_el = 2.0025566346149195, k_abs = 4.923699082437858, σ = 0.1964458882849151), Seizure = (a = 3.697691505754556, b = 0.0536585457120498))
+Final objective value:     1582.0875897265398
+True Objective Value: 1584.2775928539527
+True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05))
+
+-> underestimates a even more, everything else looks about right
+
+Changed wo_treatment to 10 days, full time to 30.0+wo_treatment:
+Estimate: retcode: Success
+u: (PK = (k_el = 1.9944477369996576, k_abs = 5.111161241951764, σ = 0.19402617316976203), Seizure = (a = 3.9660524950810685, b = -0.008809643828894964))
+Final objective value:     1641.280804237965
+True Objective Value: 1642.1457041475928
+True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05))
+
+-> Good estimate of a, now underestimates b
+
+Changed full time to 40.0+wo_treatment:
+Estimate: retcode: Success
+u: (PK = (k_el = 1.9835348387180916, k_abs = 5.033919508557468, σ = 0.1988214293162216), Seizure = (a = 3.992343078747298, b = -0.021957435670114715))
+Final objective value:     2034.202403148145
+True Objective Value: 2035.6181561152011
+True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05))
+
+-> better estimate of b, still too low

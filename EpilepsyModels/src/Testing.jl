@@ -16,8 +16,8 @@ Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)
             Seizure = ComponentArray((a = 4, b = -0.05))))
 Maxiters_optimiser = 1000
 Population_size = 20
-Obs_Duration = 40.0
-wo_treatment = 6.0
+wo_treatment = 10.0
+Obs_Duration = 40.0 + wo_treatment
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 logscale = ("σ",)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -31,6 +31,9 @@ println("Generated")
 
 test_mod = FullModel(PKBasic(), SeizureBasic(), BasicPersonGenerator(), BasicDoses())
 estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+#Transform partially to logscale for likelihood, gets detransformed in place in likelihood
+EpilepsyModels.partial_transform_to_logscale!(Input_θ, logscale = logscale)
+println("True Objective Value: ", EpilepsyModels.get_negloglikelihood(Input_θ, (m=mod, data=data, logscale=logscale, options=ODE_options)))
 println("True θ:", Input_θ)
 
 #Plot PK behavior
