@@ -7,6 +7,7 @@ using Distributions
 using Random
 using ComponentArrays
 using Accessors
+using StaticArrays
 
 #set seed
 Random.seed!(42)
@@ -63,6 +64,11 @@ function create_ode_system(mod::PKBasic; covariates=nothing) #does not actually 
     @mtkcompile internal_model = Internal(; θ...)
 
     return internal_model
+end
+
+function get_keys_PK(mod::PKBasic)
+    keys = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[:obs])
+    return keys
 end
 
 #2)Dosing for all models
@@ -145,7 +151,7 @@ end
 function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     loglikeli = 0
     for measure in person.measurements
-        loglikeli += logpdf(sol(measure.timepoint, idxs = :obs), measure.measurement)
+        loglikeli += logpdf(sol(measure.timepoint, idxs = measure.state), measure.measurement)
     end
     return loglikeli
 end
@@ -154,10 +160,13 @@ end
 function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = [AutoTsit5(Rosenbrock23())])
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
+    names = get_keys_PK(mod)
     for timepoint in timepoints
-        value = rand(sol(timepoint, idxs = :obs))
-        pair = (timepoint = timepoint, measurement = value)
-        push!(person.measurements,pair)
+        for obs in names.obs
+            value = rand(sol(timepoint, idxs = obs))
+            pair = (timepoint = timepoint, measurement = value, state = obs)
+            push!(person.measurements,pair)
+        end
     end
     return sol
 end

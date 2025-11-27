@@ -13,7 +13,7 @@ using Plots
 #Put on top to adjust: algorithm ODE solver
 println("Test")
 Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
-            Seizure = ComponentArray((a = 4, b = -0.05))))
+            Seizure = ComponentArray((a = 4, b = [-0.05]))))
 Maxiters_optimiser = 1000
 Population_size = 20
 wo_treatment = 10.0
@@ -33,23 +33,26 @@ test_mod = FullModel(PKBasic(), SeizureBasic(), BasicPersonGenerator(), BasicDos
 estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
 #Transform partially to logscale for likelihood, gets detransformed in place in likelihood
 EpilepsyModels.partial_transform_to_logscale!(Input_θ, logscale = logscale)
-println("True Objective Value: ", EpilepsyModels.get_negloglikelihood(Input_θ, (m=mod, data=data, logscale=logscale, options=ODE_options)))
+names = EpilepsyModels.get_keys_PK(mod.pk_model)
+println("True Objective Value: ", EpilepsyModels.get_negloglikelihood(Input_θ, (m=mod, data=data, logscale=logscale, options=ODE_options, names=names)))
 println("True θ:", Input_θ)
 
-#Plot PK behavior
+#Plot PK behavior (for each drug)
 sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[1], endpoint = Obs_Duration)
-pl = plot(sol, idxs = (:s), labels=["Concentration (s)"], 
-     xlabel="Time", ylabel="Amount", title="Basic PK Trajectory")
-for i in eachindex(data)
-    x_values = [measurement.timepoint for measurement in data[i].measurements]
-    y_values = [measurement.measurement for measurement in data[i].measurements]
-    plot!(x_values, y_values, seriestype = :scatter, label = "")
-end
-#add estimate plot
-Estimate_θ = estimate.u
-sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[1], endpoint = Obs_Duration)
-pl = plot!(sol2, idxs = (:s), labels=["Estimated concentration (s)"], linecolor = :red)
+for s in names.s
+    pl = plot(sol, idxs = s, labels=["Concentration $(s)"], 
+        xlabel="Time", ylabel="Amount", title="Basic PK Trajectory of $(s)")
+    for i in eachindex(data)
+        x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state == s)]
+        y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state == s)]
+        plot!(x_values, y_values, seriestype = :scatter, mc = :green, label = "")
+    end
+    #add estimate plot
+    Estimate_θ = estimate.u
+    sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[1], endpoint = Obs_Duration)
+    pl = plot!(sol2, idxs = s, labels=["Estimated concentration $(s)"], linecolor = :red)
 
-display(pl)
+    display(pl)
+end
 
 println("Done")

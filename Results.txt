@@ -74,3 +74,7 @@ True Objective Value: 2035.6181561152011
 True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05))
 
 -> better estimate of b, still too low
+
+After changing to support multiple drugs, estimate changed to:
+(PK = (k_el = 1.9862405579260098, k_abs = 5.06627052528001, σ = 0.20131907633749102), Seizure = (a = 3.782083973505828, b = [0.04735411562436054]))
+-> underestimates a again, maybe increase population size?

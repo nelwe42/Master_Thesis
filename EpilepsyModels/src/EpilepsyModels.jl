@@ -60,6 +60,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     data = p.data
     logscale = p.logscale
     options = p.options
+    names = p.names
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale!(θ, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ))
@@ -68,8 +69,8 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
         if !(SciMLBase.successful_retcode(sol))
             return Inf
         end
-        loglikeli += get_PK_loglikelihood(θ.PK, person; sol=sol)
-        loglikeli += + get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person)
+        loglikeli += get_PK_loglikelihood(θ.PK, person, sol=sol)
+        loglikeli += get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person, names=names)
     end
     return -loglikeli
 end
@@ -78,11 +79,12 @@ function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4, lo
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
+    names = get_keys_PK(m.pk_model)
     negloglikeli = get_negloglikelihood
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
@@ -95,10 +97,11 @@ end
 #m determines model parts, n determines number of people, timepoints for measurements
 function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = [AutoTsit5(Rosenbrock23())])
     population = generate_population(m.population_gen, n)
+    names = get_keys_PK(m.pk_model)
     for person in population
-        assign_dose!(m.dose_gen, person, timeframe = time, wo_treatment = wo_treatment)
+        assign_dose!(m.dose_gen, person, names= names, timeframe = time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, person, timepoints = timepoints, endpoint = time, options = ODE_options)
-        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time)
+        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time, names=names)
         #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)
     end
     return population
@@ -110,16 +113,16 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
     for person in population
         passed_time = min(wo_treatment, time)
         #here generate for min(wo_treatment,time)
-        assign_dose!(m.dose_gen, person, timeframe = passed_time, wo_treatment = wo_treatment)
+        assign_dose!(m.dose_gen, person, names=names, timeframe = passed_time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, person, timepoints = timepoints, endpoint = passed_time, options = ODE_options)
-        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = passed_time)
+        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = passed_time, names=names)
         while passed_time < time
             increment = max(time, passed_time + update_reg) - passed_time
             passed_time += increment
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
-            assign_dose!(m.dose_gen, person, timeframe = increment)
+            assign_dose!(m.dose_gen, person, names=names, timeframe = increment)
             sol = generate_measurements!(m.pk_model, person, timepoints = current_timepoints, endpoint = passed_time, options = ODE_options)
-            generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment)
+            generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment, names=names)
         end
     end
     return population
