@@ -8,7 +8,7 @@ abstract type DoseGenerator end
 
 struct BasicDoses <: DoseGenerator end
 
-#assign same dose (default 1.0) to all for next timeframe days
+#assign same dose to all for next timeframe days, wo_treatment gives first dosetime, afterwards dose every time unit (day)
 function assign_dose!(m::BasicDoses, person::Person; names::NamedTuple, timeframe::AbstractFloat = 10.0, dose::AbstractFloat = 5.0, wo_treatment::AbstractFloat = 0.0)
     if isempty(person.dosing)
         last_dosetime = -1

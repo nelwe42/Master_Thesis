@@ -1,3 +1,20 @@
 Basic Seizure Model:
 -problem with intensity=0 in initial iteration gives nonzero count inf negloglikeli
 -tradeoff between a and b if daily exposure stabilises too fast, days without medication can help
+
+Drugs most of interest:
+-based on Real life pharmaceutical treatment patterns for adult patients with focal epilepsy in Germany: 
+    a longitudinal and cross-sectional analysis of recently approved anti-epileptic drugs data until 2014 and only focal
+-based on Switching the Manufacturer of Antiepileptic Drugs Is Associated with Higher Risk of Seizures: A Nationwide
+    Study of Prescription Data in Germany data until 2016, Table 1
+-most interesting: Lamotrigin, Levetiracetam, Valproate, Carbamazepine
+
+PK Levetiracetam:
+-based on Population Pharmacokinetics of Levetiracetam: A Systematic Review
+- Population pharmacokinetics of levetiracetam in patients diagnosed with refractory epilepsy: A real- world study
+    here only drug-resistant epilepsy considered
+-k_abs usually estimated as constant
+-CL usually c1*(Weight normalised)^c2*(estimated glomerular filtration rate normalised)^c3, here would also see influence of inducer drugs like VPa
+-V usually v1*(Weight or Body surface area normalised)^v2
+-both CL and V apparent (normalised wrt F)
+-> k_abs becomes k_abs/V, k_el becomes CL/V

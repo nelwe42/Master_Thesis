@@ -107,22 +107,25 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
     return population
 end
 
-#for later when want to update doses etc regularly, update_reg better as int for seizure model
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::Int, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = [AutoTsit5(Rosenbrock23())])
+#for later when want to update doses etc regularly
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = [AutoTsit5(Rosenbrock23())])
     population = generate_population(m.population_gen, n)
     for person in population
         passed_time = min(wo_treatment, time)
         #here generate for min(wo_treatment,time)
         assign_dose!(m.dose_gen, person, names=names, timeframe = passed_time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, person, timepoints = timepoints, endpoint = passed_time, options = ODE_options)
-        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = passed_time, names=names)
+        generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = floor(passed_time), names=names)
+        seizure_time_rest = passed_time - floor(passed_time)
         while passed_time < time
             increment = max(time, passed_time + update_reg) - passed_time
             passed_time += increment
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
             assign_dose!(m.dose_gen, person, names=names, timeframe = increment)
+            #when later in generate_measurements do solve from make sure to adjust start with seizure_time_rest here
             sol = generate_measurements!(m.pk_model, person, timepoints = current_timepoints, endpoint = passed_time, options = ODE_options)
-            generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment), day_number = increment, names=names)
+            generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment-seizure_time_rest), day_number = floor(increment+seizure_time_rest), names=names)
+            seizure_time_rest = increment + seizure_time_rest - floor(increment + seizure_time_rest)
         end
     end
     return population

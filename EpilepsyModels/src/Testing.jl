@@ -1,5 +1,6 @@
 using Pkg
 
+println("Starting")
 #Pkg.develop(path = ".//EpilepsyModels")
 include("EpilepsyModels.jl")
 
@@ -11,7 +12,7 @@ using DifferentialEquations
 using Plots
 
 #Put on top to adjust: algorithm ODE solver
-println("Test")
+println("Included")
 Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
             Seizure = ComponentArray((a = 4, b = [-0.05]))))
 Maxiters_optimiser = 1000

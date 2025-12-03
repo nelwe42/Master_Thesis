@@ -78,3 +78,22 @@ True θ:(PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = -0.05
 After changing to support multiple drugs, estimate changed to:
 (PK = (k_el = 1.9862405579260098, k_abs = 5.06627052528001, σ = 0.20131907633749102), Seizure = (a = 3.782083973505828, b = [0.04735411562436054]))
 -> underestimates a again, maybe increase population size?
+
+Increased population size to 50:
+Input_θ = (PK = (k_el = 2.0, k_abs = 5.0, σ=0.2), 
+            Seizure = (a = 4, b = [-0.05]))
+Maxiters_optimiser = 1000
+Population_size = 50
+wo_treatment = 10.0
+Obs_Duration = 40.0 + wo_treatment
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = [AutoTsit5(Rosenbrock23())]
+
+Estimate: retcode: Success
+u: (PK = (k_el = 1.9932099391802993, k_abs = 4.915038963616717, σ = 0.20537768184964825), Seizure = (a = 3.886339409870542, b = [-0.03886208727309635]))
+Final objective value:     5132.389233514989
+True Objective Value: 5136.879900591171
+
+-> a looks better, k_abs and b a little too low
