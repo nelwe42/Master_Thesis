@@ -18,3 +18,6 @@ PK Levetiracetam:
 -V usually v1*(Weight or Body surface area normalised)^v2
 -both CL and V apparent (normalised wrt F)
 -> k_abs becomes k_abs/V, k_el becomes CL/V
+-> need covariates weight, height, kidney function, calculate BSA as sqrt(weight*height/3600),
+    could calculate eGFR as K*"height"/CR, maybe estimate K=0.45, "height"=50cm, CR reatine concentration (mg/dL),
+    for simplicity at least at first instead just factor (1 - c3*(kidney disease yes/no))

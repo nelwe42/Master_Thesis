@@ -34,7 +34,7 @@ abstract type PKModelRandom <: PKModel end
 
 #A specific model instance, here very basic
 @with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) #σ is standard deviation in logscale
+    θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) 
     cov::T2 = () #no covariates required
 end
 
@@ -67,9 +67,58 @@ function create_ode_system(mod::PKBasic; covariates=nothing) #does not actually 
 end
 
 function get_keys_PK(mod::PKBasic)
-    keys = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[:obs])
+    keys = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[(:obs, :s)])
     return keys
 end
+
+#A model for the PK behavior of Levetiracetam
+@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
+    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
+    cov::T2 = (:weight, :height, :kidney_disease) 
+end
+
+function create_ode_system(mod::PKLEV; covariates::NamedTuple) 
+    #V = v1*(Body surface area normalised)^v2
+    #CL = c1*(Weight normalised)^c2*(1-c3*(kidney disease yes/no))
+    #Absorption rate k_abs/V, elimination CL/V
+    BSA_normalised = sqrt(covariates.weight*covariates.height/3600)/1.68
+        @mtkmodel Internal begin
+        @parameters begin
+            k_abs
+            c1
+            c2
+            c3
+            v1
+            v2
+            σ
+        end
+        @variables begin
+            d_LEV(t) = 0.0  # depot compartment - no drug at beginning
+            s_LEV(t) = 0.0  # internal/central compartment
+            S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
+            obs_LEV(t)
+        end
+        @equations begin
+            D(d_LEV) ~ -(k_abs/(v1*BSA_normalised^v2)) * d_LEV
+            D(s_LEV) ~ (k_abs/(v1*BSA_normalised^v2)) * d_LEV - (c1*(covariates.weight/70)^c2*(1-covariates.kidney_disease*c3)/(v1*BSA_normalised^v2)) * s_LEV
+            D(S_LEV) ~ s_LEV
+            obs_LEV ~ Normal(s_LEV, σ)
+        end
+    end
+    
+    # Create the model with parameters
+    θ = mod.θ
+    @mtkcompile internal_model = Internal(; θ...)
+
+    return internal_model
+end
+
+function get_keys_PK(mod::PKLEV)
+    keys = (d = SA[:d_LEV], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)])
+    #for observations also records corresponding internal state
+    return keys
+end
+
 
 #2)Dosing for all models
 function dose_affect!(integrator; idx_d, dose_amount)
@@ -128,7 +177,7 @@ end
 function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [AutoTsit5(Rosenbrock23())])
     cov = NamedTuple{mod.cov}(person.covariates)
     #Magic stuff that will hopefully fix AutoDiff
-    ode_system = create_ode_system(mod)
+    ode_system = create_ode_system(mod; covariates = cov)
     prob = create_problem(mod, dosing=person.dosing, covariates=cov, endpoint=endpoint)
     indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
     #tunable parameters only interested in not initial of a trajectory
@@ -151,7 +200,7 @@ end
 function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     loglikeli = 0
     for measure in person.measurements
-        loglikeli += logpdf(sol(measure.timepoint, idxs = measure.state), measure.measurement)
+        loglikeli += logpdf(sol(measure.timepoint, idxs = measure.state[1]), measure.measurement)
     end
     return loglikeli
 end
@@ -163,7 +212,7 @@ function generate_measurements!(mod::PKModel, person::Person; timepoints::Abstra
     names = get_keys_PK(mod)
     for timepoint in timepoints
         for obs in names.obs
-            value = rand(sol(timepoint, idxs = obs))
+            value = rand(sol(timepoint, idxs = obs[1]))
             pair = (timepoint = timepoint, measurement = value, state = obs)
             push!(person.measurements,pair)
         end

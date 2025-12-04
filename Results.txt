@@ -97,3 +97,27 @@ Final objective value:     5132.389233514989
 True Objective Value: 5136.879900591171
 
 -> a looks better, k_abs and b a little too low
+
+Tried out PKLEV and PersonGeneratorLEV
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = 8.0, c1 = 6.0, c2 = 0.25, c3 = 0.6, v1 = 50, v2 = 0.9, σ=0.2)), 
+           Seizure = ComponentArray((a = 4, b = [-0.05]))))
+Maxiters_optimiser = 1000
+Population_size = 10 #20
+wo_treatment = 3.0 #10.0
+Obs_Duration = wo_treatment + 20.0 #+40.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = [AutoTsit5(Rosenbrock23())]
+
+Estimate: retcode: Success
+u: (PK = (k_abs = 6.5717919589481895, c1 = 4.897580343708833, c2 = 0.31107109530154925, c3 = 0.6101148839948073, v1 = 39.49890744446207, v2 = 1.1644578166154722, σ = 0.1814681692228883), Seizure = (a = 4.044756530863257, b = [-0.04809209725324563]))
+Final objective value:     439.68573214585825
+True Objective Value: 443.34636324180457
+True θ:(PK = (k_abs = 8.0, c1 = 6.0, c2 = 0.25, c3 = 0.6, v1 = 50.0, v2 = 0.9, σ = 0.2), Seizure = (a = 4.0, b = [-0.05]))
+
+-> Population size and time still small for start, so inaccuracies expected, s keeps growing since dose too large for rates
+-> change dose from 5.0 to 1.0 in dose generator or write new one for accurate LEV dosing?
+
+Also get warning ┌ Warning: Using arrays or dicts to store parameters of different types can hurt performance.
+│ Consider using tuples instead., not sure why
