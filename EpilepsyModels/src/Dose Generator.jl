@@ -19,10 +19,8 @@ function assign_dose!(m::BasicDoses, person::Person; names::NamedTuple, timefram
     no_dose = min(wo_treatment,timeframe)
     last_dosetime += no_dose
     #append for each dose time and drug taken
-    for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1))
-        next_doses = [(t = i+1, dose = dose, state = d) for d in names.d]
-        append!(person.dosing,next_doses)
-    end
+    next_doses = [(t = i+1, dose = dose, state = d) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in names.d]
+    append!(person.dosing,next_doses)
 end
 
 struct DoseLeitlinie <: DoseGenerator end

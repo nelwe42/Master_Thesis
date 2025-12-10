@@ -10,21 +10,21 @@ using OptimizationOptimJL
 using LineSearches
 using DifferentialEquations
 using Plots
+using StaticArrays
 
-#Put on top to adjust: algorithm ODE solver
 println("Included")
 #Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
 #           Seizure = ComponentArray((a = 4, b = [-0.05]))))
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = 8.0, c1 = 6.0, c2 = 0.25, c3 = 0.6, v1 = 50, v2 = 0.9, σ=0.2)), 
-           Seizure = ComponentArray((a = 4, b = [-0.05]))))
+           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
-Population_size = 10 #20
+Population_size = 2 #20
 wo_treatment = 3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 logscale = ("σ",)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
-ODE_options = [AutoTsit5(Rosenbrock23())]
+ODE_options = (AutoTsit5(Rosenbrock23()))
 
 pk_model = PKLEV(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)

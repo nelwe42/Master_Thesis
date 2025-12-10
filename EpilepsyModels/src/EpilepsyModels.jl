@@ -14,11 +14,11 @@ include("Dose Generator.jl")
 include("PK Model.jl")
 include("Seizure Model.jl")
 
-struct FullModel
-    pk_model::PKModel
-    seizure_model::SeizureModel
-    population_gen::PersonGenerator
-    dose_gen::DoseGenerator
+struct FullModel{PK<:PKModel, S<:SeizureModel, P<:PersonGenerator, D<:DoseGenerator}
+    pk_model::PK
+    seizure_model::S
+    population_gen::P
+    dose_gen::D
 end
 
 #For (de)transfering certain components in parameter vector into logscale
@@ -34,7 +34,7 @@ function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Stri
         if label in logscale
             indices = label2index(θ.PK,label)
             for index in indices
-                θ.PK[index] = f(θ.PK[index])
+                @inbounds θ.PK[index] = f(θ.PK[index])
             end
         end
     end
@@ -42,13 +42,13 @@ function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Stri
         if label in logscale
             indices = label2index(θ.Seizure,label)
             for index in indices
-                θ.Seizure[index] = f(θ.Seizure[index])
+                @inbounds θ.Seizure[index] = f(θ.Seizure[index])
             end
         end
     end
 end
 
-#data should be [person structs], save seizure, measurement and dosing data in persons
+#data should be (person structs), save seizure, measurement and dosing data in persons
 #p contains m: model, data: tuple, logscale: Tuple{String}
 #expects parameters in logscale tuple in logscale, internally detransforms in place
 function get_negloglikelihood(θ::ComponentArray, p::NamedTuple) 
@@ -61,30 +61,35 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     logscale = p.logscale
     options = p.options
     names = p.names
+    problems = p.problems
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale!(θ, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ))
-    for person in data
-        sol = solve_PK(m.pk_model, θ.PK, person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time), options = options)
+    for i in eachindex(data)
+        @inbounds sol = solve_PK(problems[i], θ.PK, options = options)
         if !(SciMLBase.successful_retcode(sol))
             return Inf
         end
-        loglikeli += get_PK_loglikelihood(θ.PK, person, sol=sol)
-        loglikeli += get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, person, names=names)
+        @inbounds loglikeli += get_PK_loglikelihood(θ.PK, data[i], sol=sol)
+        @inbounds loglikeli += get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, data[i], names=names)
     end
     return -loglikeli
 end
 
-function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = [AutoTsit5(Rosenbrock23())])
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23())))
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
     names = get_keys_PK(m.pk_model)
     negloglikeli = get_negloglikelihood
+    #create ODE problem for each person in data
+    sys = create_ode_system(m)
+    problems = (create_problem(m, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
@@ -95,12 +100,13 @@ function optimise(m::FullModel, data::AbstractVector; maxiters::Int64 = 10^4, lo
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = [AutoTsit5(Rosenbrock23())])
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23())))
     population = generate_population(m.population_gen, n)
     names = get_keys_PK(m.pk_model)
+    sys = create_ode_system(m.pk_model)
     for person in population
         assign_dose!(m.dose_gen, person, names= names, timeframe = time, wo_treatment = wo_treatment)
-        sol = generate_measurements!(m.pk_model, person, timepoints = timepoints, endpoint = time, options = ODE_options)
+        sol = generate_measurements!(m.pk_model, sys, person, timepoints = timepoints, endpoint = time, options = ODE_options)
         generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time, names=names)
         #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)
     end
@@ -110,11 +116,13 @@ end
 #for later when want to update doses etc regularly
 function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = [AutoTsit5(Rosenbrock23())])
     population = generate_population(m.population_gen, n)
+    names = get_keys_PK(m.pk_model)
+    sys = create_ode_system(m.pk_model)
     for person in population
         passed_time = min(wo_treatment, time)
         #here generate for min(wo_treatment,time)
         assign_dose!(m.dose_gen, person, names=names, timeframe = passed_time, wo_treatment = wo_treatment)
-        sol = generate_measurements!(m.pk_model, person, timepoints = timepoints, endpoint = passed_time, options = ODE_options)
+        sol = generate_measurements!(m.pk_model, sys, person, timepoints = timepoints, endpoint = passed_time, options = ODE_options)
         generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = floor(passed_time), names=names)
         seizure_time_rest = passed_time - floor(passed_time)
         while passed_time < time
@@ -123,7 +131,7 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
             assign_dose!(m.dose_gen, person, names=names, timeframe = increment)
             #when later in generate_measurements do solve from make sure to adjust start with seizure_time_rest here
-            sol = generate_measurements!(m.pk_model, person, timepoints = current_timepoints, endpoint = passed_time, options = ODE_options)
+            sol = generate_measurements!(m.pk_model, sys, person, timepoints = current_timepoints, endpoint = passed_time, options = ODE_options)
             generate_seizures!(m.seizure_model, sol, person, start = (passed_time-increment-seizure_time_rest), day_number = floor(increment+seizure_time_rest), names=names)
             seizure_time_rest = increment + seizure_time_rest - floor(increment + seizure_time_rest)
         end

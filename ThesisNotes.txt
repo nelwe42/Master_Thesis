@@ -9,6 +9,8 @@ Drugs most of interest:
     Study of Prescription Data in Germany data until 2016, Table 1
 -most interesting: Lamotrigin, Levetiracetam, Valproate, Carbamazepine
 
+Consider only adults, for children very different PK
+
 PK Levetiracetam:
 -based on Population Pharmacokinetics of Levetiracetam: A Systematic Review
 - Population pharmacokinetics of levetiracetam in patients diagnosed with refractory epilepsy: A real- world study

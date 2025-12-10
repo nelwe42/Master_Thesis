@@ -3,6 +3,7 @@ using Distributions
 using Random
 using Parameters
 using ComponentArrays
+using StaticArrays
 
 #set seed
 Random.seed!(42)
@@ -25,14 +26,14 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 
 #1)Specific model instances with their intensities
 
-@with_kw struct SeizureBasic{T<:ComponentArray} <: SeizureModelNonrandom
-    θ::T=ComponentArray((a = 2.0, b = [0.0])) #a base rate, b coefficient of drug (how to handle more later?)
-    cov::Tuple = () #no covariates required
+@with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
+    θ::T=ComponentArray((a = 2.0, b = SA[0.0])) #a base rate, b coefficient of drug (how to handle more later?)
+    cov::T2 = () #no covariates required
 end
 
 #Outer Constructor to make default for N drugs
 function SeizureBasic(N::Int64)
-    obj = SeizureBasic(θ = ComponentArray((a = 2.0, b = [0 for i in 1:N])))
+    obj = SeizureBasic(θ = ComponentArray((a = 2.0, b = SA[0 for i in 1:N])))
     return obj
 end
 
@@ -56,8 +57,8 @@ end
 function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
     prob = 0
     for i in eachindex(person.seizure_counts) 
-        time = person.seizure_counts[i].time #get timepoint out of named tuple
-        count = person.seizure_counts[i].count #get count out of tuple
+        @inbounds time = person.seizure_counts[i].time #get timepoint out of named tuple
+        @inbounds count = person.seizure_counts[i].count #get count out of tuple
         cov = NamedTuple{m.cov}(person.covariates) #create cov via person covariates and keys
         prob += log(Seizure_prob_day(m, sol, time, count, covariates = cov, names = names, θ=θ))
     end

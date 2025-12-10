@@ -121,3 +121,142 @@ True θ:(PK = (k_abs = 8.0, c1 = 6.0, c2 = 0.25, c3 = 0.6, v1 = 50.0, v2 = 0.9, 
 
 Also get warning ┌ Warning: Using arrays or dicts to store parameters of different types can hurt performance.
 │ Consider using tuples instead., not sure why
+
+DataInterpolations:
+ERROR: MethodError: Cannot `convert` an object of type DataInterpolations.ConstantInterpolation{Vector{Float64}, Vector{Float64}, Vector{Float64}, Float64} to an object of type Number
+The function `convert` exists, but no method is defined for this combination of argument types.
+
+Closest candidates are:
+  convert(::Type{Number}, ::Unitful.Quantity)
+   @ Unitful C:\Users\nelew\.julia\packages\Unitful\M33vg\src\conversion.jl:166
+  convert(::Type{T}, ::Union{Static.StaticBool{N}, Static.StaticFloat64{N}, Static.StaticInt{N}} where N) where T<:Number
+   @ Static C:\Users\nelew\.julia\packages\Static\d7YOk\src\Static.jl:435
+  convert(::Type{T}, ::ChainRulesCore.AbstractZero) where T<:Number
+   @ ChainRulesCore C:\Users\nelew\.julia\packages\ChainRulesCore\Vsbj9\src\tangent_types\abstract_zero.jl:33
+  ...
+
+Stacktrace:
+  [1] setindex!(A::Vector{…}, x::DataInterpolations.ConstantInterpolation{…}, i::Int64)
+    @ Base .\array.jl:987
+  [2] (::ModelingToolkit.var"#set_value#145"{…})(sym::SymbolicUtils.BasicSymbolic{…}, val::DataInterpolations.ConstantInterpolation{…})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\systems\parameter_buffer.jl:111
+  [3] ModelingToolkit.MTKParameters(sys::ModelingToolkit.System, op::Dict{…}; tofloat::Bool, t0::Nothing, substitution_limit::Int64, floatT::Type, p_constructor::Function, fast_path::Bool)
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\systems\parameter_buffer.jl:145
+  [4] process_SciMLProblem(constructor::Type, sys::ModelingToolkit.System, op::Dict{…}; build_initializeprob::Bool, implicit_dae::Bool, t::Nothing, guesses::Dict{…}, warn_initialize_determined::Bool, initialization_eqs::Vector{…}, eval_expression::Bool, eval_module::Module, fully_determined::Nothing, check_initialization_units::Bool, u0_eltype::Nothing, tofloat::Bool, u0_constructor::typeof(identity), p_constructor::typeof(identity), check_length::Bool, symbolic_u0::Bool, warn_cyclic_dependency::Bool, circular_dependency_max_cycle_length::Int64, circular_dependency_max_cycles::Int64, substitution_limit::Int64, use_scc::Bool, time_dependent_init::Bool, algebraic_only::Bool, allow_incomplete::Bool, is_initializeprob::Bool, kwargs::@Kwargs{…})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\systems\problem_utils.jl:1472
+  [5] (NonlinearProblem{…})(sys::ModelingToolkit.System, op::Dict{…}; expression::Type, check_length::Bool, check_compatibility::Bool, kwargs::@Kwargs{…})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\problems\nonlinearproblem.jl:66
+  [6] NonlinearProblem
+    @ C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\problems\nonlinearproblem.jl:57 [inlined]
+  [7] #_#1086
+    @ .\none:0 [inlined]
+  [8] ModelingToolkit.InitializationProblem{…}(sys::ModelingToolkit.System, t::Float64, op::Dict{…}; guesses::Dict{…}, check_length::Bool, warn_initialize_determined::Bool, initialization_eqs::Vector{…}, fully_determined::Nothing, check_units::Bool, use_scc::Bool, allow_incomplete::Bool, algebraic_only::Bool, time_dependent_init::Bool, kwargs::@Kwargs{…})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\problems\initializationproblem.jl:138
+  [9] InitializationProblem
+    @ C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\problems\initializationproblem.jl:20 [inlined]
+ [10] #_#1144
+    @ .\none:0 [inlined]
+ [11] maybe_build_initialization_problem(sys::ModelingToolkit.System, iip::Bool, op::Dict{…}, t::Float64, defs::Dict{…}, guesses::Dict{…}, missing_unknowns::Set{…}; implicit_dae::Bool, time_dependent_init::Bool, u0_constructor::Function, p_constructor::Function, floatT::Type, initialization_eqs::Vector{…}, use_scc::Bool, eval_expression::Bool, eval_module::Module, kwargs::@Kwargs{…})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\systems\problem_utils.jl:1135
+ [12] process_SciMLProblem(constructor::Type, sys::ModelingToolkit.System, op::Dict{…}; build_initializeprob::Bool, implicit_dae::Bool, t::Float64, guesses::Dict{…}, warn_initialize_determined::Bool, initialization_eqs::Vector{…}, eval_expression::Bool, eval_module::Module, fully_determined::Nothing, check_initialization_units::Bool, u0_eltype::Nothing, tofloat::Bool, u0_constructor::typeof(identity), p_constructor::typeof(identity), check_length::Bool, symbolic_u0::Bool, warn_cyclic_dependency::Bool, circular_dependency_max_cycle_length::Int64, circular_dependency_max_cycles::Int64, substitution_limit::Int64, use_scc::Bool, time_dependent_init::Bool, algebraic_only::Bool, allow_incomplete::Bool, is_initializeprob::Bool, kwargs::@Kwargs{…})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\systems\problem_utils.jl:1409
+ [13] (ODEProblem{…})(sys::ModelingToolkit.System, op::Dict{…}, tspan::Tuple{…}; callback::CallbackSet{…}, check_length::Bool, eval_expression::Bool, expression::Type, eval_module::Module, check_compatibility::Bool, kwargs::@Kwargs{})
+    @ ModelingToolkit C:\Users\nelew\.julia\packages\ModelingToolkit\KTR1R\src\problems\odeproblem.jl:81
+ [14] create_problem(mod::PKLEV{…}; dosing::Vector{…}, covariates::@NamedTuple{…}, endpoint::Float64)
+    @ Main.EpilepsyModels c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\PK Model.jl:177
+ [15] create_problem
+    @ c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\PK Model.jl:166 [inlined]
+ [16] #solve_ODE#38
+    @ c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\PK Model.jl:201 [inlined]
+ [17] generate_measurements!(mod::PKLEV{…}, person::Main.EpilepsyModels.Person{…}; timepoints::StepRangeLen{…}, endpoint::Float64, options::Vector{…})
+    @ Main.EpilepsyModels c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\PK Model.jl:255
+ [18] generate_data(m::FullModel, n::Int64, time::Float64; timepoints::StepRangeLen{…}, wo_treatment::Float64, ODE_options::Vector{…})      
+    @ Main.EpilepsyModels c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\EpilepsyModels.jl:108
+ [19] top-level scope
+    @ c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\Testing.jl:31
+Some type information was truncated. Use `show(err)` to see complete types.
+
+Error when replacing ConstantInterpolation with just a constant:
+ERROR: MethodError: no method matching iterate(::CompositeAlgorithm{0, Tuple{…}, AutoSwitch{…}})
+The function `iterate` exists, but no method is defined for this combination of argument types.┌ Error: Error showing method candidates, aborted
+│   exception =
+│    MethodError: no method matching namemap(::Type{ModelingToolkit.BipartiteGraphs.VertType})
+│    The applicable method may be too new: running in world age 26749, while current world is 27404.
+│    
+│    Closest candidates are:
+│      namemap(::Type{ModelingToolkit.BipartiteGraphs.VertType}) (method too new to be called from this world context.)
+│       @ ModelingToolkit Enums.jl:215
+│      namemap(::Type{Base.TCSETATTR_FLAGS})
+│       @ Base Enums.jl:215
+│      namemap(::Type{DataInterpolations.ExtrapolationType.T}) (method too new to be called from this world context.)
+│       @ DataInterpolations C:\Users\nelew\.julia\packages\EnumX\d4t0S\src\EnumX.jl:130
+│      ...
+│ 
+│    Stacktrace:
+│      [1] _symbol(x::ModelingToolkit.BipartiteGraphs.VertType)
+│        @ Base.Enums .\Enums.jl:37
+│      [2] show(io::IOContext{IOBuffer}, x::ModelingToolkit.BipartiteGraphs.VertType)
+│        @ Base.Enums .\Enums.jl:45
+│      [3] show_typeparams(io::IOContext{IOBuffer}, env::Core.SimpleVector, orig::Core.SimpleVector, wheres::Vector{TypeVar})
+│        @ Base .\show.jl:722
+│      [4] show_datatype(io::IOContext{IOBuffer}, x::DataType, wheres::Vector{TypeVar})
+│        @ Base .\show.jl:1181
+│      [5] _show_type(io::IOContext{IOBuffer}, x::Type)
+│        @ Base .\show.jl:1007
+│      [6] show(io::IOContext{IOBuffer}, x::Type)
+│        @ Base .\show.jl:965
+│      [7] print(io::IOContext{IOBuffer}, x::Type)
+│        @ Base .\strings\io.jl:35
+│      [8] print(::IOContext{IOBuffer}, ::String, ::Type)
+│        @ Base .\strings\io.jl:46
+│      [9] (::Base.var"#1035#1041"{Tuple{UnionAll}})(iob::IOContext{IOBuffer})
+│        @ Base .\errorshow.jl:489
+│     [10] with_output_color(::Function, ::Symbol, ::IOContext{IOBuffer}; bold::Bool, italic::Bool, underline::Bool, blink::Bool, reverse::Bool, hidden::Bool)
+│        @ Base .\util.jl:78
+│     [11] with_output_color(::Function, ::Symbol, ::IOContext{IOBuffer})
+│        @ Base .\util.jl:73
+│     [12] show_method_candidates(io::IO, ex::MethodError, kwargs::Vector{Any})
+│        @ Base .\errorshow.jl:488
+│     [13] showerror(io::IO, ex::MethodError)
+│        @ Base .\errorshow.jl:362
+│     [14] showerror(io::IOContext{Base.TTY}, ex::MethodError, bt::Vector{Base.StackTraces.StackFrame}; backtrace::Bool)
+│        @ Base .\errorshow.jl:97
+│     [15] showerror(io::IOContext{Base.TTY}, ex::MethodError, bt::Vector{Base.StackTraces.StackFrame})
+│        @ Base .\errorshow.jl:95
+│     [16] display_repl_error(io::Base.TTY, stack::VSCodeServer.EvalErrorStack; unwrap::Bool)
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\repl.jl:261    
+│     [17] (::VSCodeServer.var"#69#74"{Bool, Bool, Bool, Module, String, Int64, Int64, String, VSCodeServer.ReplRunCodeRequestParams})()    
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\eval.jl:224    
+│     [18] withpath(f::VSCodeServer.var"#69#74"{Bool, Bool, Bool, Module, String, Int64, Int64, String, VSCodeServer.ReplRunCodeRequestParams}, path::String)
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\repl.jl:276    
+│     [19] (::VSCodeServer.var"#68#73"{Bool, Bool, Bool, Module, String, Int64, Int64, String, VSCodeServer.ReplRunCodeRequestParams})()    
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\eval.jl:179    
+│     [20] hideprompt(f::VSCodeServer.var"#68#73"{Bool, Bool, Bool, Module, String, Int64, Int64, String, VSCodeServer.ReplRunCodeRequestParams})
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\repl.jl:38     
+│     [21] #67
+│        @ c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\eval.jl:150 [inlined]       
+│     [22] with_logstate(f::VSCodeServer.var"#67#72"{Bool, Bool, Bool, Module, String, Int64, Int64, String, VSCodeServer.ReplRunCodeRequestParams}, logstate::Base.CoreLogging.LogState)
+│        @ Base.CoreLogging .\logging\logging.jl:524
+│     [23] with_logger
+│        @ .\logging\logging.jl:635 [inlined]
+│     [24] (::VSCodeServer.var"#66#71"{VSCodeServer.ReplRunCodeRequestParams})()
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\eval.jl:263    
+│     [25] #invokelatest#2
+│        @ .\essentials.jl:1055 [inlined]
+│     [26] invokelatest(::Any)
+│        @ Base .\essentials.jl:1052
+│     [27] (::VSCodeServer.var"#64#65")()
+│        @ VSCodeServer c:\Users\nelew\.vscode\extensions\julialang.language-julia-1.149.2\scripts\packages\VSCodeServer\src\eval.jl:34     
+└ @ Base errorshow.jl:364
+
+Stacktrace:
+ [1] solve_ODE(mod::PKLEV{…}, sys::ModelingToolkit.System; person::Main.EpilepsyModels.Person{…}, endpoint::Float64, options::CompositeAlgorithm{…})
+   @ Main.EpilepsyModels c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\PK Model.jl:210
+ [2] generate_measurements!(mod::PKLEV{…}, sys::ModelingToolkit.System, person::Main.EpilepsyModels.Person{…}; timepoints::StepRangeLen{…}, endpoint::Float64, options::CompositeAlgorithm{…})
+   @ Main.EpilepsyModels c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\PK Model.jl:272
+ [3] generate_data(m::FullModel{…}, n::Int64, time::Float64; timepoints::StepRangeLen{…}, wo_treatment::Float64, ODE_options::CompositeAlgorithm{…})
+   @ Main.EpilepsyModels c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\EpilepsyModels.jl:109
+ [4] top-level scope
+   @ c:\Users\nelew\Documents\master_thesis\EpilepsyModels\src\Testing.jl:32
+Some type information was truncated. Use `show(err)` to see complete types.
+->presumably at least create_problem worked?

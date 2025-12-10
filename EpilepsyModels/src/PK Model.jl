@@ -8,6 +8,7 @@ using Random
 using ComponentArrays
 using Accessors
 using StaticArrays
+using DataInterpolations
 
 #set seed
 Random.seed!(42)
@@ -38,7 +39,7 @@ abstract type PKModelRandom <: PKModel end
     cov::T2 = () #no covariates required
 end
 
-function create_ode_system(mod::PKBasic; covariates=nothing) #does not actually need covariates, just for later
+function create_ode_system(mod::PKBasic) #does not actually need covariates, just for later
         @mtkmodel Internal begin
         @parameters begin
             k_el
@@ -77,11 +78,12 @@ end
     cov::T2 = (:weight, :height, :kidney_disease) 
 end
 
-function create_ode_system(mod::PKLEV; covariates::NamedTuple) 
+function create_ode_system(mod::PKLEV) 
     #V = v1*(Body surface area normalised)^v2
     #CL = c1*(Weight normalised)^c2*(1-c3*(kidney disease yes/no))
     #Absorption rate k_abs/V, elimination CL/V
-    BSA_normalised = sqrt(covariates.weight*covariates.height/3600)/1.68
+    #Define body surface area as function of height and weight
+    BSA_normalised(weight, height) = sqrt(weight*height/3600)/1.68
         @mtkmodel Internal begin
         @parameters begin
             k_abs
@@ -97,12 +99,20 @@ function create_ode_system(mod::PKLEV; covariates::NamedTuple)
             s_LEV(t) = 0.0  # internal/central compartment
             S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
             obs_LEV(t)
+            #covariates as functions, later constant interpolation
+            weight(t)
+            height(t)
+            kidney_disease(t)
         end
         @equations begin
-            D(d_LEV) ~ -(k_abs/(v1*BSA_normalised^v2)) * d_LEV
-            D(s_LEV) ~ (k_abs/(v1*BSA_normalised^v2)) * d_LEV - (c1*(covariates.weight/70)^c2*(1-covariates.kidney_disease*c3)/(v1*BSA_normalised^v2)) * s_LEV
+            D(d_LEV) ~ -(k_abs/(v1*BSA_normalised(weight, height)^v2)) * d_LEV
+            D(s_LEV) ~ (k_abs/(v1*BSA_normalised(weight, height)^v2)) * d_LEV - (c1*(weight/70)^c2*(1-kidney_disease*c3)/(v1*BSA_normalised(weight, height)^v2)) * s_LEV
             D(S_LEV) ~ s_LEV
             obs_LEV ~ Normal(s_LEV, σ)
+            #To avoid unbalanced system error
+            D(weight) ~ 0.0
+            D(height) ~ 0.0
+            D(kidney_disease) ~ 0.0
         end
     end
     
@@ -126,7 +136,7 @@ function dose_affect!(integrator; idx_d, dose_amount)
 end
 
 function create_dosing_callbacks(dosing::AbstractVector, ode_system)
-    callbacks = [
+    @inbounds callbacks = [
         PresetTimeCallback(
             dosing[i].t,
             integrator -> dose_affect!(
@@ -155,29 +165,57 @@ end
 #Problem creation and solution for nonrandom models, for random effects might have to do differently?
 function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
-    ode_system = create_ode_system(mod, covariates=covariates)
+    ode_system = create_ode_system(mod)
 
     # Create individual PresetTimeCallback for each dose
     # initialize is important if you have a dose at t=0
     callback_set = create_dosing_callbacks(dosing, ode_system)
-    
+
+    #interpolate covariates constant
+    covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
     # Create ODE problem with callbacks
-    problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, [], (0.0, endpoint), callback = callback_set)
+    problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     
     return problem
 end
 
-function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = [AutoTsit5(Rosenbrock23())])
+#same function for ode_system already given, given a person instead of dosing and covariates
+function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Person, endpoint::AbstractFloat = 10.0)
+    dosing = person.dosing
+    covariates = NamedTuple{mod.cov}(person.covariates)
+    # Create individual PresetTimeCallback for each dose
+    # initialize is important if you have a dose at t=0
+    callback_set = create_dosing_callbacks(dosing, ode_system)
+
+    #interpolate covariates constant
+    covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
+    #covariate_interpolation = Dict((name => value for (name,value) in pairs(covariates)))
+
+    # Create ODE problem with callbacks
+    problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
+    
+    return problem
+end
+
+#solve ODE without system given
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23())))
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     sol = solve(prob,options...)
     return sol
 end
 
-#θ all PK Model parameters
-function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = [AutoTsit5(Rosenbrock23())])
+#solve ODE given system
+function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23())))
+    prob = create_problem(mod, sys, person=person, endpoint=endpoint)
+    sol = solve(prob,options...)
+    return sol
+end
+
+#θ all PK Model parameters, for problem not given
+function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = (AutoTsit5(Rosenbrock23())))
     cov = NamedTuple{mod.cov}(person.covariates)
     #Magic stuff that will hopefully fix AutoDiff
-    ode_system = create_ode_system(mod; covariates = cov)
+    ode_system = create_ode_system(mod)
     prob = create_problem(mod, dosing=person.dosing, covariates=cov, endpoint=endpoint)
     indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
     #tunable parameters only interested in not initial of a trajectory
@@ -190,8 +228,22 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
     return sol
 end
 
+#solve_PK for problem given
+function solve_PK(prob::ODEProblem, θ::ComponentArray; options = (AutoTsit5(Rosenbrock23())))
+    #Magic stuff that will hopefully fix AutoDiff
+    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
+    #tunable parameters only interested in not initial of a trajectory
+    mkt_parameters = prob.p
+    new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
+    new_prob = remake(prob, p=new_mkt_parameters)
+    T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
+    prob_use = remake(new_prob; u0 = T.(new_prob.u0))
+    sol = solve(prob_use, options...)
+    return sol
+end
+
 #likelihood when solution not given
-function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person; options = [AutoTsit5(Rosenbrock23())])
+function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person; options = (AutoTsit5(Rosenbrock23())))
     sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint, options = options)
     return get_PK_loglikelihood(θ, person, sol)
 end
@@ -206,16 +258,20 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
 end
 
 #assumed that timepoints are increasing, returns solution for use in seizure model
-function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = [AutoTsit5(Rosenbrock23())])
+function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23())))
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
     names = get_keys_PK(mod)
-    for timepoint in timepoints
-        for obs in names.obs
-            value = rand(sol(timepoint, idxs = obs[1]))
-            pair = (timepoint = timepoint, measurement = value, state = obs)
-            push!(person.measurements,pair)
-        end
-    end
+    measurements = [(timepoint = timepoint, measurement = rand(sol(timepoint, idxs = obs[1])), state = obs) for timepoint in timepoints for obs in names.obs]
+    append!(person.measurements, measurements)
+    return sol
+end
+
+#same function but given ODE system
+function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23())))
+    sol = solve_ODE(mod, sys, person=person, endpoint = endpoint, options = options)
+    names = get_keys_PK(mod)
+    measurements = [(timepoint = timepoint, measurement = rand(sol(timepoint, idxs = obs[1])), state = obs) for timepoint in timepoints for obs in names.obs]
+    append!(person.measurements, measurements)
     return sol
 end
