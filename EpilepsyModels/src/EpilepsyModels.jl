@@ -6,7 +6,7 @@ using Optimization
 using ForwardDiff
 using ComponentArrays
 
-export optimise, generate_data, generate_data_updating, BasicDoses, PKBasic, PKLEV, BasicPersonGenerator, 
+export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PKBasic, PKLEV, BasicPersonGenerator, 
 SeizureBasic, FullModel, PersonGeneratorLEV
 
 include("Person Generator.jl")
@@ -62,11 +62,12 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     options = p.options
     names = p.names
     problems = p.problems
+    system = p.system
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale!(θ, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ))
     for i in eachindex(data)
-        @inbounds sol = solve_PK(problems[i], θ.PK, options = options)
+        @inbounds sol = solve_PK(problems[i], system, θ.PK, options = options)
         if !(SciMLBase.successful_retcode(sol))
             return Inf
         end
@@ -76,20 +77,30 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     return -loglikeli
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23())))
+function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{String} = (), ODE_options = Tuple([AutoTsit5(Rosenbrock23())]))
+    names = get_keys_PK(m.pk_model)
+    sys = create_ode_system(m.pk_model)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    partial_transform_to_logscale!(θ, logscale = logscale)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys)
+    negloglikeli = get_negloglikelihood(θ, p)
+    return negloglikeli
+end
+
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = Tuple([AutoTsit5(Rosenbrock23())]))
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
     names = get_keys_PK(m.pk_model)
     negloglikeli = get_negloglikelihood
     #create ODE problem for each person in data
-    sys = create_ode_system(m)
-    problems = (create_problem(m, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    sys = create_ode_system(m.pk_model)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
@@ -100,7 +111,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23())))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = Tuple([AutoTsit5(Rosenbrock23())]))
     population = generate_population(m.population_gen, n)
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
@@ -114,7 +125,7 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = [AutoTsit5(Rosenbrock23())])
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints::AbstractVector = 0:14.0:time, wo_treatment::AbstractFloat = 3.0, ODE_options = Tuple([AutoTsit5(Rosenbrock23())]))
     population = generate_population(m.population_gen, n)
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
