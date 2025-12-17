@@ -88,7 +88,7 @@ function create_ode_system(mod::PKLEV)
     interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
     type_use = typeof(interpolator).name.wrapper
     #Define model, @mtkmodel doesnt agree with callable parameters
-    @parameters k_abs=θ.k_abs c1=θ.c1 c2=θ.c2 c3=θ.c3 v1=θ.c1 v2=θ.v2 σ=θ.σ #normal system parameters
+    @parameters k_abs=θ.k_abs c1=θ.c1 c2=θ.c2 c3=θ.c3 v1=θ.v1 v2=θ.v2 σ=θ.σ #normal system parameters
     #callable parameters for covariates
     @parameters (weight::type_use)(..) [tunable=false] 
     @parameters (height::type_use)(..) [tunable=false] 
@@ -183,27 +183,26 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
 end
 
 #solve ODE without system given
-function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = Tuple([AutoTsit5(Rosenbrock23())]))
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     sol = solve(prob,options...)
     return sol
 end
 
 #solve ODE given system
-function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, options = Tuple([AutoTsit5(Rosenbrock23())]))
+function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, sys, person=person, endpoint=endpoint)
     sol = solve(prob,options...)
     return sol
 end
 
 #θ all PK Model parameters, for problem not given
-function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = Tuple([AutoTsit5(Rosenbrock23())]))
+function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
     #Magic stuff that will hopefully fix AutoDiff
     ode_system = create_ode_system(mod)
     prob = create_problem(mod, dosing=person.dosing, covariates=cov, endpoint=endpoint)
-    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
-    #tunable parameters only interested in not initial of a trajectory
+    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
     mkt_parameters = prob.p
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
     new_prob = remake(prob, p=new_mkt_parameters)
@@ -214,10 +213,9 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
 end
 
 #solve_PK for problem given
-function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; options = Tuple([AutoTsit5(Rosenbrock23())]))
+function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; options = (AutoTsit5(Rosenbrock23()),))
     #Magic stuff that will hopefully fix AutoDiff
-    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in tunable_parameters(ode_system) if !(isinitial(x))]
-    #tunable parameters only interested in not initial of a trajectory
+    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
     mkt_parameters = prob.p
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
     new_prob = remake(prob, p=new_mkt_parameters)
@@ -228,7 +226,7 @@ function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; o
 end
 
 #likelihood when solution not given
-function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person; options = Tuple([AutoTsit5(Rosenbrock23())]))
+function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person; options = (AutoTsit5(Rosenbrock23()),))
     sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint, options = options)
     return get_PK_loglikelihood(θ, person, sol)
 end
@@ -243,9 +241,12 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
 end
 
 #assumed that timepoints are increasing, returns solution for use in seizure model
-function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = Tuple([AutoTsit5(Rosenbrock23())]))
+function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
+    if !(SciMLBase.successful_retcode(sol))
+        @warn "Unsuccessful ODE solve in data generation, you might want to adjust model parameters"
+    end
     names = get_keys_PK(mod)
     measurements = [(timepoint = timepoint, measurement = rand(sol(timepoint, idxs = obs[1])), state = obs) for timepoint in timepoints for obs in names.obs]
     append!(person.measurements, measurements)
@@ -253,8 +254,11 @@ function generate_measurements!(mod::PKModel, person::Person; timepoints::Abstra
 end
 
 #same function but given ODE system
-function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = Tuple([AutoTsit5(Rosenbrock23())]))
+function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23()),))
     sol = solve_ODE(mod, sys, person=person, endpoint = endpoint, options = options)
+    if !(SciMLBase.successful_retcode(sol))
+        @warn "Unsuccessful ODE solve in data generation, you might want to adjust model parameters"
+    end
     names = get_keys_PK(mod)
     measurements = [(timepoint = timepoint, measurement = rand(sol(timepoint, idxs = obs[1])), state = obs) for timepoint in timepoints for obs in names.obs]
     append!(person.measurements, measurements)
