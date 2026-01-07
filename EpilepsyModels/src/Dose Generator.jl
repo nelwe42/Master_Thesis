@@ -1,15 +1,19 @@
 using Random
 using Distributions
+using Parameters
 
 #set seed
 Random.seed!(42)
 
 abstract type DoseGenerator end
 
-struct BasicDoses <: DoseGenerator end
+@with_kw struct BasicDoses{T<:AbstractFloat} <: DoseGenerator 
+    daily_dose::T = 5.0
+end
 
 #assign same dose to all for next timeframe days, wo_treatment gives first dosetime, afterwards dose every time unit (day)
-function assign_dose!(m::BasicDoses, person::Person; names::NamedTuple, timeframe::AbstractFloat = 10.0, dose::AbstractFloat = 5.0, wo_treatment::AbstractFloat = 0.0)
+function assign_dose!(m::BasicDoses, person::Person; names::NamedTuple, timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
+    dose = m.daily_dose
     if isempty(person.dosing)
         last_dosetime = -1
     else

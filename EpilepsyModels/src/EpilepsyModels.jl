@@ -63,11 +63,12 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     names = p.names
     problems = p.problems
     system = p.system
+    indices = p.indices_θ
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale!(θ, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ))
     for i in eachindex(data)
-        @inbounds sol = solve_PK(problems[i], system, θ.PK, options = options)
+        @inbounds sol = solve_PK(problems[i], system, θ.PK, indices_θ = indices, options = options)
         if !(SciMLBase.successful_retcode(sol))
             return Inf
         end
@@ -81,9 +82,11 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
-    partial_transform_to_logscale!(θ, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys)
-    negloglikeli = get_negloglikelihood(θ, p)
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
+    θ_use = deepcopy(θ)
+    partial_transform_to_logscale!(θ_use, logscale = logscale)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    negloglikeli = get_negloglikelihood(θ_use, p)
     return negloglikeli
 end
 
@@ -98,9 +101,11 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
+    #get indices for setting θ
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p)
     estimate = solve(problem, solver_optim, maxiters = maxiters) 

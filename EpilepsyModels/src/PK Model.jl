@@ -97,8 +97,8 @@ function create_ode_system(mod::PKLEV)
     @variables s_LEV(t) = 0.0  # internal/central compartment
     @variables S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_LEV(t)
-
-    eqs = [D(d_LEV) ~ -(k_abs/(v1*BSA_normalised(weight(t), height(t))^v2)) * d_LEV,
+    #d_LEV is not concentration but dose, so rate there not normalised by volume
+    eqs = [D(d_LEV) ~ -k_abs * d_LEV,
             D(s_LEV) ~ (k_abs/(v1*BSA_normalised(weight(t), height(t))^v2)) * d_LEV - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
             D(S_LEV) ~ s_LEV, 
             obs_LEV ~ Normal(s_LEV, σ)]
@@ -199,28 +199,24 @@ end
 #θ all PK Model parameters, for problem not given
 function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
-    #Magic stuff that will hopefully fix AutoDiff
     ode_system = create_ode_system(mod)
     prob = create_problem(mod, dosing=person.dosing, covariates=cov, endpoint=endpoint)
     indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
     mkt_parameters = prob.p
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
-    new_prob = remake(prob, p=new_mkt_parameters)
     T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
-    prob_use = remake(new_prob; u0 = T.(new_prob.u0))
+    prob_use = remake(prob, p=new_mkt_parameters; u0 = T.(prob.u0))
     sol = solve(prob_use, options...)
     return sol
 end
 
-#solve_PK for problem given
-function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; options = (AutoTsit5(Rosenbrock23()),))
-    #Magic stuff that will hopefully fix AutoDiff
-    indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
+#solve_PK for problem, indices of parameters given
+function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; indices_θ::AbstractVector, options = (AutoTsit5(Rosenbrock23()),))
+    #indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
     mkt_parameters = prob.p
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
-    new_prob = remake(prob, p=new_mkt_parameters)
     T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
-    prob_use = remake(new_prob; u0 = T.(new_prob.u0))
+    prob_use = remake(prob, p=new_mkt_parameters; u0 = T.(prob.u0))
     sol = solve(prob_use, options...)
     return sol
 end

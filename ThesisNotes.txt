@@ -19,6 +19,8 @@ PK Levetiracetam:
 -CL usually c1*(Weight normalised)^c2*(estimated glomerular filtration rate normalised)^c3, here would also see influence of inducer drugs like VPa
 -V usually v1*(Weight or Body surface area normalised)^v2
 -both CL and V apparent (normalised wrt F)
+-choices for Input_θ: for V parameters taken from Hernández Mitre et al.(2020), for CL bis auf c3 ähnlich wie Pigeolet et al. 
+ (2007), for k_abs generally a lot close to 4
 -> k_abs becomes k_abs/V, k_el becomes CL/V
 -> need covariates weight, height, kidney function, calculate BSA as sqrt(weight*height/3600),
     could calculate eGFR as K*"height"/CR, maybe estimate K=0.45, "height"=50cm, CR reatine concentration (mg/dL),
