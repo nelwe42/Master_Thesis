@@ -9,6 +9,7 @@ using ComponentArrays
 using Accessors
 using StaticArrays
 using DataInterpolations
+using DiffEqCallbacks
 
 #set seed
 Random.seed!(42)
@@ -185,14 +186,14 @@ end
 #solve ODE without system given
 function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
-    sol = solve(prob,options...)
+    sol = solve(prob,options...; callback = PositiveDomain())
     return sol
 end
 
 #solve ODE given system
 function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, sys, person=person, endpoint=endpoint)
-    sol = solve(prob,options...)
+    sol = solve(prob,options...; callback = PositiveDomain())
     return sol
 end
 
@@ -206,7 +207,7 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
     T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
     prob_use = remake(prob, p=new_mkt_parameters; u0 = T.(prob.u0))
-    sol = solve(prob_use, options...)
+    sol = solve(prob_use, options...; callback = PositiveDomain())
     return sol
 end
 
@@ -217,7 +218,7 @@ function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; i
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
     T = promote_type(eltype(θ), eltype(new_mkt_parameters.tunable))
     prob_use = remake(prob, p=new_mkt_parameters; u0 = T.(prob.u0))
-    sol = solve(prob_use, options...)
+    sol = solve(prob_use, options...; callback = PositiveDomain())
     return sol
 end
 

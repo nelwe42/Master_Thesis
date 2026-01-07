@@ -15,7 +15,7 @@ using StaticArrays
 println("Included")
 #Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
 #           Seizure = ComponentArray((a = 4, b = [-0.05]))))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = 4.0, c1 = 4.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.1)), 
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = 2.5, c1 = 4.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.1)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
 Population_size = 2 #20
