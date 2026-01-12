@@ -7,13 +7,15 @@ Random.seed!(42)
 
 abstract type DoseGenerator end
 
-@with_kw struct BasicDoses{T<:AbstractFloat} <: DoseGenerator 
-    daily_dose::T = 5.0
+@with_kw struct BasicDoses{T<:AbstractFloat, T2<:Int} <: DoseGenerator 
+    default_dose::T = 5.0
+    times_per_day::T2 = 1
 end
 
 #assign same dose to all for next timeframe days, wo_treatment gives first dosetime, afterwards dose every time unit (day)
 function assign_dose!(m::BasicDoses, person::Person; names::NamedTuple, timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
-    dose = m.daily_dose
+    dose = m.default_dose
+    times = m.times_per_day
     if isempty(person.dosing)
         last_dosetime = -1
     else
@@ -23,7 +25,7 @@ function assign_dose!(m::BasicDoses, person::Person; names::NamedTuple, timefram
     no_dose = min(wo_treatment,timeframe)
     last_dosetime += no_dose
     #append for each dose time and drug taken
-    next_doses = [(t = i+1, dose = dose, state = d) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in names.d]
+    next_doses = [(t = i+1 + j/times, dose = dose, state = d) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for j in 0:(times-1) for d in names.d]
     append!(person.dosing,next_doses)
 end
 

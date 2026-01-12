@@ -20,8 +20,11 @@ PK Levetiracetam:
 -V usually v1*(Weight or Body surface area normalised)^v2
 -both CL and V apparent (normalised wrt F)
 -choices for Input_θ: for V parameters taken from Hernández Mitre et al.(2020), for CL bis auf c3 ähnlich wie Pigeolet et al. 
- (2007), for k_abs generally a lot close to 4
+ (2007), for k_abs averaged to 3.5, since time unit days instead of hours multiply c1 and k_abs with 24
 -> k_abs becomes k_abs/V, k_el becomes CL/V
 -> need covariates weight, height, kidney function, calculate BSA as sqrt(weight*height/3600),
     could calculate eGFR as K*"height"/CR, maybe estimate K=0.45, "height"=50cm, CR reatine concentration (mg/dL),
     for simplicity at least at first instead just factor (1 - c3*(kidney disease yes/no))
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
+           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+default_dose=500mg, times_per_day = 2

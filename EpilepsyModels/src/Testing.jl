@@ -15,7 +15,7 @@ using StaticArrays
 println("Included")
 #Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
 #           Seizure = ComponentArray((a = 4, b = [-0.05]))))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = 2.5, c1 = 4.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.1)), 
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
 Population_size = 2 #20
@@ -28,7 +28,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 pk_model = PKLEV(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
-mod = FullModel(pk_model, seizure_model, PersonGeneratorLEV(), BasicDoses(0.5))
+mod = FullModel(pk_model, seizure_model, PersonGeneratorLEV(), BasicDoses(default_dose=500.0, times_per_day=2))
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
@@ -41,8 +41,7 @@ println("True θ:", Input_θ)
 #Plot PK behavior (for each drug)
 names = EpilepsyModels.get_keys_PK(mod.pk_model)
 i = 1 #index of person for which plotting is done
-sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration)
-covariates = NamedTuple{mod.pk_model.cov}(data[i].covariates)
+sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options)
 for s in names.s
     pl = plot(sol, idxs = s, labels=["Concentration $(s)"], 
         xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)")
@@ -51,7 +50,7 @@ for s in names.s
     plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
     #add estimate plot
     Estimate_θ = estimate.u
-    sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration)
+    sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
     pl = plot!(sol2, idxs = s, labels=["Estimated concentration $(s)"], linecolor = :red)
 
     display(pl)
