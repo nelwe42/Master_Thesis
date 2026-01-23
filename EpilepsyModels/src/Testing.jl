@@ -13,6 +13,11 @@ using Plots
 using StaticArrays
 
 println("Included")
+
+#set seed
+Random.seed!(42)
+
+#Specify parameters
 #Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
 #           Seizure = ComponentArray((a = 4, b = [-0.05]))))
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
@@ -28,7 +33,10 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 pk_model = PKLEV(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
-mod = FullModel(pk_model, seizure_model, PersonGeneratorLEV(), BasicDoses(default_dose=500.0, times_per_day=2))
+person_gen = PersonGeneratorLEV()
+#dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
+dose_gen = PolyDoses(pk_model)
+mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 

@@ -11,9 +11,6 @@ using StaticArrays
 using DataInterpolations
 using DiffEqCallbacks
 
-#set seed
-Random.seed!(42)
-
 #Overtype of PK Models that will go into full model
 #Potentially make step in between, PK_model_component
 #then PK_model becomes list of drugs and corresponding model component, can switch out

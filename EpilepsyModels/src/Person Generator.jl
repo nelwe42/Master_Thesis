@@ -2,9 +2,6 @@ using Random
 using Distributions
 using Parameters
 
-#set seed
-Random.seed!(42)
-
 @with_kw struct Person{T<:NamedTuple, D<:AbstractVector{<:NamedTuple}, S<:AbstractVector{<:NamedTuple}, M<:AbstractVector{<:NamedTuple}}
     covariates::T = NamedTuple() #named tuple of covariates
     dosing::D = Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}() #vector of NamedTuples of the form t, dose, state

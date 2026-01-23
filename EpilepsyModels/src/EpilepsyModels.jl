@@ -6,12 +6,12 @@ using Optimization
 using ForwardDiff
 using ComponentArrays
 
-export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PKBasic, PKLEV, BasicPersonGenerator, 
+export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, BasicPersonGenerator, 
 SeizureBasic, FullModel, PersonGeneratorLEV
 
 include("Person Generator.jl")
-include("Dose Generator.jl")
 include("PK Model.jl")
+include("Dose Generator.jl")
 include("Seizure Model.jl")
 
 struct FullModel{PK<:PKModel, S<:SeizureModel, P<:PersonGenerator, D<:DoseGenerator}
@@ -121,7 +121,7 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     for person in population
-        assign_dose!(m.dose_gen, person, names= names, timeframe = time, wo_treatment = wo_treatment)
+        assign_dose!(m.dose_gen, person, names = names, timeframe = time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, sys, person, timepoints = timepoints, endpoint = time, options = ODE_options)
         generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = time, names=names)
         #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)

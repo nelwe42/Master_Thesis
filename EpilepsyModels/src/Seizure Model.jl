@@ -5,9 +5,6 @@ using Parameters
 using ComponentArrays
 using StaticArrays
 
-#set seed
-Random.seed!(42)
-
 #Overtype of Seizure Models that will go into full model
 abstract type SeizureModel end
 
