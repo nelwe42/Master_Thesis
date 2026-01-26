@@ -6,8 +6,8 @@ using Optimization
 using ForwardDiff
 using ComponentArrays
 
-export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, BasicPersonGenerator, 
-SeizureBasic, FullModel, PersonGeneratorLEV
+export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
+PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV
 
 include("Person Generator.jl")
 include("PK Model.jl")

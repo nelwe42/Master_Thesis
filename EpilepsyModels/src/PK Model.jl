@@ -32,9 +32,10 @@ abstract type PKModelRandom <: PKModel end
 #1)Specific model instances with their create problems
 
 #A specific model instance, here very basic
-@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
+@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple, T3<: Tuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) 
     cov::T2 = () #no covariates required
+    set_daily_doses::T3 = () #no information about daily doses required
 end
 
 function create_ode_system(mod::PKBasic) #does not actually need covariates, just for later
@@ -71,9 +72,10 @@ function get_keys_PK(mod::PKBasic)
 end
 
 #A model for the PK behavior of Levetiracetam
-@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple} <: PKModelNonrandom
+@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :height, :kidney_disease) 
+    set_daily_doses::T3 = ()
 end
 
 function create_ode_system(mod::PKLEV) 
@@ -112,13 +114,58 @@ function get_keys_PK(mod::PKLEV)
     return keys
 end
 
+#A model for just testing right now
+@with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple} <: PKModelNonrandom
+    θ::T=ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)) 
+    cov::T2 = () 
+    set_daily_doses::T3 = ((:d_CBZ_daily, :d_CBZ),) #parameter to update and corresponding state name for updates
+end
+
+function create_ode_system(mod::PKCBZ) 
+    #V = 
+    #CL = 
+    #Absorption rate k_abs/V, elimination CL/V
+    θ = mod.θ
+    interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
+    type_use = typeof(interpolator).name.wrapper
+    #Define model, @mtkmodel doesnt agree with callable parameters
+    @parameters k_abs=θ.k_abs k_el=θ.k_el σ=θ.σ #normal system parameters
+    @parameters d_CBZ_daily = 0.0 #parameter for daily dose updated by callback
+    #callable parameters for covariates
+    @variables d_CBZ(t) = 0.0  # depot compartment - no drug at beginning
+    @variables s_CBZ(t) = 0.0  # internal/central compartment
+    @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
+    @variables obs_CBZ(t)
+    @variables test(t) #just testing obv
+    #d_LEV is not concentration but dose, so rate there not normalised by volume
+    eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
+            D(s_CBZ) ~ (k_abs) * d_CBZ - (k_el) * s_CBZ,
+            D(S_CBZ) ~ s_CBZ,
+            test ~ d_CBZ_daily, #just testing here
+            obs_CBZ ~ Normal(s_CBZ, σ)]
+    
+    @mtkcompile internal_model = System(eqs, t)
+
+    return internal_model
+end
+
+function get_keys_PK(mod::PKCBZ)
+    keys = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)])
+    #for observations also records corresponding internal state
+    return keys
+end
 
 #2)Dosing for all models
 function dose_affect!(integrator; idx_d, dose_amount)
         integrator.u[idx_d] += dose_amount  # Add dose to depot (d)
 end
 
-function create_dosing_callbacks(dosing::AbstractVector, ode_system)
+#For when daily dose as a parameter must be updated in ODE
+function daily_dose_affect!(integrator; id_param, daily_dose)
+    integrator.p[id_param] = daily_dose
+end
+
+function create_dosing_callbacks(dosing::AbstractVector, ode_system; endpoint::AbstractFloat, set_daily_doses::Tuple = ())
     @inbounds callbacks = [
         PresetTimeCallback(
             dosing[i].t,
@@ -139,8 +186,15 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system)
         )
         for i in eachindex(dosing)
     ]
+
+    #Maybe go to periodic callback here?
+    callbacks_daily = [PresetTimeCallback(day, 
+                        integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
+                                        daily_dose = sum([dose.dose for dose in dosing if (day ≤ dose.t < (day+1) && dose.state == d[2])]))) 
+                        for d in set_daily_doses for day in 0:endpoint]
+    #Maybe need initialize here? Might be different because set = instead of +=
     
-    return CallbackSet(callbacks...)
+    return CallbackSet(callbacks..., callbacks_daily...)
 end
 
 #3)Global functions for nonrandom models
@@ -152,7 +206,7 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
 
     # Create individual PresetTimeCallback for each dose
     # initialize is important if you have a dose at t=0
-    callback_set = create_dosing_callbacks(dosing, ode_system)
+    callback_set = create_dosing_callbacks(dosing, ode_system, endpoint = endpoint, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
     covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
@@ -168,7 +222,7 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
     covariates = NamedTuple{mod.cov}(person.covariates)
     # Create individual PresetTimeCallback for each dose
     # initialize is important if you have a dose at t=0
-    callback_set = create_dosing_callbacks(dosing, ode_system)
+    callback_set = create_dosing_callbacks(dosing, ode_system, endpoint = endpoint, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
     covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))

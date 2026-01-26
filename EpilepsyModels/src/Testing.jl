@@ -11,6 +11,7 @@ using LineSearches
 using DifferentialEquations
 using Plots
 using StaticArrays
+using Random
 
 println("Included")
 
@@ -31,7 +32,8 @@ logscale = ("σ",)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 
-pk_model = PKLEV(θ=Input_θ.PK)
+#pk_model = PKLEV(θ=Input_θ.PK)
+pk_model = PKCBZ()
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
 person_gen = PersonGeneratorLEV()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
