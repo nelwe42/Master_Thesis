@@ -25,7 +25,7 @@ Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0),
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
 Population_size = 2 #20
-wo_treatment = 3.0 #10.0
+wo_treatment = 0.0 #3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 logscale = ("σ",)
@@ -67,3 +67,10 @@ for s in names.s
 end
 
 println("Done")
+
+#testing callback daily dose
+dosing_test = [(t = 0.0, dose = 10, state = :d_CBZ), (t = 0.5, dose = 20, state = :d_CBZ), (t = 3.0, dose = 50, state = :d_CBZ)]
+test_person = EpilepsyModels.Person(dosing = dosing_test)
+sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, test_person, endpoint = 5.0, options = ODE_options)
+pl = plot(sol, idxs = [:test])
+display(pl)

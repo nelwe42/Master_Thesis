@@ -136,12 +136,12 @@ function create_ode_system(mod::PKCBZ)
     @variables s_CBZ(t) = 0.0  # internal/central compartment
     @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_CBZ(t)
-    @variables test(t) #just testing obv
+    @variables test(t) = 0.0 #just testing obv
     #d_LEV is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
             D(s_CBZ) ~ (k_abs) * d_CBZ - (k_el) * s_CBZ,
             D(S_CBZ) ~ s_CBZ,
-            test ~ d_CBZ_daily, #just testing here
+            D(test) ~ d_CBZ_daily, #just testing here
             obs_CBZ ~ Normal(s_CBZ, σ)]
     
     @mtkcompile internal_model = System(eqs, t)
@@ -188,12 +188,18 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system; endpoint::A
     ]
 
     #Maybe go to periodic callback here?
-    callbacks_daily = [PresetTimeCallback(day, 
-                        integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
-                                        daily_dose = sum([dose.dose for dose in dosing if (day ≤ dose.t < (day+1) && dose.state == d[2])]))) 
-                        for d in set_daily_doses for day in 0:endpoint]
+    #callbacks_daily = [PresetTimeCallback(day, 
+    #                    integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
+    #                                    daily_dose = sum([dose.dose for dose in dosing if (day ≤ dose.t < (day+1) && dose.state == d[2])]))) 
+    #                    for d in set_daily_doses for day in 0:endpoint]
     #Maybe need initialize here? Might be different because set = instead of +=
-    
+    callbacks_daily = [PeriodicCallback( 
+                        integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
+                                        daily_dose = sum([dose.dose for dose in dosing if (integrator.t ≤ dose.t < (integrator.t+1) && dose.state == d[2])])),
+                        1.0, initial_affect = true, final_affect = true) #affect called every 1.0 time unit (days), also at initial and final point
+                        for d in set_daily_doses]
+    #set save_positions here?
+
     return CallbackSet(callbacks..., callbacks_daily...)
 end
 
