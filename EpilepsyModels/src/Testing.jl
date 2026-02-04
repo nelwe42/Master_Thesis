@@ -12,6 +12,7 @@ using DifferentialEquations
 using Plots
 using StaticArrays
 using Random
+using BenchmarkTools
 
 println("Included")
 
@@ -73,4 +74,11 @@ dosing_test = [(t = 0.0, dose = 10, state = :d_CBZ), (t = 0.5, dose = 20, state 
 test_person = EpilepsyModels.Person(dosing = dosing_test)
 sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, test_person, endpoint = 5.0, options = ODE_options)
 pl = plot(sol, idxs = [:test])
+display(pl)
+
+dosing_test2 = [(t = 0.0, dose = 10, state = :d), (t = 0.5, dose = 20, state = :d), (t = 3.0, dose = 50, state = :d)]
+test_person2 = EpilepsyModels.Person(dosing = dosing_test2)
+pk_model2 = PKBasic()
+sol2 = EpilepsyModels.solve_PK(pk_model2, pk_model2.θ, test_person2, endpoint = 5.0, options = ODE_options)
+pl = plot(sol2, idxs = [:d, :s])
 display(pl)

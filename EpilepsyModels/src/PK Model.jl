@@ -130,7 +130,7 @@ function create_ode_system(mod::PKCBZ)
     type_use = typeof(interpolator).name.wrapper
     #Define model, @mtkmodel doesnt agree with callable parameters
     @parameters k_abs=θ.k_abs k_el=θ.k_el σ=θ.σ #normal system parameters
-    @parameters d_CBZ_daily = 0.0 #parameter for daily dose updated by callback
+    @parameters d_CBZ_daily = 0.0 [tunable=false]#parameter for daily dose updated by callback
     #callable parameters for covariates
     @variables d_CBZ(t) = 0.0  # depot compartment - no drug at beginning
     @variables s_CBZ(t) = 0.0  # internal/central compartment
@@ -165,7 +165,8 @@ function daily_dose_affect!(integrator; id_param, daily_dose)
     integrator.p[id_param] = daily_dose
 end
 
-function create_dosing_callbacks(dosing::AbstractVector, ode_system; endpoint::AbstractFloat, set_daily_doses::Tuple = ())
+function create_dosing_callbacks(dosing::AbstractVector, ode_system; names::NamedTuple, set_daily_doses::Tuple = ())
+    #save_positions = (false, false) so no two values at timepoint possible, bad for likelihood calculation/measurement generator
     @inbounds callbacks = [
         PresetTimeCallback(
             dosing[i].t,
@@ -184,7 +185,7 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system; endpoint::A
                 end
             end
         )
-        for i in eachindex(dosing)
+        for i in eachindex(dosing) if dosing[i].state in names.d #check PK model supports this drug
     ]
 
     #Maybe go to periodic callback here?
@@ -196,7 +197,7 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system; endpoint::A
     callbacks_daily = [PeriodicCallback( 
                         integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
                                         daily_dose = sum([dose.dose for dose in dosing if (integrator.t ≤ dose.t < (integrator.t+1) && dose.state == d[2])])),
-                        1.0, initial_affect = true, final_affect = true) #affect called every 1.0 time unit (days), also at initial and final point
+                        1.0, initial_affect = true, final_affect = true, save_positions = (false, false)) #affect called every 1.0 time unit (days), also at initial and final point
                         for d in set_daily_doses]
     #set save_positions here?
 
@@ -212,7 +213,8 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
 
     # Create individual PresetTimeCallback for each dose
     # initialize is important if you have a dose at t=0
-    callback_set = create_dosing_callbacks(dosing, ode_system, endpoint = endpoint, set_daily_doses = mod.set_daily_doses)
+    names = get_keys_PK(mod)
+    callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
     covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
@@ -228,7 +230,7 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
     covariates = NamedTuple{mod.cov}(person.covariates)
     # Create individual PresetTimeCallback for each dose
     # initialize is important if you have a dose at t=0
-    callback_set = create_dosing_callbacks(dosing, ode_system, endpoint = endpoint, set_daily_doses = mod.set_daily_doses)
+    callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
     covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
