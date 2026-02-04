@@ -82,3 +82,15 @@ pk_model2 = PKBasic()
 sol2 = EpilepsyModels.solve_PK(pk_model2, pk_model2.θ, test_person2, endpoint = 5.0, options = ODE_options)
 pl = plot(sol2, idxs = [:d, :s])
 display(pl)
+
+default_doses = (a = 2.0, b=3.0)
+distr_first = (a = 1/6, b = 5/6)
+distr_second = (a=5/6, b = 1/6)
+prob_second = 1.0
+
+dose_test = PolyDoses(default_doses, distr_first, distr_second, prob_second = prob_second)
+dose_test2 = PolyDoses(default_doses, distr_first, distr_second, prob_second = prob_second, assign_not_supported = true)
+person = EpilepsyModels.Person()
+person2 = EpilepsyModels.Person()
+EpilepsyModels.assign_dose!(dose_test, person, names = (d = (:b,),), wo_treatment = 2.0)
+EpilepsyModels.assign_dose!(dose_test2, person2, names = (d= (:a,),), wo_treatment = 2.0)

@@ -35,32 +35,33 @@ end
     prob_second::T5 = 0.0
     times_per_day_first::T6 = 1
     times_per_day_second::T6 = 1 
+    assign_not_supported::Bool = false #controls if assign_dose! assigns drugs not given in names
 end
 
 #from probabilities given in named tuples constructs categorical and map to symbol as tuple of drug names
-function PolyDoses(default_doses::NamedTuple, distr_first::NamedTuple, distr_second::NamedTuple; prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1)
+function PolyDoses(default_doses::NamedTuple, distr_first::NamedTuple, distr_second::NamedTuple; prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1, assign_not_supported::Bool = false)
     #check keys in distr_first/second have a key in default doses
     names_first = keys(distr_first)
     names_second = keys(distr_second)
     distr_one = Categorical(collect(values(distr_first)))
     distr_two = Categorical(collect(values(distr_second)))
-    return PolyDoses(default_doses, distr_one, distr_two, names_first, names_second, prob_second, times_per_day_first, times_per_day_second)
+    return PolyDoses(default_doses, distr_one, distr_two, names_first, names_second, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
 end
 
 #from PK model constructs default doses based on names, distribution for both uniform over names
-function PolyDoses(m::PKModel; default_dose::AbstractFloat = 5.0, prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1)
+function PolyDoses(m::PKModel; default_dose::AbstractFloat = 5.0, prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1, assign_not_supported::Bool = false)
     names = Tuple(get_keys_PK(m).d)
     N = length(names)
     default_doses = NamedTuple{names}([default_dose for i in 1:N])
     distr_first = Categorical([1/N for i in 1:N])
-    return PolyDoses(default_doses, distr_first, distr_first, names, names, prob_second, times_per_day_first, times_per_day_second)
+    return PolyDoses(default_doses, distr_first, distr_first, names, names, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
 end
 
 #picks first drug from distribution, with specified probability also second drug from that distribution, wo_treatment gives first dosetime, times per day and doses specified in model
 #if second picked drug is same as first, no second drug is assigned
 #when called again on person with doses already assigned, next doses are picked independently from current ones
-#when a drug not contained in names is picked, no dose is assigned
-function assign_dose!(m::PolyDoses, person::Person; names::NamedTuple, timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
+#when a drug not contained in names is picked, the attribute assign_not_supported decides if assigned anyway
+function assign_dose!(m::PolyDoses, person::Person; names::NamedTuple = (d = keys(m.default_doses),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
     if isempty(person.dosing)
         last_dosetime = -1
     else
@@ -85,8 +86,14 @@ function assign_dose!(m::PolyDoses, person::Person; names::NamedTuple, timeframe
     end
     doses = values(NamedTuple{drugs}(m.default_doses))
     times = (m.times_per_day_first, m.times_per_day_second)
+    #check if picked drugs are supported or else is assign_not_supported is set to true
+    if m.assign_not_supported
+        info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs))
+    else
+        info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs) if (drugs[i] in names.d))
+    end
     #append for each dose time and drug taken, check if drug contained in names (supported by chosen PK model)
-    next_doses = [(t = i+1 + j/times[d_ind], dose = doses[d_ind], state = drugs[d_ind]) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d_ind in eachindex(drugs) if (drugs[d_ind] in names.d) for j in 0:(times[d_ind]-1)]
+    next_doses = [(t = i+1 + j/d.times, dose = d.dose, state = d.drug) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in info for j in 0:(d.times-1)]
     append!(person.dosing,next_doses)
 end
 
