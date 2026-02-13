@@ -22,8 +22,10 @@ Random.seed!(42)
 #Specify parameters
 #Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
 #           Seizure = ComponentArray((a = 4, b = [-0.05]))))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
-           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+#Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
+#           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+Input_θ = ComponentArray((PK =ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)), 
+            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
 Population_size = 2 #20
 wo_treatment = 0.0 #3.0 #10.0
@@ -43,11 +45,13 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
-test_mod = FullModel(PKLEV(), SeizureBasic(), PersonGeneratorLEV(), BasicDoses())
+test_mod = FullModel(PKCBZ(), SeizureBasic(), PersonGeneratorLEV(), BasicDoses())
 estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ:", Input_θ)
+#Testing out hessian
+hess = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
 
 #Plot PK behavior (for each drug)
 names = EpilepsyModels.get_keys_PK(mod.pk_model)
@@ -70,6 +74,7 @@ end
 println("Done")
 
 #testing callback daily dose
+#=
 dosing_test = [(t = 0.0, dose = 10, state = :d_CBZ), (t = 0.5, dose = 20, state = :d_CBZ), (t = 3.0, dose = 50, state = :d_CBZ)]
 test_person = EpilepsyModels.Person(dosing = dosing_test)
 sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, test_person, endpoint = 5.0, options = ODE_options)
@@ -94,3 +99,4 @@ person = EpilepsyModels.Person()
 person2 = EpilepsyModels.Person()
 EpilepsyModels.assign_dose!(dose_test, person, names = (d = (:b,),), wo_treatment = 2.0)
 EpilepsyModels.assign_dose!(dose_test2, person2, names = (d= (:a,),), wo_treatment = 2.0)
+=#

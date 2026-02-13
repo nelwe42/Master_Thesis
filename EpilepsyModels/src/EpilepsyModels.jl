@@ -5,6 +5,7 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 using Optimization
 using ForwardDiff
 using ComponentArrays
+using FiniteDiff
 
 export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
 PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV
@@ -113,6 +114,54 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
     print("Estimate: ", estimate)
     return estimate
+end
+
+function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    names = get_keys_PK(m.pk_model)
+    sys = create_ode_system(m.pk_model)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    #check whether accidentally entered percentage instead of confidence in (0,1)
+    if confidence>1
+        confidence = confidence/100
+        @warn "Presumably you meant a percentage. Your input confidence has been divided by 100"
+    end
+    f(x) = get_negloglikelihood(x, p)
+    θ_use = deepcopy(θ)
+    #transform as specified
+    partial_transform_to_logscale!(θ_use, logscale = logscale)
+    println("Starting hessian forwarddiff")
+    #This takes very long
+    H = ForwardDiff.hessian(f,θ_use)
+    println("Statring hessian finitediff")
+    H_finite = FiniteDiff.finite_difference_hessian(f, θ_use)
+    println("Starting inverse")
+    H_inv = inv(H)
+    H_inv_finite = inv(H_finite)
+    println("H_inv finitediff = ", H_inv_finite)
+    println("H_inv forwarddiff = ", H_inv)
+    q = quantile(Normal(), (1-(1-confidence)/2))
+    #By symmetry other one is just the negative
+    #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
+    #upper_bounds = [θ[i] + sqrt(H_inv[i][i])*q for i in eachindex(θ)]
+    #lower_bounds = [θ[i] - sqrt(H_inv[i][i])*q for i in eachindex(θ)]
+    #now transform logscale ones, assign to correct keys, copy over to other version
+    return H_inv
+end
+
+function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = ())
+    #check whether accidentally entered percentage instead of confidence in (0,1)
+    if confidence>1
+        confidence = confidence/100
+        @warn "Presumably you meant a percentage. Your input confidence has been divided by 100"
+    end
+    f(x) = get_negloglikelihood(x, p)
+    θ_use = deepcopy(θ)
+    #transform as specified
+    partial_transform_to_logscale!(θ_use, logscale = logscale)
+    H_inv = inv(ForwardDiff.hessian(f,θ_use))
+    q = quantile(Normal(), ((1-confidence)/2))
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements

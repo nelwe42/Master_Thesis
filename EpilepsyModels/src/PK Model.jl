@@ -230,6 +230,7 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
     covariates = NamedTuple{mod.cov}(person.covariates)
     # Create individual PresetTimeCallback for each dose
     # initialize is important if you have a dose at t=0
+    names = get_keys_PK(mod)
     callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
