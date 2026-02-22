@@ -32,10 +32,11 @@ abstract type PKModelRandom <: PKModel end
 #1)Specific model instances with their create problems
 
 #A specific model instance, here very basic
-@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple, T3<: Tuple} <: PKModelNonrandom
+@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple, T3<: Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) 
     cov::T2 = () #no covariates required
     set_daily_doses::T3 = () #no information about daily doses required
+    keys::T4 = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[(:obs, :s)]) #for observations also records corresponding internal state
 end
 
 function create_ode_system(mod::PKBasic) #does not actually need covariates, just for later
@@ -66,16 +67,12 @@ function create_ode_system(mod::PKBasic) #does not actually need covariates, jus
     return internal_model
 end
 
-function get_keys_PK(mod::PKBasic)
-    keys = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[(:obs, :s)])
-    return keys
-end
-
 #A model for the PK behavior of Levetiracetam
-@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple} <: PKModelNonrandom
+@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :height, :kidney_disease) 
     set_daily_doses::T3 = ()
+    keys::T4 = (d = SA[:d_LEV], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
 end
 
 function create_ode_system(mod::PKLEV) 
@@ -108,17 +105,12 @@ function create_ode_system(mod::PKLEV)
     return internal_model
 end
 
-function get_keys_PK(mod::PKLEV)
-    keys = (d = SA[:d_LEV], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)])
-    #for observations also records corresponding internal state
-    return keys
-end
-
 #A model for just testing right now
-@with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple} <: PKModelNonrandom
+@with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)) 
     cov::T2 = () 
     set_daily_doses::T3 = ((:d_CBZ_daily, :d_CBZ),) #parameter to update and corresponding state name for updates
+    keys::T4 = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)]) #for observations also records corresponding internal state
 end
 
 function create_ode_system(mod::PKCBZ) 
@@ -147,12 +139,6 @@ function create_ode_system(mod::PKCBZ)
     @mtkcompile internal_model = System(eqs, t)
 
     return internal_model
-end
-
-function get_keys_PK(mod::PKCBZ)
-    keys = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)])
-    #for observations also records corresponding internal state
-    return keys
 end
 
 #2)Dosing for all models
@@ -205,6 +191,11 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system; names::Name
 end
 
 #3)Global functions for nonrandom models
+
+#Getter for keys of variable roles from PK model
+function get_keys_PK(mod::PKModel)
+    return mod.keys
+end
 
 #Problem creation and solution for nonrandom models, for random effects might have to do differently?
 function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)

@@ -1,3 +1,5 @@
+Discuss reasons for seizure model takes daily exposure, only calculated in seizures per day instead of continuous Poisson process
+
 Basic Seizure Model:
 -problem with intensity=0 in initial iteration gives nonzero count inf negloglikeli
 -tradeoff between a and b if daily exposure stabilises too fast, days without medication can help
@@ -28,3 +30,5 @@ PK Levetiracetam:
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 default_dose=500mg, times_per_day = 2
+
+discussion of daily dose param, models usually developed in steady state, so inaccurate if dosage was recently switched

@@ -31,16 +31,16 @@ function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Stri
         f = log
     end
     #search for matching labels, label2index returns vector of matching
-    for label in labels(θ.PK)
-        if label in logscale
+    for label in logscale
+        #To handle both transforming whole vector valued parameter or individual indices
+        if label in labels(θ.PK) || Symbol(label) in keys(θ.PK)
             indices = label2index(θ.PK,label)
             for index in indices
                 @inbounds θ.PK[index] = f(θ.PK[index])
             end
         end
-    end
-    for label in labels(θ.Seizure)
-        if label in logscale
+
+        if label in labels(θ.Seizure) || Symbol(label) in keys(θ.Seizure)
             indices = label2index(θ.Seizure,label)
             for index in indices
                 @inbounds θ.Seizure[index] = f(θ.Seizure[index])
@@ -134,7 +134,7 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     println("Starting hessian forwarddiff")
     #This takes very long
     H = ForwardDiff.hessian(f,θ_use)
-    println("Statring hessian finitediff")
+    println("Starting hessian finitediff")
     H_finite = FiniteDiff.finite_difference_hessian(f, θ_use)
     println("Starting inverse")
     H_inv = inv(H)
@@ -147,6 +147,14 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     #upper_bounds = [θ[i] + sqrt(H_inv[i][i])*q for i in eachindex(θ)]
     #lower_bounds = [θ[i] - sqrt(H_inv[i][i])*q for i in eachindex(θ)]
     #now transform logscale ones, assign to correct keys, copy over to other version
+    #this works but single components are now one entry vectors
+    #upper = ComponentArray(PK = ComponentArray((; [(key,upper_bounds[label2index(θ, String(key))]) for key in keys(θ.PK)]...)), 
+    #                        Seizure = ComponentArray((; [(key,upper_bounds[label2index(θ, String(key))]) for key in keys(θ.Seizure)]...)))
+    #upper = partial_transform_to_logscale!(upper, logscale = logscale, detransform = true)
+    #lower = ComponentArray(PK = ComponentArray((; [(key,lower_bounds[label2index(θ, String(key))]) for key in keys(θ.PK)]...)), 
+    #                        Seizure = ComponentArray((; [(key, lower_bounds[label2index(θ, String(key))]) for key in keys(θ.Seizure)]...)))
+    #lower = partial_transform_to_logscale!(lower, logscale = logscale, detransform = true)
+    #now put together or if works make as one directly?
     return H_inv
 end
 
