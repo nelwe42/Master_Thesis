@@ -49,9 +49,10 @@ test_mod = FullModel(PKCBZ(), SeizureBasic(), PersonGeneratorLEV(), BasicDoses()
 estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
-println("True θ:", Input_θ)
+println("True θ: ", Input_θ)
 #Testing out hessian
-hess = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
+CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
+println("Confidence Intervals Inverse Hessian:", CI)
 
 #Plot PK behavior (for each drug)
 names = EpilepsyModels.get_keys_PK(mod.pk_model)

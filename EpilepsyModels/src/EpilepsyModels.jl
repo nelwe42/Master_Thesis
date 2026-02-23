@@ -139,23 +139,26 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     println("Starting inverse")
     H_inv = inv(H)
     H_inv_finite = inv(H_finite)
-    println("H_inv finitediff = ", H_inv_finite)
-    println("H_inv forwarddiff = ", H_inv)
+    println("H_inv finitediff = ")
+    println(H_inv_finite)
+    println("H_inv forwarddiff = ")
+    println(H_inv)
+    for i in eachindex(θ)
+        if H_inv[i,i]<0
+            error("negative diagonal entry in inverse hessian")
+        end
+    end
     q = quantile(Normal(), (1-(1-confidence)/2))
     #By symmetry other one is just the negative
     #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
-    #upper_bounds = [θ[i] + sqrt(H_inv[i][i])*q for i in eachindex(θ)]
-    #lower_bounds = [θ[i] - sqrt(H_inv[i][i])*q for i in eachindex(θ)]
-    #now transform logscale ones, assign to correct keys, copy over to other version
+    bounds = [[θ_use[i] - sqrt(H_inv[i,i])*q, θ_use[i] + sqrt(H_inv[i,i])*q] for i in eachindex(θ_use)]
+    #now assign correct keys, transform logscale ones
     #this works but single components are now one entry vectors
-    #upper = ComponentArray(PK = ComponentArray((; [(key,upper_bounds[label2index(θ, String(key))]) for key in keys(θ.PK)]...)), 
-    #                        Seizure = ComponentArray((; [(key,upper_bounds[label2index(θ, String(key))]) for key in keys(θ.Seizure)]...)))
-    #upper = partial_transform_to_logscale!(upper, logscale = logscale, detransform = true)
-    #lower = ComponentArray(PK = ComponentArray((; [(key,lower_bounds[label2index(θ, String(key))]) for key in keys(θ.PK)]...)), 
-    #                        Seizure = ComponentArray((; [(key, lower_bounds[label2index(θ, String(key))]) for key in keys(θ.Seizure)]...)))
-    #lower = partial_transform_to_logscale!(lower, logscale = logscale, detransform = true)
-    #now put together or if works make as one directly?
-    return H_inv
+    CI = ComponentArray(PK = ComponentArray((; [(key,bounds[label2index(θ, "PK.$(key)")]) for key in keys(θ.PK)]...)), 
+                            Seizure = ComponentArray((; [(key,bounds[label2index(θ, "Seizure.$(key)")]) for key in keys(θ.Seizure)]...)))
+    partial_transform_to_logscale!(CI, logscale = logscale, detransform = true)
+    #alternatively could do for i in eachindex(θ) θ[i] = bounds[i][1] end and same for two, then put together, can't assign directly since different types
+    return CI
 end
 
 function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = ())
