@@ -107,33 +107,39 @@ end
 
 #A model for just testing right now
 @with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)) 
-    cov::T2 = () 
+    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, v = 100.0, σ = 0.1)) 
+    cov::T2 = (:prev_CBZ,) 
     set_daily_doses::T3 = ((:d_CBZ_daily, :d_CBZ),) #parameter to update and corresponding state name for updates
     keys::T4 = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)]) #for observations also records corresponding internal state
 end
 
 function create_ode_system(mod::PKCBZ) 
-    #V = 
-    #CL = 
+    #V and k_abs constant
+    #CL = c1*(c2^received CBZ for more than 14 days yes/no) + ln(daily_dose/400)*c3
     #Absorption rate k_abs/V, elimination CL/V
+    #to ensure makes sense for daily_dose = 0 take maximum with ln(1/4), 100mg as minimal dosis makes sense, 
+    #so will not change model in actual application
     θ = mod.θ
     interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
     type_use = typeof(interpolator).name.wrapper
     #Define model, @mtkmodel doesnt agree with callable parameters
-    @parameters k_abs=θ.k_abs k_el=θ.k_el σ=θ.σ #normal system parameters
-    @parameters d_CBZ_daily = 0.0 [tunable=false]#parameter for daily dose updated by callback
+    @parameters k_abs=θ.k_abs c1 = θ.c1 c2 = θ.c2 c3 = θ.c3 v = θ.v,  σ=θ.σ #normal system parameters
+    @parameters d_CBZ_daily = 0.0 [tunable=false] #parameter for daily dose updated by callback
     #callable parameters for covariates
+    @parameters (prev_CBZ::type_use)(..) [tunable=false] 
     @variables d_CBZ(t) = 0.0  # depot compartment - no drug at beginning
     @variables s_CBZ(t) = 0.0  # internal/central compartment
     @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_CBZ(t)
-    @variables test(t) = 0.0 #just testing obv
+    @variable Ind(t) = prev_CBZ(0.0) #indicator if induction occurs, i.e. person has received 14 days of CBZ
+    #potentially pass periodic discrete event into system as ; discrete_events = events after t
+    #write periodic event as [periodicity => [affect, be sure to use pre() for variables here]]
+    #might have to specify discrete_parameters to be able to affect them?
+    #potentially just add 1/14 every day where d_CBZ_daily is positive, take min(1, Ind) in eqs
     #d_LEV is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
-            D(s_CBZ) ~ (k_abs) * d_CBZ - (k_el) * s_CBZ,
+            D(s_CBZ) ~ (k_abs/v) * d_CBZ - (c1*(c2^Ind)+c3*log(max(d_CBZ_daily/400, 1/4)))/v * s_CBZ,
             D(S_CBZ) ~ s_CBZ,
-            D(test) ~ d_CBZ_daily, #just testing here
             obs_CBZ ~ Normal(s_CBZ, σ)]
     
     @mtkcompile internal_model = System(eqs, t)
