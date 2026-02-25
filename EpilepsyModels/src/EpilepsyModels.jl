@@ -8,7 +8,7 @@ using ComponentArrays
 using FiniteDiff
 
 export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
-PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV
+PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator
 
 include("Person Generator.jl")
 include("PK Model.jl")

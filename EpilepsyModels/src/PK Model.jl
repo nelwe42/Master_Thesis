@@ -123,7 +123,7 @@ function create_ode_system(mod::PKCBZ)
     interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
     type_use = typeof(interpolator).name.wrapper
     #Define model, @mtkmodel doesnt agree with callable parameters
-    @parameters k_abs=θ.k_abs c1 = θ.c1 c2 = θ.c2 c3 = θ.c3 v = θ.v,  σ=θ.σ #normal system parameters
+    @parameters k_abs=θ.k_abs c1 = θ.c1 c2 = θ.c2 c3 = θ.c3 v = θ.v σ=θ.σ #normal system parameters
     @parameters d_CBZ_daily = 0.0 [tunable=false] #parameter for daily dose updated by callback
     #callable parameters for covariates
     @parameters (prev_CBZ::type_use)(..) [tunable=false] 
@@ -131,18 +131,22 @@ function create_ode_system(mod::PKCBZ)
     @variables s_CBZ(t) = 0.0  # internal/central compartment
     @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_CBZ(t)
-    @variable Ind(t) = prev_CBZ(0.0) #indicator if induction occurs, i.e. person has received 14 days of CBZ
-    #potentially pass periodic discrete event into system as ; discrete_events = events after t
-    #write periodic event as [periodicity => [affect, be sure to use pre() for variables here]]
-    #might have to specify discrete_parameters to be able to affect them?
-    #potentially just add 1/14 every day where d_CBZ_daily is positive, take min(1, Ind) in eqs
-    #d_LEV is not concentration but dose, so rate there not normalised by volume
+    @variables test(t) = 0.0
+    @parameters Ind(t) = prev_CBZ(0.0) #indicator if induction occurs
+    #updating prev_CBZ instead would require making it a discrete, can't pass as interpolation then
+    #in newer ModelingToolkit versions would declare Ind as discretes according to docs
+    #d_CBZ is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
-            D(s_CBZ) ~ (k_abs/v) * d_CBZ - (c1*(c2^Ind)+c3*log(max(d_CBZ_daily/400, 1/4)))/v * s_CBZ,
+            D(s_CBZ) ~ (k_abs/v) * d_CBZ - (c1*(c2^(Ind>=1))+c3*log(max(d_CBZ_daily/400, 1/4)))/v * s_CBZ,
             D(S_CBZ) ~ s_CBZ,
-            obs_CBZ ~ Normal(s_CBZ, σ)]
+            obs_CBZ ~ Normal(s_CBZ, σ),
+            D(test) ~ Ind]
+    #discrete_events = ModelingToolkit.SymbolicDiscreteCallback(1.0 => [Ind ~ Pre(Ind) + (d_CBZ_daily>0)*(Pre(Ind)<1)/14],
+    #                    discrete_parameters = Ind, iv=t)
+    #every day where d_CBZ_daily>0 add 1/14, so after 14 days indicator is >=1
     
     @mtkcompile internal_model = System(eqs, t)
+    #; discrete_events = discrete_events)
 
     return internal_model
 end

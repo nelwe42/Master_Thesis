@@ -47,7 +47,7 @@ PK Carbamazepine:
     Using Routine Clinical Pharmacokinetic Data in Japanese Patients, Yokawa et al. uses different dose dependence, includes weight as covariate
     but no consideration of just starting medication here
 -> Need covariates just whether previously received CBZ, daily dose parameter via callback
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0, σ=1.0)), 
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v = 164.0, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 -> for identifiablity of dose effect need different daily doses
 - whether induction effect both given by prev_CBZ covariate and can be updated if daily_dose is nonzero 14 times,
