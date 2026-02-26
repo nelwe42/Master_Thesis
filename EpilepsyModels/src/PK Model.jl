@@ -22,8 +22,13 @@ abstract type PKModelNonrandom <: PKModel end
 abstract type PKModelRandom <: PKModel end
 #For this need some sort of getter for which are random effects?
 
-#Every model specification should have: ComponentArray of parameters, list of keys of required covariates
-#Every model needs create problem function, getter for keys of s, S, d
+#Every PKModelNonrandom specification should have: 
+#θ: ComponentArray of parameters to be optimised
+#cov: list of keys of required covariates
+#set_daily_doses: Tuple explaining where daily_dose and potentially autoinduction has to be set for dose-dependent behavior
+#entries are of the form (drug_param = daily_dose_param, drug_var = corresponding dose variable, autoinduction = true/false, ind_param = induction_parameter)
+#keys: Named Tuple containing list of keys for s, S, d, obs where obs is list of tuples with (observation, corresponding s being observed)
+#every model needs create_ode_system function
 
 #Given that can be handled once for all models: Creation of dosing callbacks, 
 #within group random effects Y/N also: creation of noisy measurements and returning likelihood 
@@ -105,11 +110,12 @@ function create_ode_system(mod::PKLEV)
     return internal_model
 end
 
-#A model for just testing right now
+#A model for the PK behavior of Carbamazepine
 @with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, v = 100.0, σ = 0.1)) 
     cov::T2 = (:prev_CBZ,) 
-    set_daily_doses::T3 = ((:d_CBZ_daily, :d_CBZ),) #parameter to update and corresponding state name for updates
+    set_daily_doses::T3 = ((drug_param = :d_CBZ_daily, drug_var = :d_CBZ, autoinduction = true, ind_param = :ind_CBZ),) 
+    #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter
     keys::T4 = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)]) #for observations also records corresponding internal state
 end
 
@@ -131,27 +137,19 @@ function create_ode_system(mod::PKCBZ)
     @variables s_CBZ(t) = 0.0  # internal/central compartment
     @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_CBZ(t)
-    @variables test(t) = 0.0
-    @parameters Ind(t) = prev_CBZ(0.0) #indicator if induction occurs
-    #updating prev_CBZ instead would require making it a discrete, can't pass as interpolation then
-    #in newer ModelingToolkit versions would declare Ind as discretes according to docs
+    @parameters ind_CBZ = prev_CBZ(0.0) [tunable = false] #indicator if induction occurs
     #d_CBZ is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
-            D(s_CBZ) ~ (k_abs/v) * d_CBZ - (c1*(c2^(Ind>=1))+c3*log(max(d_CBZ_daily/400, 1/4)))/v * s_CBZ,
+            D(s_CBZ) ~ (k_abs/v) * d_CBZ - (c1*(c2^(ind_CBZ>=14))+c3*log(max(d_CBZ_daily/400, 1/4)))/v * s_CBZ,
             D(S_CBZ) ~ s_CBZ,
-            obs_CBZ ~ Normal(s_CBZ, σ),
-            D(test) ~ Ind]
-    #discrete_events = ModelingToolkit.SymbolicDiscreteCallback(1.0 => [Ind ~ Pre(Ind) + (d_CBZ_daily>0)*(Pre(Ind)<1)/14],
-    #                    discrete_parameters = Ind, iv=t)
-    #every day where d_CBZ_daily>0 add 1/14, so after 14 days indicator is >=1
+            obs_CBZ ~ Normal(s_CBZ, σ)]
     
     @mtkcompile internal_model = System(eqs, t)
-    #; discrete_events = discrete_events)
 
     return internal_model
 end
 
-#2)Dosing for all models
+#2)Dosing and callback creation for all models
 function dose_affect!(integrator; idx_d, dose_amount)
         integrator.u[idx_d] += dose_amount  # Add dose to depot (d)
 end
@@ -161,8 +159,17 @@ function daily_dose_affect!(integrator; id_param, daily_dose)
     integrator.p[id_param] = daily_dose
 end
 
+#For when autoinduction parameter must be updated in ODE
+function induction_dose_affect!(integrator; dose_param, ind_param)
+    integrator.p[ind_param] += (2*(integrator.p[dose_param]>0)-1)
+    if integrator.p[ind_param] < 0
+        integrator.p[ind_param] = 0
+    end
+end
+
 function create_dosing_callbacks(dosing::AbstractVector, ode_system; names::NamedTuple, set_daily_doses::Tuple = ())
     #save_positions = (false, false) so no two values at timepoint possible, bad for likelihood calculation/measurement generator
+    #callbacks to inject doses
     @inbounds callbacks = [
         PresetTimeCallback(
             dosing[i].t,
@@ -190,14 +197,21 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system; names::Name
     #                                    daily_dose = sum([dose.dose for dose in dosing if (day ≤ dose.t < (day+1) && dose.state == d[2])]))) 
     #                    for d in set_daily_doses for day in 0:endpoint]
     #Maybe need initialize here? Might be different because set = instead of +=
-    callbacks_daily = [PeriodicCallback( 
-                        integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
-                                        daily_dose = sum([dose.dose for dose in dosing if (integrator.t ≤ dose.t < (integrator.t+1) && dose.state == d[2])])),
+    #callbacks to set daily dose parameter where necessary
+    callbacks_daily_doses = [PeriodicCallback( 
+                        integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d.drug_param),
+                                        daily_dose = sum([dose.dose for dose in dosing if (integrator.t ≤ dose.t < (integrator.t+1) && dose.state == d.drug_var)])),
                         1.0, initial_affect = true, final_affect = true, save_positions = (false, false)) #affect called every 1.0 time unit (days), also at initial and final point
                         for d in set_daily_doses]
-    #set save_positions here?
+    
+    #callbacks for autoinduction parameter where necessary
+    callbacks_autoinduction = [PeriodicCallback( 
+                        integrator -> induction_dose_affect!(integrator, dose_param = ModelingToolkit.parameter_index(ode_system, d.drug_param),
+                                        ind_param = ModelingToolkit.parameter_index(ode_system, d.ind_param)),
+                        1.0, initial_affect = true, final_affect = true, save_positions = (false, false)) #affect called every 1.0 time unit (days), also at initial and final point
+                        for d in set_daily_doses if d.autoinduction]
 
-    return CallbackSet(callbacks..., callbacks_daily...)
+    return CallbackSet(callbacks..., callbacks_daily_doses..., callbacks_autoinduction...)
 end
 
 #3)Global functions for nonrandom models

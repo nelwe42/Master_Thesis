@@ -35,7 +35,8 @@ Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 logscale = ("σ",)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
-ODE_options = (AutoTsit5(Rosenbrock23()),)
+#ODE_options = (AutoTsit5(Rosenbrock23()),)
+ODE_options = (Rosenbrock23(),)
 
 #pk_model = PKLEV(θ=Input_θ.PK)
 pk_model = PKCBZ(θ=Input_θ.PK)

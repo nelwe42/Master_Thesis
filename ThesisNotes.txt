@@ -50,5 +50,8 @@ PK Carbamazepine:
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v = 164.0, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 -> for identifiablity of dose effect need different daily doses
-- whether induction effect both given by prev_CBZ covariate and can be updated if daily_dose is nonzero 14 times,
-    for simplicity likely won't consider if 14 days are consecutive, induction effect doesnt disappear after prolonged time without CBZ
+
+autoinduction modelled as additional consideration where set daily doses, grows by 1 whenever drug is taken on that day,
+decreases by 1 if not, cannot become negative, can model autoinduction effect when taking drug, vanishes when not taken over long time
+modelled over daily dose instead of if drug left in compartment bc exponential decay, >0 weird to test for, technically doesnt happen but machine accuracy,
+downside if doesnt get medication very long effect disappears fairly quickly
