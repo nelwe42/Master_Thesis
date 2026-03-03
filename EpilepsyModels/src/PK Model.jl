@@ -112,15 +112,15 @@ end
 
 #A model for the PK behavior of Carbamazepine
 @with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, v = 100.0, σ = 0.1)) 
-    cov::T2 = (:prev_CBZ,) 
+    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, v1 = 1.0, σ = 0.1)) 
+    cov::T2 = (:prev_CBZ, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_CBZ_daily, drug_var = :d_CBZ, autoinduction = true, ind_param = :ind_CBZ),) 
     #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter
     keys::T4 = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)]) #for observations also records corresponding internal state
 end
 
 function create_ode_system(mod::PKCBZ) 
-    #V and k_abs constant
+    #k_abs constant, V weight dependent for identifiability
     #CL = c1*(c2^received CBZ for more than 14 days yes/no) + ln(daily_dose/400)*c3
     #Absorption rate k_abs/V, elimination CL/V
     #to ensure makes sense for daily_dose = 0 take maximum with ln(1/4), 100mg as minimal dosis makes sense, 
@@ -129,10 +129,11 @@ function create_ode_system(mod::PKCBZ)
     interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
     type_use = typeof(interpolator).name.wrapper
     #Define model, @mtkmodel doesnt agree with callable parameters
-    @parameters k_abs=θ.k_abs c1 = θ.c1 c2 = θ.c2 c3 = θ.c3 v = θ.v σ=θ.σ #normal system parameters
+    @parameters k_abs=θ.k_abs c1 = θ.c1 c2 = θ.c2 c3 = θ.c3 v1 = θ.v1 σ=θ.σ #normal system parameters
     @parameters d_CBZ_daily = 0.0 [tunable=false] #parameter for daily dose updated by callback
     #callable parameters for covariates
     @parameters (prev_CBZ::type_use)(..) [tunable=false] 
+    @parameters (weight::type_use)(..) [tunable=false]
     @variables d_CBZ(t) = 0.0  # depot compartment - no drug at beginning
     @variables s_CBZ(t) = 0.0  # internal/central compartment
     @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
@@ -140,7 +141,7 @@ function create_ode_system(mod::PKCBZ)
     @parameters ind_CBZ = prev_CBZ(0.0) [tunable = false] #indicator if induction occurs
     #d_CBZ is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
-            D(s_CBZ) ~ (k_abs/v) * d_CBZ - (c1*(c2^(ind_CBZ>=14))+c3*log(max(d_CBZ_daily/400, 1/4)))/v * s_CBZ,
+            D(s_CBZ) ~ k_abs/(v1*weight(t)) * d_CBZ - (c1*(c2^(ind_CBZ>=14))+c3*log(max(d_CBZ_daily/400, 1/4)))/(v1*weight(t)) * s_CBZ,
             D(S_CBZ) ~ s_CBZ,
             obs_CBZ ~ Normal(s_CBZ, σ)]
     

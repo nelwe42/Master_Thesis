@@ -97,6 +97,84 @@ function assign_dose!(m::PolyDoses, person::Person; names::NamedTuple = (d = key
     append!(person.dosing,next_doses)
 end
 
+#draws dose for each person and drug from binomial distribution, 
+#minimal dose (given by smallest pill) and average and maximal number number of those taken given in dose_distr
+#allows to construct as binomial: minimal*Binomial(maximal, average/maximal), then mean is average
+@with_kw struct PolyDosesRandom{T<:NamedTuple, T1<:Categorical, T2<:Categorical, T3<:Tuple, T4<:Tuple, T5<:AbstractFloat, T6<:Int} <: DoseGenerator 
+    dose_distr::T   #dose_distr = (drug_name = (min = minimal dose, avg_num = average number of minimal, max_num = max number of minimal))
+    distr_first::T1
+    distr_second::T2
+    names_first::T3
+    names_second::T4
+    prob_second::T5 = 0.0
+    times_per_day_first::T6 = 1
+    times_per_day_second::T6 = 1 
+    assign_not_supported::Bool = false #controls if assign_dose! assigns drugs not given in names
+end
+
+#from probabilities given in named tuples constructs categorical and map to symbol as tuple of drug names
+function PolyDosesRandom(dose_distr::NamedTuple, distr_first::NamedTuple, distr_second::NamedTuple; prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1, assign_not_supported::Bool = false)
+    #check keys in distr_first/second have a key in default doses
+    names_first = keys(distr_first)
+    names_second = keys(distr_second)
+    distr_one = Categorical(collect(values(distr_first)))
+    distr_two = Categorical(collect(values(distr_second)))
+    return PolyDosesRandom(dose_distr, distr_one, distr_two, names_first, names_second, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
+end
+
+#from PK model constructs default doses based on names, distribution for both uniform over names
+#default is 
+function PolyDosesRandom(m::PKModel; default_min_dose::AbstractFloat = 1.0, default_avg_multiple_dose::AbstractFloat = 5.0, default_max_multiple_dose::Int = 10, prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1, assign_not_supported::Bool = false)
+    names = Tuple(get_keys_PK(m).d)
+    N = length(names)
+    dose_distr = NamedTuple{names}([(min = default_min_dose, avg_num = default_avg_multiple_dose, max_num = default_max_multiple_dose) for i in 1:N])
+    distr_first = Categorical([1/N for i in 1:N])
+    return PolyDosesRandom(dose_distr, distr_first, distr_first, names, names, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
+end
+
+#picks first drug from distribution, with specified probability also second drug from that distribution, wo_treatment gives first dosetime, times per day and doses specified in model
+#if second picked drug is same as first, no second drug is assigned
+#when called again on person with doses already assigned, next doses are picked independently from current ones
+#when a drug not contained in names is picked, the attribute assign_not_supported decides if assigned anyway
+#doses drawn according to specified distribution, multiple of min_dose via binomial with given values
+function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d = keys(m.default_doses),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
+    if isempty(person.dosing)
+        last_dosetime = -1
+    else
+        last_dosetime = person.dosing[end].t
+    end
+    #for first wo_treatment time no treatment, don't need to add zero callbacks to dosing
+    no_dose = min(wo_treatment,timeframe)
+    last_dosetime += no_dose
+    #pick first drug, check if supported
+    drug_one = m.names_first[rand(m.distr_first)]
+    #with assigned probability pick second drug
+    if rand(Bernoulli(m.prob_second))
+        #check second drug not the same as first
+        drug_two = m.names_second[rand(m.distr_second)]
+        if !(drug_one == drug_two)
+            drugs = (drug_one, drug_two)
+        else
+            drugs = (drug_one,)
+        end
+    else
+        drugs = (drug_one,)
+    end
+    #randomly assign doses
+    info_doses = values(NamedTuple{drugs}(m.dose_distr))
+    doses = Tuple(d.min*rand(Binomial(d.max_num, d.avg_num/d.max_num)) for d in info_doses)
+    times = (m.times_per_day_first, m.times_per_day_second)
+    #check if picked drugs are supported or else is assign_not_supported is set to true
+    if m.assign_not_supported
+        info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs))
+    else
+        info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs) if (drugs[i] in names.d))
+    end
+    #append for each dose time and drug taken, check if drug contained in names (supported by chosen PK model)
+    next_doses = [(t = i+1 + j/d.times, dose = d.dose, state = d.drug) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in info for j in 0:(d.times-1)]
+    append!(person.dosing,next_doses)
+end
+
 struct DoseLeitlinie <: DoseGenerator end
 #note: epileptic syndromes not considered
 

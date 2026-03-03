@@ -38,7 +38,7 @@ PK Carbamazepine:
     Yip, Vincent L.M. ; Pertinez, Henry ; Meng, Xiaoli ; Maggs, James L. ; Carr, Daniel F. ; Park, B. Kevin ; Marson, Anthony G. ; Pirmohamed, Munir
 - age, weight etc considered but ultimately not included in model
 -daily dose parameter when not yet in steady state adjusted by induction effect in first 14 days on medication
--k_abs, V as constant
+-k_abs, V as constant, for identifiability changed it to V=v1*weight
 -CL = c1*(c2^received CBZ for more than 14 days yes/no) + ln(daily_dose/400)*c3, also effect of Phenytoin observed
 -> potential difficulty when daily dose is 0?, minimum dose is 100-200mg, take maximum with ln(1/4), this change not considered in model
 -note dose related effect controversial, see e.g. Population pharmacokinetics of carbamazepine in Singapore
@@ -47,9 +47,10 @@ PK Carbamazepine:
     Using Routine Clinical Pharmacokinetic Data in Japanese Patients, Yokawa et al. uses different dose dependence, includes weight as covariate
     but no consideration of just starting medication here
 -> Need covariates just whether previously received CBZ, daily dose parameter via callback
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v = 164.0, σ=1.0)), 
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 -> for identifiablity of dose effect need different daily doses
+-> at least for smaller sample sizes k_abs overestimated due to strong peaks (22.93 estimated vs 10.8 true), see plot
 
 autoinduction modelled as additional consideration where set daily doses, grows by 1 whenever drug is taken on that day,
 decreases by 1 if not, cannot become negative, can model autoinduction effect when taking drug, vanishes when not taken over long time

@@ -8,7 +8,7 @@ using ComponentArrays
 using FiniteDiff
 
 export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
-PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator
+PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator, PolyDosesRandom
 
 include("Person Generator.jl")
 include("PK Model.jl")
@@ -91,7 +91,7 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     return negloglikeli
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), inv_hess_CI::Bool = false, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
@@ -113,7 +113,12 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
     print("Estimate: ", estimate)
-    return estimate
+    if inv_hess_CI
+        CI = inverse_hessian(estimate.u, p, logscale = logscale)
+        return estimate, CI
+    else
+        return estimate
+    end
 end
 
 function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
@@ -122,6 +127,10 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    return inverse_hessian(θ, p, confidence = confidence, logscale = logscale)
+end
+
+function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = ())
     #check whether accidentally entered percentage instead of confidence in (0,1)
     if confidence>1
         confidence = confidence/100
@@ -159,20 +168,6 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     partial_transform_to_logscale!(CI, logscale = logscale, detransform = true)
     #alternatively could do for i in eachindex(θ) θ[i] = bounds[i][1] end and same for two, then put together, can't assign directly since different types
     return CI
-end
-
-function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = ())
-    #check whether accidentally entered percentage instead of confidence in (0,1)
-    if confidence>1
-        confidence = confidence/100
-        @warn "Presumably you meant a percentage. Your input confidence has been divided by 100"
-    end
-    f(x) = get_negloglikelihood(x, p)
-    θ_use = deepcopy(θ)
-    #transform as specified
-    partial_transform_to_logscale!(θ_use, logscale = logscale)
-    H_inv = inv(ForwardDiff.hessian(f,θ_use))
-    q = quantile(Normal(), ((1-confidence)/2))
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
