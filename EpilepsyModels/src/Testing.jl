@@ -29,16 +29,27 @@ Random.seed!(42)
 #Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
 #           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
-           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
-Maxiters_optimiser = 1000
+	           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+Maxiters_optimiser = 100
 Population_size = 2 #10 #20
 wo_treatment = 0.0 #3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ",)
+logscale = ("k_abs", "c1", "c2", "c3", "c4", "v1", "σ")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #ODE_options = (AutoTsit5(Rosenbrock23()),)
 ODE_options = (Rosenbrock23(),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+Multistart_nstarts = 12
+Multistart_seed = 42
+Multistart_include_initial = true
+Multistart_bound_abs = 10.0
+Multistart_bounds = nothing
+
+#Hessian via ForwardDiff + FiniteDiff is expensive; disable by default for routine runs.
+Run_hessian = false
 
 #pk_model = PKLEV(θ=Input_θ.PK)
 #pk_model = PKCBZ(θ=Input_θ.PK)
@@ -54,13 +65,22 @@ println("Generated")
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+    bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
+    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
+println("Multistart: best start ", estimate.multistart_best_start, " of ", estimate.multistart_nstarts)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
 #Testing out hessian
-CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
-println("Confidence Intervals Inverse Hessian:", CI)
+if Run_hessian && SciMLBase.successful_retcode(estimate.retcode)
+    CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
+    println("Confidence Intervals Inverse Hessian:", CI)
+elseif !Run_hessian
+    println("Skipping inverse_hessian because Run_hessian=false")
+else
+    println("Skipping inverse_hessian because optimisation retcode was: ", estimate.retcode)
+end
 
 #Plot PK behavior (for each drug)
 names = EpilepsyModels.get_keys_PK(mod.pk_model)
@@ -73,9 +93,11 @@ for s in names.s
     y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
     plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
     #add estimate plot
-    Estimate_θ = estimate.u
-    sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
-    pl = plot!(sol2, idxs = s, labels=["Estimated concentration $(s)"], linecolor = :red)
+    if SciMLBase.successful_retcode(estimate.retcode)
+        Estimate_θ = estimate.u
+        sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
+        pl = plot!(sol2, idxs = s, labels=["Estimated concentration $(s)"], linecolor = :red)
+    end
 
     display(pl)
 end
