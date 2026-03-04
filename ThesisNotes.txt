@@ -46,7 +46,7 @@ PK Carbamazepine:
 - Pharmacoepidemiologic Investigation of a Clonazepam Carbamazepine Interaction by Mixed Effect Modeling
     Using Routine Clinical Pharmacokinetic Data in Japanese Patients, Yokawa et al. uses different dose dependence, includes weight as covariate
     but no consideration of just starting medication here
--> Need covariates just whether previously received CBZ, daily dose parameter via callback
+-> Need covariates just whether previously received CBZ, weight for V, daily dose parameter via callback
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 -> for identifiablity of dose effect need different daily doses
@@ -56,3 +56,19 @@ autoinduction modelled as additional consideration where set daily doses, grows 
 decreases by 1 if not, cannot become negative, can model autoinduction effect when taking drug, vanishes when not taken over long time
 modelled over daily dose instead of if drug left in compartment bc exponential decay, >0 weird to test for, technically doesnt happen but machine accuracy,
 downside if doesnt get medication very long effect disappears fairly quickly
+
+PK Valproate:
+-CL based on Population-Based Investigation of Vaiproic Acid Relative Clearance Using Nonlinear Mixed Effects Modeling: Influence of
+    Drug-Drug Interaction and Patient Characteristics by Yukawa et al. 
+-k_abs constant, V = v1*weight
+-CL = c1*weight^c2*dose(mg/day)^c3*c4^gender(1 for female, 0 for male)
+-no induction effect for daily dose, usual question of if model appropriate at beginning of treatment
+-dose relation still controversial, see e.g. Nonparametric population modeling of valproate pharmacokinetics in epileptic patients using routine
+    serum monitoring data: implications for dosage by Bondareva et al., but less so than for Carbamazepine
+-Population Pharmacokinetics of Valproate in Mexican Children with Epilepsy by Correa et al. uses additive dose dependence inszead, but model only for children
+-use CL covariates from first paper, no k_abs or V reported, note CL in /ml in paper, adjusted by factor 1000
+-for k_abs and V slope averaged the ones reported in Mexican paper and Population pharmacokinetic model of valproate and prediction
+    of valproate serum concentrations in children with epilepsy by Jiang, Wang, both actually for children
+
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
+           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))

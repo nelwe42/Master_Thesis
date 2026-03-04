@@ -26,10 +26,12 @@ Random.seed!(42)
 #           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 #Input_θ = ComponentArray((PK =ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)), 
 #            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
+#Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
+#           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
-Population_size = 10 #20
+Population_size = 2 #10 #20
 wo_treatment = 0.0 #3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -39,7 +41,8 @@ solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 ODE_options = (Rosenbrock23(),)
 
 #pk_model = PKLEV(θ=Input_θ.PK)
-pk_model = PKCBZ(θ=Input_θ.PK)
+#pk_model = PKCBZ(θ=Input_θ.PK)
+pk_model = PKVPA(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -49,7 +52,8 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
-test_mod = FullModel(PKCBZ(), SeizureBasic(), PersonGeneratorLEV(), BasicDoses())
+#create test mod of same types as true ones
+test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
 estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))

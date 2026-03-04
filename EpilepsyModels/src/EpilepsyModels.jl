@@ -8,7 +8,8 @@ using ComponentArrays
 using FiniteDiff
 
 export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
-PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator, PolyDosesRandom
+PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator, PolyDosesRandom,
+PKVPA
 
 include("Person Generator.jl")
 include("PK Model.jl")
@@ -143,6 +144,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     println("Starting hessian forwarddiff")
     #This takes very long
     H = ForwardDiff.hessian(f,θ_use)
+    println("H forwarddiff= ", H)
     println("Starting hessian finitediff")
     H_finite = FiniteDiff.finite_difference_hessian(f, θ_use)
     println("Starting inverse")
