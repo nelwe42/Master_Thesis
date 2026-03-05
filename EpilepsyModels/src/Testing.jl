@@ -31,7 +31,7 @@ Random.seed!(42)
 Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 1000
-Population_size = 2 #10 #20
+Population_size = 10 #20
 wo_treatment = 0.0 #3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -40,6 +40,7 @@ solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #ODE_options = (AutoTsit5(Rosenbrock23()),)
 ODE_options = (Rosenbrock23(),)
 
+#pk_model = PKBasic(θ=Input_θ.PK)
 #pk_model = PKLEV(θ=Input_θ.PK)
 #pk_model = PKCBZ(θ=Input_θ.PK)
 pk_model = PKVPA(θ=Input_θ.PK)
@@ -60,6 +61,7 @@ println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, 
 println("True θ: ", Input_θ)
 #Testing out hessian
 CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
+#CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
 println("Confidence Intervals Inverse Hessian:", CI)
 
 #Plot PK behavior (for each drug)
@@ -67,16 +69,40 @@ names = EpilepsyModels.get_keys_PK(mod.pk_model)
 i = 1 #index of person for which plotting is done
 sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options)
 for s in names.s
-    pl = plot(sol, idxs = s, labels=["Concentration $(s)"], 
-        xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)")
+    pl = plot(sol, idxs = s, label="Concentration $(s)", 
+        xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)")
     x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
     y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
     plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
     #add estimate plot
     Estimate_θ = estimate.u
     sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
-    pl = plot!(sol2, idxs = s, labels=["Estimated concentration $(s)"], linecolor = :red)
+    pl = plot!(sol2, idxs = s, label="Estimated concentration $(s)", linecolor = :red)
 
+    display(pl)
+end
+
+#Plot all trajectories in one
+sols = [EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options) for i in 1:Population_size]
+for s in names.s
+    pl = plot(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue,
+        xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)")
+    for i in 2:Population_size
+        plot!(sols[i], idxs = s, label = "", linecolor = :blue)
+    end
+    for i in 1:Population_size
+        x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
+        y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
+        plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
+    end
+    #add estimate plots
+    Estimate_θ = estimate.u
+    sols2 = [EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options) for i in 1:Population_size]
+    plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
+    for i in 2:Population_size
+        plot!(sols2[i], idxs = s, label = "", linecolor = :red)
+    end
+    plot!(legend=:outerbottom, legendcolumns=2)
     display(pl)
 end
 
