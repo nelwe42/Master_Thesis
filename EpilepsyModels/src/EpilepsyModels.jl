@@ -116,8 +116,9 @@ function get_negloglikelihood_vectorized(θ::AbstractVector, p::NamedTuple)
 
             loglikeli = zero(eltype(θ))
             log2pi_over_2 = oftype(loglikeli, log(2π) / 2)
+            θ_solve = ComponentArray(copy(θ), p.axes_θ)
             @inbounds for i in eachindex(p.data)
-                sol = solve_PK(p.problems[i], p.system, θ, indices_θ = p.indices_θ, options = p.options, n_params = pk_n, bound_abs = bound_abs, log_mask = p.pk_log_mask)
+                sol = solve_PK(p.problems[i], p.system, θ_solve.PK, indices_θ = p.indices_θ, options = p.options)
                 if !(SciMLBase.successful_retcode(sol))
                     return Inf
                 end
@@ -182,7 +183,7 @@ function get_negloglikelihood_vectorized(θ::AbstractVector, p::NamedTuple)
         if hasproperty(p, :objective_warned_ref) && hasproperty(p, :objective_warn)
             if p.objective_warn && !p.objective_warned_ref[]
                 p.objective_warned_ref[] = true
-                @warn "Objective evaluation failed; returning Inf for this candidate." exception=(e, catch_backtrace())
+                @warn "Objective evaluation failed; returning Inf for this candidate." #exception=(e, catch_backtrace())
             end
         end
         return Inf
@@ -193,7 +194,7 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
-    indices_θ = [ModelingToolkit.parameter_index(sys, x) for x in keys(θ.PK)]
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     θ_use = deepcopy(θ)
     partial_transform_to_logscale!(θ_use, logscale = logscale)
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
@@ -236,7 +237,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #get indices for setting θ
-    indices_θ = [ModelingToolkit.parameter_index(sys, x) for x in keys(θ_0.PK)]
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
     if !isnothing(bound_abs)

@@ -67,7 +67,8 @@ println("Generated")
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
 estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
     bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
-    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
+    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds,
+    objective_fail_hard=true)
 println("Multistart: best start ", estimate.multistart_best_start, " of ", estimate.multistart_nstarts)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
