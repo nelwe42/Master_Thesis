@@ -22,14 +22,14 @@ Random.seed!(42)
 #Specify parameters
 #Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
 #           Seizure = ComponentArray((a = 4, b = [-0.05]))))
-#Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
-#           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
+           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 #Input_θ = ComponentArray((PK =ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)), 
 #            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 #Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
 #           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
-	           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+#Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
+#	           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
 Maxiters_optimiser = 100
 Population_size = 2 #10 #20
 wo_treatment = 0.0 #3.0 #10.0
@@ -51,9 +51,9 @@ Multistart_bounds = nothing
 #Hessian via ForwardDiff + FiniteDiff is expensive; disable by default for routine runs.
 Run_hessian = false
 
-#pk_model = PKLEV(θ=Input_θ.PK)
+pk_model = PKLEV(θ=Input_θ.PK)
 #pk_model = PKCBZ(θ=Input_θ.PK)
-pk_model = PKVPA(θ=Input_θ.PK)
+#pk_model = PKVPA(θ=Input_θ.PK)
 seizure_model = SeizureBasic(θ = Input_θ.Seizure)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -69,6 +69,13 @@ estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = lo
     bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
     multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds,
     objective_fail_hard=true)
+#test out starting also in true value
+#=
+estimate = optimise(test, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+    bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
+    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds,
+    objective_fail_hard=true)
+=#
 println("Multistart: best start ", estimate.multistart_best_start, " of ", estimate.multistart_nstarts)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))

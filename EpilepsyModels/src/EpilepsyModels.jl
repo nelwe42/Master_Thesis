@@ -117,6 +117,7 @@ function get_negloglikelihood_vectorized(θ::AbstractVector, p::NamedTuple)
             loglikeli = zero(eltype(θ))
             log2pi_over_2 = oftype(loglikeli, log(2π) / 2)
             θ_solve = ComponentArray(copy(θ), p.axes_θ)
+            partial_transform_to_logscale!(θ_solve, logscale = p.logscale, detransform = true)
             @inbounds for i in eachindex(p.data)
                 sol = solve_PK(p.problems[i], p.system, θ_solve.PK, indices_θ = p.indices_θ, options = p.options)
                 if !(SciMLBase.successful_retcode(sol))
@@ -365,7 +366,7 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
-    indices_θ = [ModelingToolkit.parameter_index(sys, x) for x in keys(θ.PK)]
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
     return inverse_hessian(θ, p, confidence = confidence, logscale = logscale)
 end
