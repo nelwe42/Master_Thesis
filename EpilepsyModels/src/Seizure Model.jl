@@ -16,7 +16,7 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 #For this need some getter for which are random effects?
 
 #Every model specification should have: ComponentArray of parameters, list of keys of required covariates
-#Every model should have function returning intensity
+#Every model should have function returning intensity (if is a Poisson based model, likely most will be)
 
 #Within discrete/continuous and (non)random returning seizure probability, likelihoods and 
 #generating data can be handled once
@@ -24,7 +24,7 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 #1)Specific model instances with their intensities
 
 @with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
-    θ::T=ComponentArray((a = 2.0, b = SA[0.0])) #a base rate, b coefficient of drug (how to handle more later?)
+    θ::T=ComponentArray((a = 2.0, b = SA[0.0])) #a base rate, b coefficient of drug 
     cov::T2 = () #no covariates required
 end
 
@@ -34,7 +34,7 @@ function SeizureBasic(N::Int64)
     return obj
 end
 
-#function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)
+#basic intensity function for day starting at n, requires sol from chosen PK model
 function intensity(m::SeizureBasic, sol, n::AbstractFloat; covariates = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return Inf

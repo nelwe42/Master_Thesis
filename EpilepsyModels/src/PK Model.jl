@@ -12,8 +12,6 @@ using DataInterpolations
 using DiffEqCallbacks
 
 #Overtype of PK Models that will go into full model
-#Potentially make step in between, PK_model_component
-#then PK_model becomes list of drugs and corresponding model component, can switch out
 abstract type PKModel end
 
 #later for checking if random effects need to be handled in inference
@@ -44,7 +42,7 @@ abstract type PKModelRandom <: PKModel end
     keys::T4 = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[(:obs, :s)]) #for observations also records corresponding internal state
 end
 
-function create_ode_system(mod::PKBasic) #does not actually need covariates, just for later
+function create_ode_system(mod::PKBasic)
         @mtkmodel Internal begin
         @parameters begin
             k_el
@@ -155,7 +153,7 @@ end
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ = 0.1)) 
     cov::T2 = (:gender, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none),) 
-    #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter
+    #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter (not present here, just for sake of completeness)
     keys::T4 = (d = SA[:d_VPA], s = SA[:s_VPA], S = SA[:S_VPA], obs = SA[(:obs_VPA, :s_VPA)]) #for observations also records corresponding internal state
 end
 
@@ -230,12 +228,6 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system; names::Name
         for i in eachindex(dosing) if dosing[i].state in names.d #check PK model supports this drug
     ]
 
-    #Maybe go to periodic callback here?
-    #callbacks_daily = [PresetTimeCallback(day, 
-    #                    integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d[1]),
-    #                                    daily_dose = sum([dose.dose for dose in dosing if (day ≤ dose.t < (day+1) && dose.state == d[2])]))) 
-    #                    for d in set_daily_doses for day in 0:endpoint]
-    #Maybe need initialize here? Might be different because set = instead of +=
     #callbacks to set daily dose parameter where necessary
     callbacks_daily_doses = [PeriodicCallback( 
                         integrator -> daily_dose_affect!(integrator, id_param = ModelingToolkit.parameter_index(ode_system, d.drug_param),
@@ -260,18 +252,18 @@ function get_keys_PK(mod::PKModel)
     return mod.keys
 end
 
-#Problem creation and solution for nonrandom models, for random effects might have to do differently?
+#Problem creation with covariates and callbacks
 function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
     ode_system = create_ode_system(mod)
 
-    # Create individual PresetTimeCallback for each dose
-    # initialize is important if you have a dose at t=0
+    #Create Callbacks for doses, autoinduction and other potential dose related behavior
     names = get_keys_PK(mod)
     callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
     covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
+    
     # Create ODE problem with callbacks
     problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     
@@ -282,14 +274,13 @@ end
 function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Person, endpoint::AbstractFloat = 10.0)
     dosing = person.dosing
     covariates = NamedTuple{mod.cov}(person.covariates)
-    # Create individual PresetTimeCallback for each dose
-    # initialize is important if you have a dose at t=0
+
+    #Create Callbacks for doses, autoinduction and other potential dose related behavior
     names = get_keys_PK(mod)
     callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
     #interpolate covariates constant
     covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
-    #covariate_interpolation = Dict((name => value for (name,value) in pairs(covariates)))
 
     # Create ODE problem with callbacks
     problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
@@ -311,7 +302,7 @@ function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoi
     return sol
 end
 
-#θ all PK Model parameters, for problem not given
+#solve for a different θ containing all PK Model parameters, for problem not given
 function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
     ode_system = create_ode_system(mod)
@@ -325,7 +316,7 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
     return sol
 end
 
-#solve_PK for problem, indices of parameters given
+#solve_PK for given problem, indices of parameters given
 function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; indices_θ::AbstractVector, options = (AutoTsit5(Rosenbrock23()),))
     #indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
     mkt_parameters = prob.p
@@ -358,7 +349,8 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     return loglikeli
 end
 
-#assumed that timepoints are increasing, returns solution for use in seizure model
+#generates noisy measurements, returns solution for use in seizure model
+#if no endpoint given assumes timepoints are increasing
 function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)

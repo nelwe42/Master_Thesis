@@ -60,7 +60,7 @@ estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = lo
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
-#Testing out hessian confidence intervals
+#Testing out hessian confidence intervals if flag is set
 if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
     #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)

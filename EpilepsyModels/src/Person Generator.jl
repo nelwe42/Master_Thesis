@@ -6,7 +6,8 @@ using Parameters
     covariates::T = NamedTuple() #named tuple of covariates
     dosing::D = Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}() #vector of NamedTuples of the form t, dose, state
     seizure_counts::S = Vector{@NamedTuple{time::AbstractFloat, count::Int64}}() #vector of NamedTuples of the form time, count
-    measurements::M = Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}() #vector of NamedTuples of the form timepoint, measurement
+    measurements::M = Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}() 
+    #vector of NamedTuples of the form timepoint, measurement, state being measured, both obs and corresponding s
     #later make attribute with individual values of random effects
 end
 
@@ -23,7 +24,7 @@ struct PersonGeneratorLEV <: PersonGenerator end
 
 function generate_population(m::PersonGeneratorLEV, n::Int = 10)
     #draw height from normal distribution
-    #draw first BMI, weight = BMI*height(in m)^2
+    #draw first BMI, weight = BMI*height(in m)^2 to roughly capture weight height relationship
     #average BMI Germany was 26 in 2021, 45,3% in 18.5 to 25, 35.9 in 25 to 30
     #draw kindey_disease as binomial, potentially later dependent on weight
     #draw heights first because weights dependent on them

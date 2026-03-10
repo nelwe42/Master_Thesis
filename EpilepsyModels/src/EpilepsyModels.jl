@@ -51,7 +51,7 @@ function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Stri
 end
 
 #data should be (person structs), save seizure, measurement and dosing data in persons
-#p contains m: model, data: tuple, logscale: Tuple{String}, system and problems
+#p tuple of general information about model, data etc, should be created in function calling this one, e.g. get_negloglikelihood_evaluated
 #expects parameters in logscale tuple in logscale, internally detransforms 
 function get_negloglikelihood(θ::ComponentArray, p::NamedTuple) 
     #check if either model has random effects
