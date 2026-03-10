@@ -36,6 +36,9 @@ end
 
 #function intensity(mod::Seizure_Basic, n::Int; here take PK system/solution object)
 function intensity(m::SeizureBasic, sol, n::AbstractFloat; covariates = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
+    if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
+        return Inf
+    end
     intensity = θ.a
     intensity += θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
     #on day n natural number beginning with 0 are exposed to drug from time n to n+1
@@ -48,6 +51,9 @@ end
 #k_n number of seizures on day n
 function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Int64; covariates = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
     lambda = intensity(m,sol,n, covariates = covariates, names=names, θ = θ)
+    if !isfinite(lambda)
+        return 0
+    end
     return ((lambda^k_n)/factorial(k_n))*exp(-lambda)
 end
 
@@ -57,7 +63,12 @@ function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Com
         @inbounds time = person.seizure_counts[i].time #get timepoint out of named tuple
         @inbounds count = person.seizure_counts[i].count #get count out of tuple
         cov = NamedTuple{m.cov}(person.covariates) #create cov via person covariates and keys
-        prob += log(Seizure_prob_day(m, sol, time, count, covariates = cov, names = names, θ=θ))
+        log_day_prob = log(Seizure_prob_day(m, sol, time, count, covariates = cov, names = names, θ=θ))
+        if !isfinite(log_day_prob)
+            return Inf
+        else
+            prob += log_day_prob
+        end
     end
     return prob
 end

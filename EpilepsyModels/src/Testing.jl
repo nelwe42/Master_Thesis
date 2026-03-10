@@ -19,17 +19,15 @@ println("Included")
 #set seed
 Random.seed!(42)
 
-#Specify parameters
-#Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
-#           Seizure = ComponentArray((a = 4, b = [-0.05]))))
-#Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
-#           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
-#Input_θ = ComponentArray((PK =ComponentArray((k_abs = 1.0, k_el = 1.0, σ = 0.1)), 
-#            Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
-#Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
-#           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
-           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+#Specify parameters for models
+#PK Models
+Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
+Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0))
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0))
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0))
+#Seizure Models
+Input_θ_SeizureBasic = ComponentArray((a = 4, b = SA[-0.05]))
+
 Maxiters_optimiser = 1000
 Population_size = 10 #20
 wo_treatment = 0.0 #3.0 #10.0
@@ -40,15 +38,18 @@ solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #ODE_options = (AutoTsit5(Rosenbrock23()),)
 ODE_options = (Rosenbrock23(),)
 
-#pk_model = PKBasic(θ=Input_θ.PK)
-#pk_model = PKLEV(θ=Input_θ.PK)
-#pk_model = PKCBZ(θ=Input_θ.PK)
-pk_model = PKVPA(θ=Input_θ.PK)
-seizure_model = SeizureBasic(θ = Input_θ.Seizure)
+run_hessian = false
+
+#pk_model = PKBasic(θ=Input_θ_PKBasic)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
+seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 dose_gen = PolyDosesRandom(pk_model, default_min_dose = 100.0)
+Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
@@ -59,10 +60,12 @@ estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = lo
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
-#Testing out hessian
-CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
-#CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
-println("Confidence Intervals Inverse Hessian:", CI)
+#Testing out hessian confidence intervals
+if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
+    CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
+    #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
+    println("Confidence Intervals Inverse Hessian:", CI)
+end
 
 #Plot PK behavior (for each drug)
 names = EpilepsyModels.get_keys_PK(mod.pk_model)

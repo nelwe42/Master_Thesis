@@ -52,7 +52,7 @@ end
 
 #data should be (person structs), save seizure, measurement and dosing data in persons
 #p contains m: model, data: tuple, logscale: Tuple{String}, system and problems
-#expects parameters in logscale tuple in logscale, internally detransforms in place
+#expects parameters in logscale tuple in logscale, internally detransforms 
 function get_negloglikelihood(θ::ComponentArray, p::NamedTuple) 
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -66,16 +66,17 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     problems = p.problems
     system = p.system
     indices = p.indices_θ
+    θ_use = copy(θ)
     #for keys in logscale take exponential in θ
-    partial_transform_to_logscale!(θ, logscale = logscale, detransform = true)
-    loglikeli = zero(eltype(θ))
+    partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
+    loglikeli = zero(eltype(θ_use))
     for i in eachindex(data)
-        @inbounds sol = solve_PK(problems[i], system, θ.PK, indices_θ = indices, options = options)
+        @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
         if !(SciMLBase.successful_retcode(sol))
             return Inf
         end
-        @inbounds loglikeli += get_PK_loglikelihood(θ.PK, data[i], sol=sol)
-        @inbounds loglikeli += get_seizure_loglikelihood(θ.Seizure, m.seizure_model, sol, data[i], names=names)
+        @inbounds loglikeli += get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
+        @inbounds loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
     end
     return -loglikeli
 end
@@ -199,7 +200,7 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
         generate_seizures!(m.seizure_model, sol, person, start = 0.0, day_number = floor(passed_time), names=names)
         seizure_time_rest = passed_time - floor(passed_time)
         while passed_time < time
-            increment = max(time, passed_time + update_reg) - passed_time
+            increment = min(time, passed_time + update_reg) - passed_time
             passed_time += increment
             current_timepoints = [t for t in timepoints if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
             assign_dose!(m.dose_gen, person, names=names, timeframe = increment)

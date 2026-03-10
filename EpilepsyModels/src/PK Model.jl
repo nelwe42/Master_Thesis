@@ -344,8 +344,15 @@ end
 
 #likelihood when solution given
 function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
+    if any(x -> !isfinite(x), θ)
+        return Inf
+    end
     loglikeli = 0
     for measure in person.measurements
+        predicted_state = sol(measure.timepoint, idxs = measure.state[2])
+        if !(isfinite(predicted_state))
+            return Inf
+        end
         loglikeli += logpdf(sol(measure.timepoint, idxs = measure.state[1]), measure.measurement)
     end
     return loglikeli
