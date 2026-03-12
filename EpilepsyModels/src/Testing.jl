@@ -29,7 +29,7 @@ Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.
 Input_θ_SeizureBasic = ComponentArray((a = 4, b = SA[-0.05]))
 
 Maxiters_optimiser = 1000
-Population_size = 10 #20
+Population_size = 2 #10 #20
 wo_treatment = 0.0 #3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -41,8 +41,8 @@ ODE_options = (Rosenbrock23(),)
 run_hessian = false
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()
@@ -60,6 +60,12 @@ estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = lo
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
+#Show relative error
+errors = deepcopy(Input_θ)
+for i in eachindex(errors)
+    errors[i] = abs(estimate.u[i] - Input_θ[i])/abs(Input_θ[i])
+end
+println("Relative errors: ", errors)
 #Testing out hessian confidence intervals if flag is set
 if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)

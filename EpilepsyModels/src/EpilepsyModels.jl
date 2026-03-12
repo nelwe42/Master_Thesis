@@ -6,6 +6,7 @@ using Optimization
 using ForwardDiff
 using ComponentArrays
 using FiniteDiff
+using Parameters
 
 export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
 PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator, PolyDosesRandom,
@@ -16,15 +17,15 @@ include("PK Model.jl")
 include("Dose Generator.jl")
 include("Seizure Model.jl")
 
-struct FullModel{PK<:PKModel, S<:SeizureModel, P<:PersonGenerator, D<:DoseGenerator}
+@with_kw struct FullModel{PK<:PKModel, S<:SeizureModel, P<:PersonGenerator, D<:DoseGenerator}
     pk_model::PK
     seizure_model::S
-    population_gen::P
-    dose_gen::D
+    population_gen::P = BasicPersonGenerator()
+    dose_gen::D = BasicDoses()
 end
 
 #For (de)transfering certain components in parameter vector into logscale
-function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{String} = (), detransform::Bool = false)
+function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Vararg{String}} = (), detransform::Bool = false)
     #set whether transform or detransform
     if detransform
         f = exp
@@ -81,7 +82,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     return -loglikeli
 end
 
-function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{String} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
@@ -93,7 +94,7 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     return negloglikeli
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{String} = (), inv_hess_CI::Bool = false, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
@@ -123,7 +124,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     end
 end
 
-function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
@@ -132,7 +133,7 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     return inverse_hessian(θ, p, confidence = confidence, logscale = logscale)
 end
 
-function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{String} = ())
+function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = ())
     #check whether accidentally entered percentage instead of confidence in (0,1)
     if confidence>1
         confidence = confidence/100
@@ -142,20 +143,15 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     θ_use = deepcopy(θ)
     #transform as specified
     partial_transform_to_logscale!(θ_use, logscale = logscale)
-    println("Starting hessian forwarddiff")
+    #println("Starting hessian forwarddiff")
     #This takes very long
     H = ForwardDiff.hessian(f,θ_use)
-    println("H forwarddiff= ", H)
-    println("Starting hessian finitediff")
-    H_finite = FiniteDiff.finite_difference_hessian(f, θ_use)
-    println("Starting inverse")
+    #println("H forwarddiff= ", H)
+    #println("Starting inverse")
     H_inv = inv(H)
-    H_inv_finite = inv(H_finite)
-    println("H_inv finitediff = ")
-    println(H_inv_finite)
-    println("H_inv forwarddiff = ")
+    #println("H_inv forwarddiff = ")
     println(H_inv)
-    for i in eachindex(θ)
+    for i in eachindex(θ_use)
         if H_inv[i,i]<0
             error("negative diagonal entry in inverse hessian")
         end
@@ -163,13 +159,26 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     q = quantile(Normal(), (1-(1-confidence)/2))
     #By symmetry other one is just the negative
     #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
-    bounds = [[θ_use[i] - sqrt(H_inv[i,i])*q, θ_use[i] + sqrt(H_inv[i,i])*q] for i in eachindex(θ_use)]
-    #now assign correct keys, transform logscale ones
-    #this works but single components are now one entry vectors
-    CI = ComponentArray(PK = ComponentArray((; [(key,bounds[label2index(θ, "PK.$(key)")]) for key in keys(θ.PK)]...)), 
-                            Seizure = ComponentArray((; [(key,bounds[label2index(θ, "Seizure.$(key)")]) for key in keys(θ.Seizure)]...)))
-    partial_transform_to_logscale!(CI, logscale = logscale, detransform = true)
-    #alternatively could do for i in eachindex(θ) θ[i] = bounds[i][1] end and same for two, then put together, can't assign directly since different types
+    bounds = [(θ_use[i] - sqrt(H_inv[i,i])*q, θ_use[i] + sqrt(H_inv[i,i])*q) for i in eachindex(θ_use)]
+    #now assign intervals to correct keys
+    CI = ComponentArray(bounds, getaxes(θ_use))
+    #println("CI untransformed: ", CI)
+    #transform logscale ones, can't use partial transform since entries are now tuples, have to broadcast
+    for label in logscale
+        if label in labels(CI.PK) || Symbol(label) in keys(CI.PK)
+            indices = label2index(CI.PK,label)
+            for index in indices
+                @inbounds CI.PK[index] = exp.(CI.PK[index])
+            end
+        end
+
+        if label in labels(CI.Seizure) || Symbol(label) in keys(CI.Seizure)
+            indices = label2index(CI.Seizure,label)
+            for index in indices
+                @inbounds CI.Seizure[index] = exp.(CI.Seizure[index])
+            end
+        end
+    end
     return CI
 end
 
