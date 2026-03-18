@@ -52,13 +52,13 @@ end
 function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Int64; covariates = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
     lambda = intensity(m,sol,n, covariates = covariates, names=names, θ = θ)
     if !isfinite(lambda)
-        return 0
+        return 0.0
     end
     return ((lambda^k_n)/factorial(k_n))*exp(-lambda)
 end
 
 function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
-    prob = 0
+    prob = zero(eltype(θ))
     for i in eachindex(person.seizure_counts) 
         @inbounds time = person.seizure_counts[i].time #get timepoint out of named tuple
         @inbounds count = person.seizure_counts[i].count #get count out of tuple
@@ -80,7 +80,7 @@ end
 #3) Implement generation of seizures for discrete, nonrandom models
 
 #generates and appends seizures to person for given number of days start
-function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; start::AbstractFloat = 0, day_number::AbstractFloat = 10.0, names::NamedTuple)
+function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; start::AbstractFloat = 0.0, day_number::AbstractFloat = 10.0, names::NamedTuple)
     if day_number >=1
     cov = NamedTuple{m.cov}(person.covariates)
     new_seizures = [(time = n, count = rand(Poisson(intensity(m, sol, n, covariates=cov, names=names)))) for n in start:(start+day_number-1)]

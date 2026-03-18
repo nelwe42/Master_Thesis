@@ -200,7 +200,7 @@ end
 function induction_dose_affect!(integrator; dose_param, ind_param)
     integrator.p[ind_param] += (2*(integrator.p[dose_param]>0)-1)
     if integrator.p[ind_param] < 0
-        integrator.p[ind_param] = 0
+        integrator.p[ind_param] = 0.0
     end
 end
 
@@ -338,7 +338,7 @@ function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
     if any(x -> !isfinite(x), θ)
         return Inf
     end
-    loglikeli = 0
+    loglikeli = zero(eltype(θ))
     for measure in person.measurements
         predicted_state = sol(measure.timepoint, idxs = measure.state[2])
         if !(isfinite(predicted_state))

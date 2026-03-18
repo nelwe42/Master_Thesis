@@ -8,9 +8,8 @@ using ComponentArrays
 using FiniteDiff
 using Parameters
 
-export optimise, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDoses, PKBasic, PKLEV, 
-PKCBZ, BasicPersonGenerator, SeizureBasic, FullModel, PersonGeneratorLEV, BigFourPersonGenerator, PolyDosesRandom,
-PKVPA
+export optimise, optimise_multistart, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, 
+PKCBZ, PKVPA, BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, FullModel
 
 include("Person Generator.jl")
 include("PK Model.jl")
@@ -26,26 +25,28 @@ end
 
 #For (de)transfering certain components in parameter vector into logscale
 function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Vararg{String}} = (), detransform::Bool = false)
-    #set whether transform or detransform
-    if detransform
-        f = exp
-    else 
-        f = log
-    end
     #search for matching labels, label2index returns vector of matching
     for label in logscale
         #To handle both transforming whole vector valued parameter or individual indices
         if label in labels(θ.PK) || Symbol(label) in keys(θ.PK)
             indices = label2index(θ.PK,label)
             for index in indices
-                @inbounds θ.PK[index] = f(θ.PK[index])
+                if detransform
+                    @inbounds θ.PK[index] = exp(θ.PK[index])
+                else
+                    @inbounds θ.PK[index] = log(max(θ.PK[index], eps(eltype(θ))))
+                end
             end
         end
 
         if label in labels(θ.Seizure) || Symbol(label) in keys(θ.Seizure)
             indices = label2index(θ.Seizure,label)
             for index in indices
-                @inbounds θ.Seizure[index] = f(θ.Seizure[index])
+                if detransform
+                    @inbounds θ.Seizure[index] = exp(θ.Seizure[index])
+                else
+                    @inbounds θ.Seizure[index] = log(max(θ.Seizure[index], eps(eltype(θ))))
+                end
             end
         end
     end
@@ -71,15 +72,35 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ_use))
-    for i in eachindex(data)
-        @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
-        if !(SciMLBase.successful_retcode(sol))
-            return Inf
+    try
+        for i in eachindex(data)
+            @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
+            if !(SciMLBase.successful_retcode(sol))
+                return Inf
+            end
+            @inbounds loglikeli += get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
+            @inbounds loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
         end
-        @inbounds loglikeli += get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
-        @inbounds loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
+        return -loglikeli
+    catch e
+        fail_hard = hasproperty(p, :objective_fail_hard) ? p.objective_fail_hard : false
+        if fail_hard
+            rethrow(e)
+        end
+        if hasproperty(p, :objective_warned_ref) && hasproperty(p, :objective_warn)
+            if p.objective_warn && !p.objective_warned_ref[]
+                p.objective_warned_ref[] = true
+                @warn "Objective evaluation failed; returning Inf for this candidate." exception = e #exception=(e, catch_backtrace())
+            end
+        end
+        return Inf
     end
-    return -loglikeli
+end
+
+#some optimisers cannot work with componentarrays directly
+function get_negloglikelihood_vectorised(θ::AbstractVector, p::NamedTuple)
+    θ_struct = ComponentArray(copy(θ), p.axes_θ)
+    return get_negloglikelihood(θ_struct, p)
 end
 
 function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
@@ -94,7 +115,33 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     return negloglikeli
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+#generate multistart points randomly
+function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractVector; rng = Random.default_rng())
+    d = length(lower)
+    if length(upper) != d
+        error("latin_hypercube_samples: lower and upper must have the same length")
+    end
+    if n < 1
+        error("latin_hypercube_samples: n must be >= 1")
+    end
+    X = Matrix{Float64}(undef, n, d)
+    for j in 1:d
+        perm = Random.randperm(rng, n)
+        width = upper[j] - lower[j]
+        if !(isfinite(width) && width > 0)
+            error("latin_hypercube_samples: bounds must satisfy upper > lower and be finite")
+        end
+        for i in 1:n
+            u = (perm[i] - Random.rand(rng)) / n
+            X[i, j] = lower[j] + u * width
+        end
+    end
+    return X
+end
+
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing,
+    objective_fail_hard::Bool = false, objective_warn::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
@@ -105,13 +152,22 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
+    if !isnothing(bound_abs)
+        θ_0 .= clamp.(θ_0, -bound_abs, bound_abs)
+    end
     #get indices for setting θ
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
-    problem = OptimizationProblem(objective, θ_0, p)
+    if isnothing(bound_abs)
+        problem = OptimizationProblem(objective, θ_0, p)
+    else 
+        ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+        lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+        problem = OptimizationProblem(objective, θ_0, p, lb=lb, ub = ub)
+    end
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
@@ -123,6 +179,140 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         return estimate
     end
 end
+
+function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = 10.0, 
+    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}} = nothing, 
+    solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    
+    #check if either model has random effects
+    #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
+        #do something to handle them
+    names = get_keys_PK(m.pk_model)
+    #create ODE problem for each person in data
+    sys = create_ode_system(m.pk_model)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    #create initial guess
+    θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
+    #get indices for setting θ
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
+    #for keys in logscale transform to logscale in θ_0
+    partial_transform_to_logscale!(θ_0, logscale = logscale)
+    if !isnothing(bound_abs)
+        θ_0 .= clamp.(θ_0, -bound_abs, bound_abs)
+    end
+
+    axes_θ = getaxes(θ_0)
+    θ_0_vec = collect(θ_0)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
+    n_starts = max(multistart, 1)
+    d = length(θ_0_vec)
+
+    lower = zeros(Float64, d)
+    upper = zeros(Float64, d)
+    if !isnothing(multistart_bounds)
+        lower_raw, upper_raw = multistart_bounds
+        if length(lower_raw) != d || length(upper_raw) != d
+            error("multistart_bounds must match parameter dimension $d")
+        end
+        lower .= Float64.(lower_raw)
+        upper .= Float64.(upper_raw)
+    elseif !isnothing(bound_abs)
+        lower .= -Float64(bound_abs)
+        upper .= Float64(bound_abs)
+    else
+        #Fallback finite box around initial point in unconstrained mode.
+        lower .= Float64.(θ_0_vec) .- 2.0
+        upper .= Float64.(θ_0_vec) .+ 2.0
+    end
+
+    if any(.!isfinite.(lower)) || any(.!isfinite.(upper)) || any(upper .<= lower)
+        error("Invalid multistart bounds: require finite values and upper > lower component-wise")
+    end
+
+    starts = Matrix{Float64}(undef, n_starts, d)
+    row_idx = 1
+    if multistart_include_initial
+        starts[row_idx, :] .= clamp.(Float64.(θ_0_vec), lower, upper)
+        row_idx += 1
+    end
+    n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
+    if n_lhs > 0
+        rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
+        starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
+    end
+    starts_component_vec = [ComponentArray(vec(starts[i, :]), p.axes_θ) for i in 1:n_starts]
+
+    best_raw_any = nothing
+    best_start_any = 1
+    best_raw_finite = nothing
+    best_obj_finite = Inf
+    best_start_finite = 1
+    best_raw_success_finite = nothing
+    best_obj_success_finite = Inf
+    best_start_success_finite = 1
+
+    #set bounds if required
+    if isnothing(bound_abs)
+        ub = nothing
+        lb = nothing
+    else 
+        ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+        lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+    end
+
+    solutions = Array{SciMLBase.AbstractNoTimeSolution}(undef, n_starts)
+    Threads.@threads for i in 1:n_starts
+        if isnothing(ub)
+            problem = OptimizationProblem(objective, starts_component_vec[i], p)
+        else
+            problem = OptimizationProblem(objective, starts_component_vec[i], p, lb=lb, ub=ub)
+        end
+        solutions[i] = solve(problem, solver_optim, maxiters = maxiters)
+    end
+    for i in 1:n_starts
+        if isnothing(best_raw_any)
+            best_raw_any = solutions[i]
+            best_start_any = i
+        end
+        finite_i = isfinite(solutions[i].objective)
+        if finite_i
+            obj_i = solutions[i].objective
+            if isnothing(best_raw_finite) || obj_i < best_obj_finite
+                best_raw_finite = solutions[i]
+                best_obj_finite = obj_i
+                best_start_finite = i
+            end
+            if SciMLBase.successful_retcode(solutions[i].retcode) && (isnothing(best_raw_success_finite) || obj_i < best_obj_success_finite)
+                best_raw_success_finite = solutions[i]
+                best_obj_success_finite = obj_i
+                best_start_success_finite = i
+            end
+        end
+    end
+    if !isnothing(best_raw_success_finite)
+        estimate_raw = best_raw_success_finite
+        best_start_idx = best_start_success_finite
+    elseif !isnothing(best_raw_finite)
+        estimate_raw = best_raw_finite
+        best_start_idx = best_start_finite
+    else
+        estimate_raw = best_raw_any
+        best_start_idx = best_start_any
+    end
+    estimate_u = estimate_raw.u
+    #transform parameters back into non logscale
+    partial_transform_to_logscale!(estimate_u, logscale = logscale, detransform = true)
+    estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
+    println("Estimate: ", estimate)
+    if inv_hess_CI
+        CI = inverse_hessian(estimate.u, p, logscale = logscale)
+        return estimate, CI
+    else
+        return estimate
+    end
+end
+
 
 function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)

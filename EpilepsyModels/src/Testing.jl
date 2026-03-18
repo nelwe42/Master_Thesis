@@ -30,13 +30,22 @@ Input_θ_SeizureBasic = ComponentArray((a = 4, b = SA[-0.05]))
 
 Maxiters_optimiser = 1000
 Population_size = 2 #10 #20
-wo_treatment = 0.0 #3.0 #10.0
+wo_treatment = 3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 logscale = ("σ",)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
-#ODE_options = (AutoTsit5(Rosenbrock23()),)
-ODE_options = (Rosenbrock23(),)
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+#ODE_options = (Rosenbrock23(),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+Multistart_nstarts = 12
+Multistart_seed = 42
+Multistart_include_initial = true
+Multistart_bound_abs = 100.0
+Multistart_bounds = nothing
+Multistart_maxiters = 500
 
 run_hessian = false
 
@@ -48,7 +57,15 @@ seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
-dose_gen = PolyDosesRandom(pk_model, default_min_dose = 100.0)
+#Create appropriate dose generator based on which pk_model was chosen
+dose_distr = (d_VPA = (min = 150.0, avg_num = 5.0, max_num = 14), d_LEV = (min = 100.0, avg_num = 10.0, max_num = 30),
+                d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
+if typeof(pk_model).name.wrapper in [PKLEV, PKCBZ, PKVPA] #add PKLTG here later
+    info = dose_distr[pk_model.keys.d][1]
+    dose_gen = PolyDosesRandom(pk_model, default_min_dose = info.min, default_avg_multiple_dose = info.avg_num, default_max_multiple_dose = info.max_num, times_per_day_first = 2)
+else
+    dose_gen = PolyDosesRandom(pk_model, default_min_dose = 100.0)
+end
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
@@ -56,7 +73,12 @@ println("Generated")
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+#Normal optimisation
+#estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+#Multistart optimisation
+estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+    bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
+    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
@@ -116,31 +138,3 @@ for s in names.s
 end
 
 println("Done")
-
-#testing callback daily dose
-#=
-dosing_test = [(t = 0.0, dose = 10, state = :d_CBZ), (t = 0.5, dose = 20, state = :d_CBZ), (t = 3.0, dose = 50, state = :d_CBZ)]
-test_person = EpilepsyModels.Person(dosing = dosing_test)
-sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, test_person, endpoint = 5.0, options = ODE_options)
-pl = plot(sol, idxs = [:test])
-display(pl)
-
-dosing_test2 = [(t = 0.0, dose = 10, state = :d), (t = 0.5, dose = 20, state = :d), (t = 3.0, dose = 50, state = :d)]
-test_person2 = EpilepsyModels.Person(dosing = dosing_test2)
-pk_model2 = PKBasic()
-sol2 = EpilepsyModels.solve_PK(pk_model2, pk_model2.θ, test_person2, endpoint = 5.0, options = ODE_options)
-pl = plot(sol2, idxs = [:d, :s])
-display(pl)
-
-default_doses = (a = 2.0, b=3.0)
-distr_first = (a = 1/6, b = 5/6)
-distr_second = (a=5/6, b = 1/6)
-prob_second = 1.0
-
-dose_test = PolyDoses(default_doses, distr_first, distr_second, prob_second = prob_second)
-dose_test2 = PolyDoses(default_doses, distr_first, distr_second, prob_second = prob_second, assign_not_supported = true)
-person = EpilepsyModels.Person()
-person2 = EpilepsyModels.Person()
-EpilepsyModels.assign_dose!(dose_test, person, names = (d = (:b,),), wo_treatment = 2.0)
-EpilepsyModels.assign_dose!(dose_test2, person2, names = (d= (:a,),), wo_treatment = 2.0)
-=#
