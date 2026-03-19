@@ -314,16 +314,16 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
 end
 
 
-function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
-    return inverse_hessian(θ, p, confidence = confidence, logscale = logscale)
+    return inverse_hessian(θ, p, confidence = confidence, logscale = logscale, finite_not_forward=finite_not_forward)
 end
 
-function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = ())
+function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false)
     #check whether accidentally entered percentage instead of confidence in (0,1)
     if confidence>1
         confidence = confidence/100
@@ -333,13 +333,13 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     θ_use = deepcopy(θ)
     #transform as specified
     partial_transform_to_logscale!(θ_use, logscale = logscale)
-    #println("Starting hessian forwarddiff")
-    #This takes very long
-    H = ForwardDiff.hessian(f,θ_use)
-    #println("H forwarddiff= ", H)
-    #println("Starting inverse")
+    if !(finite_not_forward)
+        #This takes very long
+        H = ForwardDiff.hessian(f,θ_use)
+    else
+        H = FiniteDiff.finite_difference_hessian(f, θ_use)
+    end
     H_inv = inv(H)
-    #println("H_inv forwarddiff = ")
     println(H_inv)
     for i in eachindex(θ_use)
         if H_inv[i,i]<0

@@ -33,7 +33,7 @@ Population_size = 2 #10 #20
 wo_treatment = 3.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #+40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ",)
+logscale = ("σ", "c1", "v1")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 #ODE_options = (Rosenbrock23(),)
@@ -45,7 +45,7 @@ Multistart_seed = 42
 Multistart_include_initial = true
 Multistart_bound_abs = 100.0
 Multistart_bounds = nothing
-Multistart_maxiters = 500
+Multistart_maxiters = 100
 
 run_hessian = false
 
@@ -74,11 +74,11 @@ println("Generated")
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
 #Normal optimisation
-#estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
 #Multistart optimisation
-estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
-    bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
-    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
+#estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+#    bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
+#    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
