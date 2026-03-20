@@ -22,18 +22,19 @@ Random.seed!(42)
 #Specify parameters for models
 #PK Models
 Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
-Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0))
+Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0))
 #Seizure Models
 Input_θ_SeizureBasic = ComponentArray((a = 4, b = SA[-0.05]))
 
 Maxiters_optimiser = 1000
-Population_size = 2 #10 #20
+Population_size = 20
 wo_treatment = 3.0 #10.0
-Obs_Duration = wo_treatment + 20.0 #+40.0
+Obs_Duration = wo_treatment + 40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ", "c1", "v1")
+#logscale = ("σ",)
+logscale = ("σ", "k_abs", "c1", "v1")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 #ODE_options = (Rosenbrock23(),)
@@ -47,7 +48,10 @@ Multistart_bound_abs = 100.0
 Multistart_bounds = nothing
 Multistart_maxiters = 100
 
-run_hessian = false
+run_hessian = true
+finite_diff_hessian = true
+drug_appropriate_dosing = true
+run_multistart = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 pk_model = PKLEV(θ=Input_θ_PKLEV)
@@ -60,7 +64,7 @@ person_gen = BigFourPersonGenerator()
 #Create appropriate dose generator based on which pk_model was chosen
 dose_distr = (d_VPA = (min = 150.0, avg_num = 5.0, max_num = 14), d_LEV = (min = 100.0, avg_num = 10.0, max_num = 30),
                 d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
-if typeof(pk_model).name.wrapper in [PKLEV, PKCBZ, PKVPA] #add PKLTG here later
+if (typeof(pk_model).name.wrapper in [PKLEV, PKCBZ, PKVPA]) && drug_appropriate_dosing #add PKLTG here later
     info = dose_distr[pk_model.keys.d][1]
     dose_gen = PolyDosesRandom(pk_model, default_min_dose = info.min, default_avg_multiple_dose = info.avg_num, default_max_multiple_dose = info.max_num, times_per_day_first = 2)
 else
@@ -73,12 +77,15 @@ println("Generated")
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-#Normal optimisation
-estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
-#Multistart optimisation
-#estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
-#    bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
-#    multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
+if !(run_multistart)
+    #Normal optimisation
+    estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+    #Multistart optimisation
+else
+    estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+        bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
+        multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
+end
 #True values for comparison
 println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 println("True θ: ", Input_θ)
@@ -90,7 +97,7 @@ end
 println("Relative errors: ", errors)
 #Testing out hessian confidence intervals if flag is set
 if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
-    CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, ODE_options = ODE_options)
+    CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, finite_not_forward=finite_diff_hessian, ODE_options = ODE_options)
     #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
     println("Confidence Intervals Inverse Hessian:", CI)
 end

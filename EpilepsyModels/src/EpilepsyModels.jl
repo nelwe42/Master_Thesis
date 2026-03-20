@@ -7,6 +7,7 @@ using ForwardDiff
 using ComponentArrays
 using FiniteDiff
 using Parameters
+using LinearAlgebra
 
 export optimise, optimise_multistart, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, 
 PKCBZ, PKVPA, BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, FullModel
@@ -313,7 +314,7 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
     end
 end
 
-
+#finite_not_forward allows to switch to finite_diff hessian instead of ForwardDiff, often faster but less accurate
 function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
@@ -339,17 +340,30 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     else
         H = FiniteDiff.finite_difference_hessian(f, θ_use)
     end
-    H_inv = inv(H)
-    println(H_inv)
-    for i in eachindex(θ_use)
-        if H_inv[i,i]<0
-            error("negative diagonal entry in inverse hessian")
+    #Fallback definition of bounds if sth doesn't work
+    bounds = [(-Inf, Inf) for i in eachindex(θ_use)]
+    try
+        H_inv = inv(H)
+        #println(H_inv)
+        positive_diagonal = true
+        for i in eachindex(θ_use)
+            positive_diagonal = H_inv[i,i]<0 && positive_diagonal
+        end
+        if positive_diagonal
+            q = quantile(Normal(), (1-(1-confidence)/2))
+            #By symmetry other one is just the negative
+            #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
+            bounds = [(θ_use[i] - sqrt(H_inv[i,i])*q, θ_use[i] + sqrt(H_inv[i,i])*q) for i in eachindex(θ_use)]
+        else
+            @warn "Negative diagonal entry in inverse hessian"
+        end
+    catch e
+        if e isa LinearAlgebra.SingularException
+            @warn "Calculated Hessian is singular"
+        else
+            rethrow(e)
         end
     end
-    q = quantile(Normal(), (1-(1-confidence)/2))
-    #By symmetry other one is just the negative
-    #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
-    bounds = [(θ_use[i] - sqrt(H_inv[i,i])*q, θ_use[i] + sqrt(H_inv[i,i])*q) for i in eachindex(θ_use)]
     #now assign intervals to correct keys
     CI = ComponentArray(bounds, getaxes(θ_use))
     #println("CI untransformed: ", CI)
