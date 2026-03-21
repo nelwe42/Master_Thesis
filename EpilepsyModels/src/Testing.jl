@@ -48,7 +48,7 @@ Multistart_include_initial = true
 Multistart_bound_abs = nothing #100.0
 Multistart_lower_bounds = nothing
 Multistart_upper_bounds = nothing 
-Variance_bound = 5.0 #upper bounds will be reset accordingly after Input_θ is created below
+Variance_bound = 1.0 #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = nothing
 Multistart_maxiters = 100
 
@@ -81,16 +81,20 @@ println("Generated")
 
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
 if isnothing(Multistart_upper_bounds) && (!isnothing(Variance_bound) || !isnothing(Multistart_lower_bounds))
-    Multistart_upper_bounds = ComponentArray(fill(Inf, length(Input_θ)), getaxes(Input_θ))
-    if !isnothing(Variance_bound)
-        Multistart_upper_bounds.PK.σ = min(log(Variance_bound), Multistart_upper_bounds.PK.σ)
-    end
+    upper_bounds = ComponentArray(fill(Inf, length(Input_θ)), getaxes(Input_θ))
+else 
+    upper_bounds = Multistart_upper_bounds
 end
-if isnothing(Multistart_lower_bounds) && !isnothing(Multistart_upper_bounds)
-    Multistart_lower_bounds = ComponentArray(fill(-Inf, length(Input_θ)), getaxes(Input_θ))
+if isnothing(Multistart_lower_bounds) && (!isnothing(Multistart_upper_bounds) || !isnothing(upper_bounds))
+    lower_bounds = ComponentArray(fill(-Inf, length(Input_θ)), getaxes(Input_θ))
+else 
+    lower_bounds = Multistart_lower_bounds
 end
-lower_upper_bounds = (Multistart_lower_bounds, Multistart_upper_bounds)
-if isnothing(Multistart_lower_bounds)
+if !isnothing(Variance_bound) 
+    upper_bounds.PK.σ = min(log(Variance_bound), upper_bounds.PK.σ)
+end
+lower_upper_bounds = (lower_bounds, upper_bounds)
+if isnothing(lower_bounds)
     lower_upper_bounds = nothing
 end
 
@@ -101,8 +105,8 @@ if !(run_multistart)
     estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
                         bound_abs = Multistart_bound_abs, lower_upper = lower_upper_bounds, 
                         solver_optim = solver_optim, ODE_options = ODE_options)
-    #Multistart optimisation
 else
+    #Multistart optimisation
     estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
         bound_abs = Multistart_bound_abs, lower_upper = lower_upper_bounds, 
         multistart = Multistart_nstarts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,

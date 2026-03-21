@@ -153,16 +153,12 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
-    if !isnothing(bound_abs)
-        θ_0 .= clamp.(θ_0, -bound_abs, bound_abs)
-    end
     #get indices for setting θ
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
-    objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     d = length(θ_0)
+
     #set bounds if required, handle if both individual and absolute bounds
     if !isnothing(lower_upper)
         lb, ub = lower_upper
@@ -192,7 +188,13 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
             lb = nothing
         end
     end
+    #ensure initial guess satisfies bounds
+    if !isnothing(bound_abs)
+        θ_0 .= clamp.(θ_0, lb, ub)
+    end
 
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
     problem = OptimizationProblem(objective, θ_0, p, lb=lb, ub = ub)
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
@@ -223,61 +225,10 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
     #for keys in logscale transform to logscale in θ_0
     partial_transform_to_logscale!(θ_0, logscale = logscale)
-    if !isnothing(bound_abs)
-        θ_0 .= clamp.(θ_0, -bound_abs, bound_abs)
-    end
-
+    
     axes_θ = getaxes(θ_0)
     θ_0_vec = collect(θ_0)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
-    objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
-    n_starts = max(multistart, 1)
-    thread_num = max(max_threads, 1)
     d = length(θ_0_vec)
-
-    lower = zeros(Float64, d)
-    upper = zeros(Float64, d)
-    if !isnothing(multistart_bounds)
-        lower_raw, upper_raw = multistart_bounds
-        if length(lower_raw) != d || length(upper_raw) != d
-            error("multistart_bounds must match parameter dimension $d")
-        end
-        lower .= Float64.(lower_raw)
-        upper .= Float64.(upper_raw)
-    elseif !isnothing(bound_abs)
-        lower .= -Float64(bound_abs)
-        upper .= Float64(bound_abs)
-    else
-        #Fallback finite box around initial point in unconstrained mode.
-        lower .= Float64.(θ_0_vec) .- 2.0
-        upper .= Float64.(θ_0_vec) .+ 2.0
-    end
-
-    if any(.!isfinite.(lower)) || any(.!isfinite.(upper)) || any(upper .<= lower)
-        error("Invalid multistart bounds: require finite values and upper > lower component-wise")
-    end
-
-    starts = Matrix{Float64}(undef, n_starts, d)
-    row_idx = 1
-    if multistart_include_initial
-        starts[row_idx, :] .= clamp.(Float64.(θ_0_vec), lower, upper)
-        row_idx += 1
-    end
-    n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
-    if n_lhs > 0
-        rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
-        starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
-    end
-    starts_component_vec = [ComponentArray(vec(starts[i, :]), p.axes_θ) for i in 1:n_starts]
-
-    best_raw_any = nothing
-    best_start_any = 1
-    best_raw_finite = nothing
-    best_obj_finite = Inf
-    best_start_finite = 1
-    best_raw_success_finite = nothing
-    best_obj_success_finite = Inf
-    best_start_success_finite = 1
 
     #set bounds if required, handle if both individual and absolute bounds
     if !isnothing(lower_upper)
@@ -308,6 +259,66 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
             lb = nothing
         end
     end
+    #Ensure initial guess satifies bounds
+    if !isnothing(bound_abs)
+        θ_0 .= clamp.(θ_0, lb, ub)
+    end
+
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
+    n_starts = max(multistart, 1)
+    thread_num = max(max_threads, 1)
+
+    lower = zeros(Float64, d)
+    upper = zeros(Float64, d)
+    if !isnothing(multistart_bounds)
+        lower_raw, upper_raw = multistart_bounds
+        if length(lower_raw) != d || length(upper_raw) != d
+            error("multistart_bounds must match parameter dimension $d")
+        end
+        lower .= Float64.(lower_raw)
+        upper .= Float64.(upper_raw)
+    elseif !isnothing(bound_abs)
+        #don't use lb and ub here because those will often be infinite in some entries
+        lower .= -Float64(bound_abs)
+        upper .= Float64(bound_abs)
+    else
+        #Fallback finite box around initial point in unconstrained mode.
+        lower .= Float64.(θ_0_vec) .- 2.0
+        upper .= Float64.(θ_0_vec) .+ 2.0
+    end
+
+    #ensure generated starts will satisfy bounds
+    if !isnothing(lb)
+        lower .= max.(lower, lb)
+        upper .= min.(upper, ub)
+    end
+
+    if any(.!isfinite.(lower)) || any(.!isfinite.(upper)) || any(upper .<= lower)
+        error("Invalid multistart bounds: require finite values and upper > lower component-wise")
+    end
+
+    starts = Matrix{Float64}(undef, n_starts, d)
+    row_idx = 1
+    if multistart_include_initial
+        starts[row_idx, :] .= clamp.(Float64.(θ_0_vec), lower, upper)
+        row_idx += 1
+    end
+    n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
+    if n_lhs > 0
+        rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
+        starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
+    end
+    starts_component_vec = [ComponentArray(vec(starts[i, :]), p.axes_θ) for i in 1:n_starts]
+
+    best_raw_any = nothing
+    best_start_any = 1
+    best_raw_finite = nothing
+    best_obj_finite = Inf
+    best_start_finite = 1
+    best_raw_success_finite = nothing
+    best_obj_success_finite = Inf
+    best_start_success_finite = 1
 
     solutions = Array{SciMLBase.AbstractNoTimeSolution}(undef, n_starts)
     #Start threads, divide n_starts onto maximal thread number
@@ -353,7 +364,8 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate_u, logscale = logscale, detransform = true)
     estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
-    println("Estimate: ", estimate)
+    print("Estimate: ", estimate_raw)
+    println("Multistart best start: ", best_start_idx, " Number of Starts: ", n_starts)
     if inv_hess_CI
         CI = inverse_hessian(estimate.u, p, logscale = logscale)
         return estimate, CI
