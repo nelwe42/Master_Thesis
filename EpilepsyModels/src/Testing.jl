@@ -26,7 +26,7 @@ Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 #Seizure Models
-Input_θ_SeizureBasic = ComponentArray((a = 4, b = SA[-0.05]))
+Input_θ_SeizureBasic = ComponentArray((a = 1.5, b = SA[0.05]))
 
 Maxiters_optimiser = 1000
 Population_size = 2 #10 #20

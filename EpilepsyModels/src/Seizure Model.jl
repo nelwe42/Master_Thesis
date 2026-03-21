@@ -40,7 +40,7 @@ function intensity(m::SeizureBasic, sol, n::AbstractFloat; covariates = nothing,
         return Inf
     end
     intensity = θ.a
-    intensity += θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
+    intensity -= θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
     #on day n natural number beginning with 0 are exposed to drug from time n to n+1
     #day 0 ist interval (0,1], day named after first number
     return max(0,intensity)

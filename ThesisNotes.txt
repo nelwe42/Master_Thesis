@@ -27,8 +27,7 @@ PK Levetiracetam:
 -> need covariates weight, height, kidney function, calculate BSA as sqrt(weight*height/3600),
     could calculate eGFR as K*"height"/CR, maybe estimate K=0.45, "height"=50cm, CR reatine concentration (mg/dL),
     for simplicity at least at first instead just factor (1 - c3*(kidney disease yes/no))
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0)), 
-           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0))
 default_dose=500mg, times_per_day = 2
 
 discussion of daily dose param, models usually developed in steady state, so inaccurate if dosage was recently switched
@@ -47,8 +46,7 @@ PK Carbamazepine:
     Using Routine Clinical Pharmacokinetic Data in Japanese Patients, Yokawa et al. uses different dose dependence, includes weight as covariate
     but no consideration of just starting medication here
 -> Need covariates just whether previously received CBZ, weight for V, daily dose parameter via callback
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0)), 
-           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+PK = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0))
 -> for identifiablity of dose effect need different daily doses
 -> at least for smaller sample sizes k_abs overestimated due to strong peaks (22.93 estimated vs 10.8 true), see plot
 
@@ -69,6 +67,4 @@ PK Valproate:
 -use CL covariates from first paper, no k_abs or V reported, note CL in /ml in paper, adjusted by factor 1000
 -for k_abs and V slope averaged the ones reported in Mexican paper and Population pharmacokinetic model of valproate and prediction
     of valproate serum concentrations in children with epilepsy by Jiang, Wang, both actually for children
-
-Input_θ = ComponentArray((PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0)), 
-           Seizure = ComponentArray((a = 4, b = SA[-0.05]))))
+PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0))
