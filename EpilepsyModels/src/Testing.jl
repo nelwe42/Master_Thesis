@@ -23,28 +23,32 @@ Random.seed!(42)
 #PK Models
 Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
 Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.2))
-Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=1.0))
-Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0))
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 #Seizure Models
 Input_θ_SeizureBasic = ComponentArray((a = 4, b = SA[-0.05]))
 
 Maxiters_optimiser = 1000
-Population_size = 20
-wo_treatment = 3.0 #10.0
-Obs_Duration = wo_treatment + 40.0
+Population_size = 2 #10 #20
+wo_treatment = 0.0 #3.0 #10.0
+Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #logscale = ("σ",)
-logscale = ("σ", "k_abs", "c1", "v1")
+logscale = ("σ", "k_abs", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 #ODE_options = (Rosenbrock23(),)
 
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
-Multistart_nstarts = 12
+max_threads_simul = 5
+Multistart_nstarts = 5
 Multistart_seed = 42
 Multistart_include_initial = true
-Multistart_bound_abs = 100.0
+Multistart_bound_abs = nothing #100.0
+Multistart_lower_bounds = nothing
+Multistart_upper_bounds = nothing 
+Variance_bound = 5.0 #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = nothing
 Multistart_maxiters = 100
 
@@ -75,15 +79,33 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
+#Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
+if isnothing(Multistart_upper_bounds) && (!isnothing(Variance_bound) || !isnothing(Multistart_lower_bounds))
+    Multistart_upper_bounds = ComponentArray(fill(Inf, length(Input_θ)), getaxes(Input_θ))
+    if !isnothing(Variance_bound)
+        Multistart_upper_bounds.PK.σ = min(log(Variance_bound), Multistart_upper_bounds.PK.σ)
+    end
+end
+if isnothing(Multistart_lower_bounds) && !isnothing(Multistart_upper_bounds)
+    Multistart_lower_bounds = ComponentArray(fill(-Inf, length(Input_θ)), getaxes(Input_θ))
+end
+lower_upper_bounds = (Multistart_lower_bounds, Multistart_upper_bounds)
+if isnothing(Multistart_lower_bounds)
+    lower_upper_bounds = nothing
+end
+
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
 if !(run_multistart)
     #Normal optimisation
-    estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options)
+    estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
+                        bound_abs = Multistart_bound_abs, lower_upper = lower_upper_bounds, 
+                        solver_optim = solver_optim, ODE_options = ODE_options)
     #Multistart optimisation
 else
     estimate = optimise_multistart(test_mod, data, maxiters = Multistart_maxiters, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
-        bound_abs = Multistart_bound_abs, multistart = Multistart_nstarts, multistart_seed = Multistart_seed,
+        bound_abs = Multistart_bound_abs, lower_upper = lower_upper_bounds, 
+        multistart = Multistart_nstarts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
 end
 #True values for comparison

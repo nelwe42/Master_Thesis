@@ -140,8 +140,8 @@ function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractV
     return X
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing,
-    objective_fail_hard::Bool = false, objective_warn::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
+                objective_fail_hard::Bool = false, objective_warn::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -162,13 +162,38 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     partial_transform_to_logscale!(θ_0, logscale = logscale)
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
-    if isnothing(bound_abs)
-        problem = OptimizationProblem(objective, θ_0, p)
-    else 
-        ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
-        lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
-        problem = OptimizationProblem(objective, θ_0, p, lb=lb, ub = ub)
+    d = length(θ_0)
+    #set bounds if required, handle if both individual and absolute bounds
+    if !isnothing(lower_upper)
+        lb, ub = lower_upper
+        if length(ub) != d || length(lb) != d
+            error("Upper and lower bounds must match parameter dimension $d")
+        end
+        if !isnothing(bound_abs)
+            ub .=  min.(ub, bound_abs)
+            if any(ub .< -bound_abs)
+                error("Upper bounds too low to fulfill absolute bounds")
+            end
+            lb .=  max.(lb, -bound_abs)
+            if any(lb .> bound_abs)
+                error("Lower bounds too high to fulfill absolute bounds")
+            end
+        end
+        #Check if bounds are valid
+        if any(ub .< lb)
+            error("Upper bounds strictly smaller than lower ones")
+        end
+    else
+        if !isnothing(bound_abs)
+            ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+            lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+        else
+            ub = nothing
+            lb = nothing
+        end
     end
+
+    problem = OptimizationProblem(objective, θ_0, p, lb=lb, ub = ub)
     estimate = solve(problem, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
@@ -181,8 +206,8 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     end
 end
 
-function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = 10.0, 
-    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}} = nothing, 
+function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}} = nothing, 
     solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
@@ -207,6 +232,7 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
     n_starts = max(multistart, 1)
+    thread_num = max(max_threads, 1)
     d = length(θ_0_vec)
 
     lower = zeros(Float64, d)
@@ -253,23 +279,45 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
     best_obj_success_finite = Inf
     best_start_success_finite = 1
 
-    #set bounds if required
-    if isnothing(bound_abs)
-        ub = nothing
-        lb = nothing
-    else 
-        ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
-        lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+    #set bounds if required, handle if both individual and absolute bounds
+    if !isnothing(lower_upper)
+        lb, ub = lower_upper
+        if length(ub) != d || length(lb) != d
+            error("Upper and lower bounds must match parameter dimension $d")
+        end
+        if !isnothing(bound_abs)
+            ub .=  min.(ub, bound_abs)
+            if any(ub .< -bound_abs)
+                error("Upper bounds too low to fulfill absolute bounds")
+            end
+            lb .=  max.(lb, -bound_abs)
+            if any(lb .> bound_abs)
+                error("Lower bounds too high to fulfill absolute bounds")
+            end
+        end
+        #Check if bounds are valid
+        if any(ub .< lb)
+            error("Upper bounds strictly smaller than lower ones")
+        end
+    else
+        if !isnothing(bound_abs)
+            ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+            lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+        else
+            ub = nothing
+            lb = nothing
+        end
     end
 
     solutions = Array{SciMLBase.AbstractNoTimeSolution}(undef, n_starts)
-    Threads.@threads for i in 1:n_starts
-        if isnothing(ub)
-            problem = OptimizationProblem(objective, starts_component_vec[i], p)
-        else
+    #Start threads, divide n_starts onto maximal thread number
+    starts_per_thread = Int(ceil(n_starts/thread_num))
+    Threads.@threads for j in 1:min(n_starts, thread_num)
+        for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)
+            #Create OptimisationProblem with start and bounds (might be nothing)
             problem = OptimizationProblem(objective, starts_component_vec[i], p, lb=lb, ub=ub)
+            solutions[i] = solve(problem, solver_optim, maxiters = maxiters)
         end
-        solutions[i] = solve(problem, solver_optim, maxiters = maxiters)
     end
     for i in 1:n_starts
         if isnothing(best_raw_any)
