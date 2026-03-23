@@ -9,7 +9,7 @@ using FiniteDiff
 using Parameters
 using LinearAlgebra
 
-export optimise, optimise_multistart, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, 
+export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, 
 PKCBZ, PKVPA, BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, FullModel
 
 include("Person Generator.jl")
@@ -98,6 +98,57 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     end
 end
 
+function get_negloglikelihood_PK(θ::ComponentArray, p::NamedTuple) 
+    data = p.data
+    logscale = p.logscale
+    options = p.options
+    problems = p.problems
+    system = p.system
+    indices = p.indices_θ
+    θ_use = copy(θ)
+    #for keys in logscale take exponential in θ
+    partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
+    loglikeli = zero(eltype(θ_use))
+    try
+        for i in eachindex(data)
+            @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
+            if !(SciMLBase.successful_retcode(sol))
+                return Inf
+            end
+            @inbounds loglikeli += get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
+        end
+        return -loglikeli
+    catch e
+        fail_hard = hasproperty(p, :objective_fail_hard) ? p.objective_fail_hard : false
+        if fail_hard
+            rethrow(e)
+        end
+        if hasproperty(p, :objective_warned_ref) && hasproperty(p, :objective_warn)
+            if p.objective_warn && !p.objective_warned_ref[]
+                p.objective_warned_ref[] = true
+                @warn "Objective evaluation failed; returning Inf for this candidate." exception = e #exception=(e, catch_backtrace())
+            end
+        end
+        return Inf
+    end
+end
+
+function get_negloglikelihood_Seizure(θ::ComponentArray, p::NamedTuple) 
+    m = p.m
+    data = p.data
+    logscale = p.logscale
+    names = p.names
+    θ_use = copy(θ)
+    #for keys in logscale take exponential in θ
+    partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
+    loglikeli = zero(eltype(θ_use))
+    for i in eachindex(data)
+        sol = solutions[i]
+        @inbounds loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
+    end
+    return -loglikeli
+end
+
 #some optimisers cannot work with componentarrays directly
 function get_negloglikelihood_vectorised(θ::AbstractVector, p::NamedTuple)
     θ_struct = ComponentArray(copy(θ), p.axes_θ)
@@ -140,14 +191,13 @@ function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractV
     return X
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
+function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
                 objective_fail_hard::Bool = false, objective_warn::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
         #do something to handle them
     names = get_keys_PK(m.pk_model)
-    negloglikeli = get_negloglikelihood
     #create ODE problem for each person in data
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
@@ -193,13 +243,42 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         θ_0 .= clamp.(θ_0, lb, ub)
     end
 
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
-    objective = OptimizationFunction(negloglikeli, Optimization.AutoForwardDiff())
-    problem = OptimizationProblem(objective, θ_0, p, lb=lb, ub = ub)
-    estimate = solve(problem, solver_optim, maxiters = maxiters) 
+    #First fit PK model
+    p_PK = (data = data, logscale = logscale, options = ODE_options, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    objective_PK = OptimizationFunction(get_negloglikelihood_PK, Optimization.AutoForwardDiff())
+    if isnothing(lb)
+        problem_PK = OptimizationProblem(objective_PK, θ_0.PK, p_PK)
+    else 
+        problem_PK = OptimizationProblem(objective_PK, θ_0.PK, p_PK, lb = lb.PK, ub = ub.PK)
+    end
+    println(typeof(θ_0.PK))
+    estimate_PK = solve(problem_PK, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
-    partial_transform_to_logscale!(estimate.u, logscale = logscale, detransform = true)
-    print("Estimate: ", estimate)
+    partial_transform_to_logscale!(estimate_PK.u, logscale = logscale, detransform = true)
+
+    #Check solve successful
+    solutions = [solve_PK(problems[i], sys, estimate_PK.u, indices_θ = indices_θ, options = ODE_options) for i in eachindex(data)]
+    if !SciMLBase.successful_retcode(estimate_PK.retcode) || any(!(SciMLBase.successful_retcode.(solutions)))
+        error("Unsuccessful solve in PK estimation")
+    end
+
+    #Fit Seizure model
+    p_Seizure = (m = m, data = data, logscale = logscale, names = names)
+    objective_Seizure = OptimizationFunction(get_negloglikelihood_Seizure, Optimization.AutoForwardDiff())
+    if isnothing(lb)
+        problem_Seizure = OptimizationProblem(objective_Seizure, θ_0.Seizure, p_Seizure)
+    else 
+        problem_Seizure = OptimizationProblem(objective_Seizure, θ_0.Seizure, p_Seizure, lb = lb.Seizure, ub = ub.Seizure)
+    end
+    estimate_Seizure = solve(problem_Seizure, solver_optim, maxiters = maxiters) 
+    #transform parameters back into non logscale
+    partial_transform_to_logscale!(estimate_Seizure.u, logscale = logscale, detransform = true)
+
+    estimate = (u = (PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure)
+
+    println("Estimate: ", estimate.u)
+    println(estimate.retcode)
+    println(estimate.objective)
     if inv_hess_CI
         CI = inverse_hessian(estimate.u, p, logscale = logscale)
         return estimate, CI
@@ -208,8 +287,8 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     end
 end
 
-function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
-    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}} = nothing, 
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
@@ -264,7 +343,7 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
         θ_0 .= clamp.(θ_0, lb, ub)
     end
 
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, bound_abs = bound_abs, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
     n_starts = max(multistart, 1)
     thread_num = max(max_threads, 1)
@@ -272,12 +351,17 @@ function optimise_multistart(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, 
     lower = zeros(Float64, d)
     upper = zeros(Float64, d)
     if !isnothing(multistart_bounds)
-        lower_raw, upper_raw = multistart_bounds
-        if length(lower_raw) != d || length(upper_raw) != d
-            error("multistart_bounds must match parameter dimension $d")
+        if typeof(multistart_bounds) <: AbstractFloat
+            lower .= Float64(-multistart_bounds)
+            upper .= Float64(multistart_bounds)
+        else
+            lower_raw, upper_raw = multistart_bounds
+            if length(lower_raw) != d || length(upper_raw) != d
+                error("multistart_bounds must match parameter dimension $d")
+            end
+            lower .= Float64.(lower_raw)
+            upper .= Float64.(upper_raw)
         end
-        lower .= Float64.(lower_raw)
-        upper .= Float64.(upper_raw)
     elseif !isnothing(bound_abs)
         #don't use lb and ub here because those will often be infinite in some entries
         lower .= -Float64(bound_abs)
