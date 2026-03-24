@@ -9,8 +9,9 @@ using FiniteDiff
 using Parameters
 using LinearAlgebra
 
-export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, 
-PKCBZ, PKVPA, BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, FullModel
+export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical,
+BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, 
+BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, FullModel
 
 include("Person Generator.jl")
 include("PK Model.jl")
@@ -47,6 +48,24 @@ function partial_transform_to_logscale!(θ::ComponentArray; logscale::Tuple{Vara
                     @inbounds θ.Seizure[index] = exp(θ.Seizure[index])
                 else
                     @inbounds θ.Seizure[index] = log(max(θ.Seizure[index], eps(eltype(θ))))
+                end
+            end
+        end
+    end
+end
+
+#For (de)transfering certain components in parameter vector into logscale for only one model part (Seizure or PK)
+function partial_transform_to_logscale_partwise!(θ::ComponentArray; logscale::Tuple{Vararg{String}} = (), detransform::Bool = false)
+    #search for matching labels, label2index returns vector of matching
+    for label in logscale
+        #To handle both transforming whole vector valued parameter or individual indices
+        if label in labels(θ) || Symbol(label) in keys(θ)
+            indices = label2index(θ,label)
+            for index in indices
+                if detransform
+                    @inbounds θ[index] = exp(θ[index])
+                else
+                    @inbounds θ[index] = log(max(θ[index], eps(eltype(θ))))
                 end
             end
         end
@@ -107,15 +126,15 @@ function get_negloglikelihood_PK(θ::ComponentArray, p::NamedTuple)
     indices = p.indices_θ
     θ_use = copy(θ)
     #for keys in logscale take exponential in θ
-    partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
+    partial_transform_to_logscale_partwise!(θ_use, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ_use))
     try
         for i in eachindex(data)
-            @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
+            @inbounds sol = solve_PK(problems[i], system, θ_use, indices_θ = indices, options = options)
             if !(SciMLBase.successful_retcode(sol))
                 return Inf
             end
-            @inbounds loglikeli += get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
+            @inbounds loglikeli += get_PK_loglikelihood(θ_use, data[i], sol=sol)
         end
         return -loglikeli
     catch e
@@ -138,13 +157,14 @@ function get_negloglikelihood_Seizure(θ::ComponentArray, p::NamedTuple)
     data = p.data
     logscale = p.logscale
     names = p.names
+    solutions = p.solutions
     θ_use = copy(θ)
     #for keys in logscale take exponential in θ
-    partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
+    partial_transform_to_logscale_partwise!(θ_use, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ_use))
     for i in eachindex(data)
         sol = solutions[i]
-        @inbounds loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
+        @inbounds loglikeli += get_seizure_loglikelihood(θ_use, m.seizure_model, sol, data[i], names=names)
     end
     return -loglikeli
 end
@@ -164,6 +184,24 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     partial_transform_to_logscale!(θ_use, logscale = logscale)
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
     negloglikeli = get_negloglikelihood(θ_use, p)
+    return negloglikeli
+end
+
+function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    names = get_keys_PK(m.pk_model)
+    sys = create_ode_system(m.pk_model)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
+    θ_use = deepcopy(θ)
+    partial_transform_to_logscale!(θ_use, logscale = logscale)
+    p_PK = (data = data, logscale = logscale, options = ODE_options, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = getaxes(θ_use))
+    solutions = [solve_PK(problems[i], sys, θ_use.PK, indices_θ = indices_θ, options = ODE_options) for i in eachindex(data)]
+    if any(.!(SciMLBase.successful_retcode.(solutions)))
+        error("Unsuccessful solve for given PK parameters")
+    end
+    p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions)
+    
+    negloglikeli = (PK = get_negloglikelihood_PK(θ_use.PK, p_PK), Seizure = get_negloglikelihood_Seizure(θ_use.Seizure, p_Seizure))
     return negloglikeli
 end
 
@@ -206,7 +244,10 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     #get indices for setting θ
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
     #for keys in logscale transform to logscale in θ_0
-    partial_transform_to_logscale!(θ_0, logscale = logscale)
+    θ_0_PK = m.pk_model.θ
+    θ_0_Seizure = m.seizure_model.θ
+    partial_transform_to_logscale_partwise!(θ_0_PK, logscale = logscale)
+    partial_transform_to_logscale_partwise!(θ_0_Seizure, logscale = logscale)
     d = length(θ_0)
 
     #set bounds if required, handle if both individual and absolute bounds
@@ -239,7 +280,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
         end
     end
     #ensure initial guess satisfies bounds
-    if !isnothing(bound_abs)
+    if !isnothing(lb)
         θ_0 .= clamp.(θ_0, lb, ub)
     end
 
@@ -247,34 +288,33 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     p_PK = (data = data, logscale = logscale, options = ODE_options, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = getaxes(θ_0), objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     objective_PK = OptimizationFunction(get_negloglikelihood_PK, Optimization.AutoForwardDiff())
     if isnothing(lb)
-        problem_PK = OptimizationProblem(objective_PK, θ_0.PK, p_PK)
+        problem_PK = OptimizationProblem(objective_PK, θ_0_PK, p_PK)
     else 
-        problem_PK = OptimizationProblem(objective_PK, θ_0.PK, p_PK, lb = lb.PK, ub = ub.PK)
+        problem_PK = OptimizationProblem(objective_PK, θ_0_PK, p_PK, lb = lb.PK, ub = ub.PK)
     end
-    println(typeof(θ_0.PK))
     estimate_PK = solve(problem_PK, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
-    partial_transform_to_logscale!(estimate_PK.u, logscale = logscale, detransform = true)
+    partial_transform_to_logscale_partwise!(estimate_PK.u, logscale = logscale, detransform = true)
 
     #Check solve successful
     solutions = [solve_PK(problems[i], sys, estimate_PK.u, indices_θ = indices_θ, options = ODE_options) for i in eachindex(data)]
-    if !SciMLBase.successful_retcode(estimate_PK.retcode) || any(!(SciMLBase.successful_retcode.(solutions)))
+    if !SciMLBase.successful_retcode(estimate_PK.retcode) || any(.!(SciMLBase.successful_retcode.(solutions)))
         error("Unsuccessful solve in PK estimation")
     end
 
     #Fit Seizure model
-    p_Seizure = (m = m, data = data, logscale = logscale, names = names)
+    p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions)
     objective_Seizure = OptimizationFunction(get_negloglikelihood_Seizure, Optimization.AutoForwardDiff())
     if isnothing(lb)
-        problem_Seizure = OptimizationProblem(objective_Seizure, θ_0.Seizure, p_Seizure)
+        problem_Seizure = OptimizationProblem(objective_Seizure, θ_0_Seizure, p_Seizure)
     else 
-        problem_Seizure = OptimizationProblem(objective_Seizure, θ_0.Seizure, p_Seizure, lb = lb.Seizure, ub = ub.Seizure)
+        problem_Seizure = OptimizationProblem(objective_Seizure, θ_0_Seizure, p_Seizure, lb = lb.Seizure, ub = ub.Seizure)
     end
     estimate_Seizure = solve(problem_Seizure, solver_optim, maxiters = maxiters) 
     #transform parameters back into non logscale
-    partial_transform_to_logscale!(estimate_Seizure.u, logscale = logscale, detransform = true)
+    partial_transform_to_logscale_partwise!(estimate_Seizure.u, logscale = logscale, detransform = true)
 
-    estimate = (u = (PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure)
+    estimate = (u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure)
 
     println("Estimate: ", estimate.u)
     println(estimate.retcode)
@@ -339,7 +379,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         end
     end
     #Ensure initial guess satifies bounds
-    if !isnothing(bound_abs)
+    if !isnothing(lb)
         θ_0 .= clamp.(θ_0, lb, ub)
     end
 

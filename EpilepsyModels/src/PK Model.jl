@@ -108,6 +108,44 @@ function create_ode_system(mod::PKLEV)
     return internal_model
 end
 
+#A model for the PK behavior of Levetiracetam, when absorption is not modelled
+@with_kw struct PKLEVNoAbsorption{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+    θ::T=ComponentArray((c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
+    cov::T2 = (:weight, :height, :kidney_disease) 
+    set_daily_doses::T3 = ()
+    keys::T4 = (d = SA[:s_LEV_unnormalised], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
+end
+
+function create_ode_system(mod::PKLEVNoAbsorption) 
+    #V = v1*(Body surface area normalised)^v2
+    #CL = c1*(Weight normalised)^c2*(1-c3*(kidney disease yes/no))
+    #Absorption immediate, just need depot compartment since unnormalised, elimination CL/V
+    #Define body surface area as function of height and weight
+    θ = mod.θ
+    BSA_normalised(weight, height) = sqrt(weight*height/3600)/1.68
+    interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
+    type_use = typeof(interpolator).name.wrapper
+    #Define model, @mtkmodel doesnt agree with callable parameters
+    @parameters c1=θ.c1 c2=θ.c2 c3=θ.c3 v1=θ.v1 v2=θ.v2 σ=θ.σ #normal system parameters
+    #callable parameters for covariates
+    @parameters (weight::type_use)(..) [tunable=false] 
+    @parameters (height::type_use)(..) [tunable=false] 
+    @parameters (kidney_disease::type_use)(..) [tunable=false]
+    @variables s_LEV_unnormalised(t) # depot compartment, here unnormalised
+    @variables s_LEV(t) = 0.0  # internal/central compartment
+    @variables S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
+    @variables obs_LEV(t)
+    #d_LEV is not concentration but dose, so rate there not normalised by volume
+    eqs = [s_LEV_unnormalised ~ s_LEV*(v1*BSA_normalised(weight(t), height(t))^v2), 
+            D(s_LEV) ~ - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
+            D(S_LEV) ~ s_LEV, 
+            obs_LEV ~ Normal(s_LEV, σ)]
+    
+    @mtkcompile internal_model = System(eqs, t)
+
+    return internal_model
+end
+
 #A model for the PK behavior of Carbamazepine
 @with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, v1 = 1.0, σ = 0.1)) 
