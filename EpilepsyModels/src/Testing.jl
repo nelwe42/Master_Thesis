@@ -30,8 +30,8 @@ Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.
 Input_θ_SeizureBasic = ComponentArray((a = 1.5, b = SA[0.05]))
 
 Maxiters_optimiser = 200
-Population_size = 2 #10 #20
-wo_treatment = 3.0 #10.0
+Population_size = 10 #20
+wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #logscale = ("σ",)
@@ -50,18 +50,18 @@ bound_abs = nothing #100.0
 optim_lower_bounds = nothing
 optim_upper_bounds = nothing 
 Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
-Multistart_bounds = 10.0 #nothing
+Multistart_bounds = 20.0 #nothing
 
 run_hessian = true
 finite_diff_hessian = true
 drug_appropriate_dosing = false
-hierarchical_optimisation = true
+hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
-pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()

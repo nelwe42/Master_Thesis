@@ -65,7 +65,7 @@ function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Com
         cov = NamedTuple{m.cov}(person.covariates) #create cov via person covariates and keys
         log_day_prob = log(Seizure_prob_day(m, sol, time, count, covariates = cov, names = names, θ=θ))
         if !isfinite(log_day_prob)
-            return Inf
+            return -Inf
         else
             prob += log_day_prob
         end

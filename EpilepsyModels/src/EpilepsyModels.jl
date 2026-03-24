@@ -193,12 +193,13 @@ function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::Full
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     θ_use = deepcopy(θ)
-    partial_transform_to_logscale!(θ_use, logscale = logscale)
-    p_PK = (data = data, logscale = logscale, options = ODE_options, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = getaxes(θ_use))
+    #Solve before PK gets transferred into logscale
     solutions = [solve_PK(problems[i], sys, θ_use.PK, indices_θ = indices_θ, options = ODE_options) for i in eachindex(data)]
     if any(.!(SciMLBase.successful_retcode.(solutions)))
         error("Unsuccessful solve for given PK parameters")
     end
+    partial_transform_to_logscale!(θ_use, logscale = logscale)
+    p_PK = (data = data, logscale = logscale, options = ODE_options, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = getaxes(θ_use))
     p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions)
     
     negloglikeli = (PK = get_negloglikelihood_PK(θ_use.PK, p_PK), Seizure = get_negloglikelihood_Seizure(θ_use.Seizure, p_Seizure))
