@@ -54,9 +54,9 @@ Multistart_bounds = 10.0 #nothing
 
 run_hessian = true
 finite_diff_hessian = true
-drug_appropriate_dosing = true
+drug_appropriate_dosing = false
 hierarchical_optimisation = true
-plotting = false
+plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)

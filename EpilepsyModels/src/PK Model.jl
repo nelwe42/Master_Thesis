@@ -131,13 +131,13 @@ function create_ode_system(mod::PKLEVNoAbsorption)
     @parameters (weight::type_use)(..) [tunable=false] 
     @parameters (height::type_use)(..) [tunable=false] 
     @parameters (kidney_disease::type_use)(..) [tunable=false]
-    @variables s_LEV_unnormalised(t) # depot compartment, here unnormalised
-    @variables s_LEV(t) = 0.0  # internal/central compartment
+    @variables s_LEV_unnormalised(t) = 0.0 # depot compartment, here unnormalised
+    @variables s_LEV(t)  # internal/central compartment
     @variables S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_LEV(t)
-    #d_LEV is not concentration but dose, so rate there not normalised by volume
-    eqs = [s_LEV_unnormalised ~ s_LEV*(v1*BSA_normalised(weight(t), height(t))^v2), 
-            D(s_LEV) ~ - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
+    
+    eqs = [s_LEV ~ s_LEV_unnormalised/(v1*BSA_normalised(weight(t), height(t))^v2), 
+            D(s_LEV_unnormalised) ~ - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV_unnormalised,
             D(S_LEV) ~ s_LEV, 
             obs_LEV ~ Normal(s_LEV, σ)]
     
