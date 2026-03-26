@@ -294,3 +294,34 @@ H forwarddiff=
 -0.001982784932426811 0.35958642543490577 2.7334530478264805 -0.02009438179587699 1.6806803573184836 -0.0 54.28006910798429 350.8319974770276; 
 -0.003303800680572496 2.846537124372829 32.900098597151285 0.022972001645551292 5.562067556845898 -0.0 350.83199747702764 2597.362535797901]
 -> matrix apparently singular
+
+PKCBZ:
+Maxiters_optimiser = 200
+Population_size = 10 #20
+wo_treatment = 0.0 #10.0
+Obs_Duration = wo_treatment + 20.0 #40.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+#logscale = ("σ", "k_abs", "c1", "v1", "a")
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+#solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+#ODE_options = (Rosenbrock23(),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+max_threads_simul = 5
+Multistart_nstarts = 5
+Multistart_seed = 42
+Multistart_include_initial = true
+bound_abs = nothing #100.0
+optim_lower_bounds = nothing
+optim_upper_bounds = nothing 
+Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Multistart_bounds = 20.0 #nothing
+
+Estimate: (PK = (k_abs = 10.220479196113805, c1 = 46.38821249347746, c2 = 1.7766838424542915, c3 = 33.0927364232743, v1 = 2.211970099440179, σ = 0.17441736332611227), Seizure = (a = 3.962552878159808, b = [0.041165008805527835]))
+True Objective Value: 393.33887755901037
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))   
+Relative errors: (PK = (k_abs = 0.053659333693166236, c1 = 0.013856026924373687, c2 = 0.02698488003138235, c3 = 0.013870601203256817, v1 = 0.011571691817155179, σ = 0.12791318336943872), Seizure = (a = 0.009361780460047986, b = [0.17669982388944336]))
+-> Try logscale more yet

@@ -103,7 +103,8 @@ end
 
 #draws dose for each person and drug from binomial distribution, 
 #minimal dose (given by smallest pill) and average and maximal number number of those taken given in dose_distr
-#allows to construct as binomial: minimal*Binomial(maximal, average/maximal), then mean is average
+#allows to construct as binomial: minimal*(1+Binomial(maximal-1, (average-1)/(maximal-1))), then mean is average
+#have to lower maximal and average by one to ensure doses are nonzero
 @with_kw struct PolyDosesRandom{T<:NamedTuple, T1<:Categorical, T2<:Categorical, T3<:Tuple, T4<:Tuple, T5<:AbstractFloat, T6<:Int} <: DoseGenerator 
     dose_distr::T   #dose_distr = (drug_name = (min = minimal dose, avg_num = average number of minimal, max_num = max number of minimal))
     distr_first::T1
@@ -169,7 +170,7 @@ function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d
     end
     #randomly assign doses
     info_doses = values(NamedTuple{drugs}(m.dose_distr))
-    doses = Tuple(d.min*rand(Binomial(d.max_num, d.avg_num/d.max_num)) for d in info_doses)
+    doses = Tuple(d.min*(1+rand(Binomial(d.max_num-1, (d.avg_num-1)/(d.max_num-1)))) for d in info_doses)
     times = (m.times_per_day_first, m.times_per_day_second)
     #check if picked drugs are supported or else is assign_not_supported is set to true
     if m.assign_not_supported
