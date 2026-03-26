@@ -7,6 +7,7 @@ include("EpilepsyModels.jl")
 using .EpilepsyModels
 using ComponentArrays
 using OptimizationOptimJL
+using OptimizationBBO
 using LineSearches
 using DifferentialEquations
 using Plots
@@ -27,16 +28,17 @@ Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.6,
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 #Seizure Models
-Input_θ_SeizureBasic = ComponentArray((a = 1.5, b = SA[0.05]))
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
 
 Maxiters_optimiser = 200
-Population_size = 10 #20
+Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #logscale = ("σ",)
 logscale = ("σ", "k_abs", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+#solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 #ODE_options = (Rosenbrock23(),)
 
@@ -59,9 +61,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()

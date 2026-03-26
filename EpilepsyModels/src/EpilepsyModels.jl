@@ -8,6 +8,7 @@ using ComponentArrays
 using FiniteDiff
 using Parameters
 using LinearAlgebra
+using OptimizationOptimJL
 
 export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical,
 BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, 
@@ -384,8 +385,23 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         θ_0 .= clamp.(θ_0, lb, ub)
     end
 
+    #Check if can use ComponentArrays or solver requires normal Array
+    if parentmodule(typeof(solver_optim)) in [Optim] #add packages here where ComponentArray works
+        vectorised = false
+    else
+        vectorised = true
+    end
+
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
-    objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
+    if vectorised
+        objective = OptimizationFunction(get_negloglikelihood_vectorised, Optimization.AutoForwardDiff())
+        #Change everything to vectors
+        ub = collect(ub)
+        lb = collect(lb)
+        θ_0 = θ_0_vec
+    else
+        objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
+    end
     n_starts = max(multistart, 1)
     thread_num = max(max_threads, 1)
 
@@ -434,7 +450,11 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
         starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
     end
-    starts_component_vec = [ComponentArray(vec(starts[i, :]), p.axes_θ) for i in 1:n_starts]
+    if vectorised
+        starts_list = [vec(starts[i, :]) for i in 1:n_starts]
+    else
+        starts_list = [ComponentArray(vec(starts[i, :]), p.axes_θ) for i in 1:n_starts]
+    end
 
     best_raw_any = nothing
     best_start_any = 1
@@ -451,7 +471,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     Threads.@threads for j in 1:min(n_starts, thread_num)
         for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)
             #Create OptimisationProblem with start and bounds (might be nothing)
-            problem = OptimizationProblem(objective, starts_component_vec[i], p, lb=lb, ub=ub)
+            problem = OptimizationProblem(objective, starts_list[i], p, lb=lb, ub=ub)
             solutions[i] = solve(problem, solver_optim, maxiters = maxiters)
         end
     end
@@ -485,12 +505,17 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         estimate_raw = best_raw_any
         best_start_idx = best_start_any
     end
-    estimate_u = estimate_raw.u
+    if vectorised
+        estimate_u = ComponentArray(estimate_raw.u, p.axes_θ)
+    else 
+        estimate_u = estimate_raw.u
+    end
+    println(starts_list)
+    println(solutions)
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate_u, logscale = logscale, detransform = true)
     estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
-    print("Estimate: ", estimate_raw)
-    println("Multistart best start: ", best_start_idx, " Number of Starts: ", n_starts)
+    println("Estimate: ", estimate_u)
     if inv_hess_CI
         CI = inverse_hessian(estimate.u, p, logscale = logscale)
         return estimate, CI
