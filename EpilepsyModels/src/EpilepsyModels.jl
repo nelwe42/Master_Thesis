@@ -510,12 +510,15 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     else 
         estimate_u = estimate_raw.u
     end
-    println(starts_list)
-    println(solutions)
+    #println(starts_list)
+    #println(solutions)
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate_u, logscale = logscale, detransform = true)
     estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
     println("Estimate: ", estimate_u)
+    println("Retcode: ", estimate.retcode)
+    println("Objective: ", estimate.objective)
+    println("Multistart best start: ", best_start_idx, " Number of Starts: ", n_starts)
     if inv_hess_CI
         CI = inverse_hessian(estimate.u, p, logscale = logscale)
         return estimate, CI

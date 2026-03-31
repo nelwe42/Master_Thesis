@@ -325,3 +325,58 @@ True Objective Value: 393.33887755901037
 True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))   
 Relative errors: (PK = (k_abs = 0.053659333693166236, c1 = 0.013856026924373687, c2 = 0.02698488003138235, c3 = 0.013870601203256817, v1 = 0.011571691817155179, σ = 0.12791318336943872), Seizure = (a = 0.009361780460047986, b = [0.17669982388944336]))
 -> Try logscale more yet
+-> WITH MORE LOGSCALE SIGNIFICANTLY WORSE FIT, FIND OUT WHY
+
+Testing out CBZ more and less logscale:
+
+All relevant settings:
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+#Seizure Models
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
+
+Maxiters_optimiser = 200
+Population_size = 5 
+wo_treatment = 0.0 
+Obs_Duration = wo_treatment + 20.0 
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",) / = ("σ", "k_abs", "c1", "v1", "a") #depending on more or less logscale
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+max_threads_simul = 5
+Multistart_nstarts = 5
+Multistart_seed = 42
+Multistart_include_initial = true
+bound_abs = nothing 
+optim_lower_bounds = nothing
+optim_upper_bounds = nothing 
+Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Multistart_bounds = 20.0 
+
+run_hessian = true
+finite_diff_hessian = true
+drug_appropriate_dosing = false
+hierarchical_optimisation = false
+plotting = true
+
+
+Results with less logscale:
+Estimate: (PK = (k_abs = 9.869340807955313, c1 = 47.183584185992565, c2 = 1.7255730265638636, c3 = 31.801002880259627, v1 = 2.1756990839484662, σ = 0.14884982115888418), Seizure = (a = 3.9869742262694534, b = [0.0536057930263399]))
+Retcode: Success
+Objective: 193.3937563456255
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 196.53995993511896
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))   
+Relative errors: (PK = (k_abs = 0.08617214741154519, c1 = 0.0030523849063045483, c2 = 0.0025589441827378067, c3 = 0.025704568619496725, v1 = 0.0050156628284452635, σ = 0.25575089420557917), Seizure = (a = 0.0032564434326366465, b = [0.07211586052679797]))
+
+
+Results with more logscale:
+Estimate: (PK = (k_abs = 4.277016912810309e-16, c1 = 3.98004411518945e23, c2 = 22.226068044785816, c3 = 28.539433763415786, v1 = 1.0786324537388646e212, σ = 0.9999999999465778), Seizure = (a = 3.5999999999987935, b = [0.9602235821683235]))
+Retcode: Success
+Objective: 1046.6361064404593
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 196.53995993511896
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))   
+Relative errors: (PK = (k_abs = 1.0, c1 = 8.460978136031994e21, c2 = 11.847438176176771, c3 = 0.1256300930326046, v1 = 4.932770367708223e211, σ = 3.9999999997328892), Seizure = (a = 0.10000000000030163, b = [18.204471643366468]))
