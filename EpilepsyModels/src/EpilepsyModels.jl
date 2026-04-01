@@ -510,6 +510,14 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     else 
         estimate_u = estimate_raw.u
     end
+
+    for i in 1:n_starts
+        if !(SciMLBase.successful_retcode(solutions[i].retcode)) && (solutions[i].objective < estimate_raw.objective)
+            @warn "There is a failed optimisation with a better final objective value."
+            println("Note all parameters are given in the transformed space. Original output of solver:")
+            println(solutions[i].original)
+        end
+    end
     #println(starts_list)
     #println(solutions)
     #transform parameters back into non logscale

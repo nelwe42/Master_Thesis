@@ -31,7 +31,7 @@ Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.
 Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
 
 Maxiters_optimiser = 200
-Population_size = 5 #10 #20
+Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -45,7 +45,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
 max_threads_simul = 5
-Multistart_nstarts = 5
+Multistart_nstarts = 1
 Multistart_seed = 42
 Multistart_include_initial = true
 bound_abs = nothing #100.0
