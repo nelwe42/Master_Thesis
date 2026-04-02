@@ -35,8 +35,9 @@ Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ",)
-#logscale = ("σ", "k_abs", "c1", "v1", "a")
+#logscale = ("σ",)
+#logscale = ("σ", "k_abs", "c1", "v1", "a") -> Unstable in estimation, end up at local minima
+logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
 ODE_options = (AutoTsit5(Rosenbrock23()),)
@@ -45,7 +46,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
 max_threads_simul = 5
-Multistart_nstarts = 1
+Multistart_nstarts = 5
 Multistart_seed = 42
 Multistart_include_initial = true
 bound_abs = nothing #100.0
@@ -61,9 +62,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()

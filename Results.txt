@@ -241,3 +241,33 @@ Multistart best start: 1 Number of Starts: 5
 True Objective Value: 196.53995993511896
 True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))   
 Relative errors: (PK = (k_abs = 1.0, c1 = 8.460978136031994e21, c2 = 11.847438176176771, c3 = 0.1256300930326046, v1 = 4.932770367708223e211, σ = 3.9999999997328892), Seizure = (a = 0.10000000000030163, b = [18.204471643366468]))
+
+Tested PK LEV with 2 people, logscale = ("σ", "c1", "v1", "a"):
+Estimate: (PK = (k_abs = 71.34346566283236, c1 = 95.58061844255545, c2 = 0.17198005702460686, c3 = 1.1217333625602646, v1 = 30.260366395879466, v2 = 2.5275863039732833, σ = 0.16446755631945717), Seizure = (a = 3.8199934746341304, b = [0.01732081889257545]))
+Retcode: Success
+Objective: 75.46372575993269
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 76.17451496511482
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+-> leaving k_abs out of logscale makes everything better
+-> interestingly not the case for LEVNoAbsorption (doesn't have k_abs in the first place)
+
+Tried PKLEVNoAbsorption with logscale = ("σ",)
+Estimate: (PK = (c1 = 279.04884941784127, c2 = 20.48868419782382, c3 = -202.01159376622198, v1 = 44.78162348783123, v2 = -2.817965398133147, σ = 1.0), Seizure = (a = 3.818987949701176, b = [0.18248332135918016]))
+Retcode: Success
+Objective: 204.3344334662193
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 78.05225948382719
+True θ: (PK = (c1 = 96.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+Relative errors: (PK = (c1 = 1.9067588481025133, c2 = 80.95473679129528, c3 = 337.68598961037, v1 = 0.5077987706340483, v2 = 1.988759788818648, σ = 4.0), Seizure = (a = 0.04525301257470604, b = [2.6496664271836035]))
+-> better but not great, for data[1] looks reasonably good (500mg), second person has only 300mg and CL much too high
+-> appropriate dosing still turned off, but nevertheless those doses are possible
+
+Tested PKVPA with logscale = ("σ", "c1", "v1", "a")
+Estimate: (PK = (k_abs = 10.271769638830568, c1 = 1148.6910454195377, c2 = 5.611621984931235, c3 = 5.611621984931235, c3 = 9.177965567075164, c4 = -17.543916026042012, v1 = 0.0002730814407221463, σ = 1.0), Seizure = (a = 2.900000167329093, b = [-8.829832023056024]))
+Retcode: Success
+Objective: 2646.928641004
+Multistart best start: 3 Number of Starts: 5
+True Objective Value: 70.45060139237128
+True θ: (PK = (k_abs = 44.64, c1 = 0.374399999999999996, c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2), Seizure = (a = 4.0, b = [0.05]))
+-> Still not good, try less logscale

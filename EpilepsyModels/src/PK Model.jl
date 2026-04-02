@@ -174,7 +174,7 @@ function create_ode_system(mod::PKCBZ)
     @variables s_CBZ(t) = 0.0  # internal/central compartment
     @variables S_CBZ(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_CBZ(t)
-    @parameters ind_CBZ = prev_CBZ(0.0) [tunable = false] #indicator if induction occurs
+    @parameters ind_CBZ = 14*prev_CBZ(0.0) [tunable = false] #indicator if induction occurs, needs to be >= 14 for that to be true
     #d_CBZ is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_CBZ) ~ -k_abs * d_CBZ,
             D(s_CBZ) ~ k_abs/(v1*weight(t)) * d_CBZ - (c1*(c2^(ind_CBZ>=14))+c3*log(max(d_CBZ_daily/400, 1/4)))/(v1*weight(t)) * s_CBZ,
