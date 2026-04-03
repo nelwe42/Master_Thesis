@@ -271,3 +271,45 @@ Multistart best start: 3 Number of Starts: 5
 True Objective Value: 70.45060139237128
 True θ: (PK = (k_abs = 44.64, c1 = 0.374399999999999996, c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2), Seizure = (a = 4.0, b = [0.05]))
 -> Still not good, try less logscale
+
+Tested PKLEV with BBO_adaptive_de_rand_1_bin_radiuslimited:
+
+Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
+Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.2))
+Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.2))
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
+#Seizure Models
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
+
+Maxiters_optimiser = 200
+Population_size = 2 #5 #10 #20
+wo_treatment = 0.0 #10.0
+Obs_Duration = wo_treatment + 20.0 #40.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
+solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+max_threads_simul = 5
+Multistart_nstarts = 5
+Multistart_seed = 42
+Multistart_include_initial = true
+bound_abs = 100.0
+optim_lower_bounds = nothing
+optim_upper_bounds = nothing 
+Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Multistart_bounds = 20.0 
+
+drug_appropriate_dosing = false
+hierarchical_optimisation = false
+
+Estimate: (PK = (k_abs = 12897.65931156766, c1 = 512.5559306618757, c2 = 4.804653471270935, c3 = 8.370997053414865, v1 = 1.0722896309156636e-8, v2 = -9.012709003263941, σ = 0.1513353829183018), Seizure = (a = 0.021287175963764917, b = [-9.636800536716324]))
+Retcode: MaxIters
+Objective: 5519.38365531737
+Multistart best start: 3 Number of Starts: 5
+True Objective Value: 76.17451496513308
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+-> Doesn't work well either, spikes in estimated far too high due to low V

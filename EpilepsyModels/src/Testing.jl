@@ -11,8 +11,10 @@ using OptimizationBBO
 using LineSearches
 using DifferentialEquations
 using Plots
+using StatsPlots
 using StaticArrays
 using Random
+using Distributions
 using BenchmarkTools
 
 println("Included")
@@ -36,8 +38,8 @@ wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #logscale = ("σ",)
-#logscale = ("σ", "k_abs", "c1", "v1", "a") -> Unstable in estimation, end up at local minima
-logscale = ("σ", "c1", "v1", "a")
+logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
+#logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
 ODE_options = (AutoTsit5(Rosenbrock23()),)
@@ -52,7 +54,7 @@ Multistart_include_initial = true
 bound_abs = nothing #100.0
 optim_lower_bounds = nothing
 optim_upper_bounds = nothing 
-Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Variance_bound = nothing #log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = 20.0 #nothing
 
 run_hessian = true
@@ -62,9 +64,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 person_gen = BigFourPersonGenerator()
@@ -146,6 +148,8 @@ if plotting
     names = EpilepsyModels.get_keys_PK(mod.pk_model)
     i = 1 #index of person for which plotting is done
     sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options)
+    Estimate_θ = estimate.u
+    sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
     for s in names.s
         pl = plot(sol, idxs = s, label="Concentration $(s)", 
             xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)")
@@ -153,8 +157,6 @@ if plotting
         y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
         plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
         #add estimate plot
-        Estimate_θ = estimate.u
-        sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
         pl = plot!(sol2, idxs = s, label="Estimated concentration $(s)", linecolor = :red)
 
         display(pl)
@@ -174,7 +176,6 @@ if plotting
             plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
         end
         #add estimate plots
-        Estimate_θ = estimate.u
         sols2 = [EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options) for i in 1:Population_size]
         plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
         for i in 2:Population_size
@@ -183,6 +184,26 @@ if plotting
         plot!(legend=:outerbottom, legendcolumns=2)
         display(pl)
     end
+
+    #Plot Seizure Probabilities for person i
+    time = 10
+    pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for first $(time) days")
+    intensities_true = [EpilepsyModels.intensity(seizure_model, sol, Float64(n), covariates=NamedTuple{seizure_model.cov}(data[i].covariates), names=pk_model.keys) for n in 0:time]
+    seizure_model_estimate = typeof(seizure_model).name.wrapper(θ = estimate.u.Seizure)
+    intensities_estimate = [EpilepsyModels.intensity(seizure_model_estimate, sol2, Float64(n), covariates=NamedTuple{seizure_model.cov}(data[i].covariates), names=pk_model.keys) for n in 0:time]
+    #Plot distributions, first day separate so label only once
+    violin!(["0"], rand(Poisson(intensities_true[1]),1000), side = :left, label = "true", colour = :dodgerblue)
+    violin!(["0"], rand(Poisson(intensities_estimate[1]),1000), side = :right, label = "estimate", colour = :firebrick2)
+    for day in 1:time
+        violin!(["$(day)"], rand(Poisson(intensities_true[day+1]),1000), side = :left, label = "", colour = :dodgerblue)
+        violin!(["$(day)"], rand(Poisson(intensities_estimate[day+1]),1000), side = :right, label = "", colour = :firebrick2)
+    end
+    #Add where data is
+    boxplot!(["0"], [seizure.count for seizure in data[i].seizure_counts if (0 ≤ seizure.time < 1)], label = "Data values", colour = :grey, linewidth = 3)
+    for day in 1:time
+        boxplot!(["$(day)"], [seizure.count for seizure in data[i].seizure_counts if (day ≤ seizure.time < day+1)], label = "", colour = :grey, linewidth = 3)
+    end
+    display(pl2)
 end
 
 println("Done")
