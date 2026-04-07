@@ -313,3 +313,49 @@ Multistart best start: 3 Number of Starts: 5
 True Objective Value: 76.17451496513308
 True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
 -> Doesn't work well either, spikes in estimated far too high due to low V
+
+Tried out higher values of b:
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+#Seizure Models
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
+
+Maxiters_optimiser = 200
+Population_size = 5 
+wo_treatment = 0.0 
+Obs_Duration = wo_treatment + 20.0 
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+max_threads_simul = 5
+Multistart_nstarts = 5
+Multistart_seed = 42
+Multistart_include_initial = true
+bound_abs = nothing
+optim_lower_bounds = nothing
+optim_upper_bounds = nothing 
+Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Multistart_bounds = 20.0 
+
+drug_appropriate_dosing = false
+hierarchical_optimisation = false
+
+
+Estimate: (PK = (k_abs = 9.239296177572577, c1 = 45.611786070612645, c2 = 1.8150868541824858, c3 = 33.21275397207852, v1 = 2.22540277137502, σ = 0.19779579118441556), Seizure = (a = 3.6539797273663557, b = [0.14804206569129502]))
+Retcode: Success
+Objective: 182.35928581172922
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 186.1727633481045
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))
+-> figure seizure_higher_b
+
+LEV with higher b and only 2 people:
+Estimate: (PK = (k_abs = 3.1570810990512923, c1 = 111.79748112587824, c2 = 1.4571362979276183, c3 = 1.8861970040797327, v1 = 0.27748174222586125, v2 = 39.58681897149316, σ = 0.2357989703613676), Seizure = (a = 1.9627317844255572, b = [-0.12663047935006919]))
+Retcode: Success
+Objective: 70.95936888450201
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 73.88360286649178
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))

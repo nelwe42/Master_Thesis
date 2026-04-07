@@ -12,7 +12,7 @@ using OptimizationOptimJL
 
 export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical,
 BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, 
-BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, FullModel
+BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, FullModel
 
 include("Person Generator.jl")
 include("PK Model.jl")

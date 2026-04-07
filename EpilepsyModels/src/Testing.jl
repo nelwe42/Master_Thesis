@@ -30,15 +30,16 @@ Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.6,
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 #Seizure Models
-Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
+Input_θ_SeizureNegativeBinomial = ComponentArray((a = 1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 
 Maxiters_optimiser = 200
 Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-#logscale = ("σ",)
-logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
+logscale = ("σ",)
+#logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
@@ -54,11 +55,12 @@ Multistart_include_initial = true
 bound_abs = nothing #100.0
 optim_lower_bounds = nothing
 optim_upper_bounds = nothing 
-Variance_bound = nothing #log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = 20.0 #nothing
+fail_hard = true
 
 run_hessian = true
-finite_diff_hessian = true
+finite_diff_hessian = false
 drug_appropriate_dosing = false
 hierarchical_optimisation = false
 plotting = true
@@ -68,7 +70,8 @@ pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
-seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
+#seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
+seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
@@ -123,7 +126,7 @@ if hierarchical_optimisation
 else
     #Multistart optimisation
     estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
-        bound_abs = bound_abs, lower_upper = lower_upper_bounds, 
+        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard,
         multistart = Multistart_nstarts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
     println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
@@ -188,15 +191,15 @@ if plotting
     #Plot Seizure Probabilities for person i
     time = 10
     pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for first $(time) days")
-    intensities_true = [EpilepsyModels.intensity(seizure_model, sol, Float64(n), covariates=NamedTuple{seizure_model.cov}(data[i].covariates), names=pk_model.keys) for n in 0:time]
+    distribution_true = [EpilepsyModels.distribution(seizure_model, sol, Float64(n), person=data[i], names=pk_model.keys) for n in 0:time]
     seizure_model_estimate = typeof(seizure_model).name.wrapper(θ = estimate.u.Seizure)
-    intensities_estimate = [EpilepsyModels.intensity(seizure_model_estimate, sol2, Float64(n), covariates=NamedTuple{seizure_model.cov}(data[i].covariates), names=pk_model.keys) for n in 0:time]
+    distribution_estimate = [EpilepsyModels.distribution(seizure_model_estimate, sol2, Float64(n), person=data[i], names=pk_model.keys) for n in 0:time]
     #Plot distributions, first day separate so label only once
-    violin!(["0"], rand(Poisson(intensities_true[1]),1000), side = :left, label = "true", colour = :dodgerblue)
-    violin!(["0"], rand(Poisson(intensities_estimate[1]),1000), side = :right, label = "estimate", colour = :firebrick2)
+    violin!(["0"], rand(distribution_true[1],1000), side = :left, label = "true", colour = :dodgerblue)
+    violin!(["0"], rand(distribution_estimate[1],1000), side = :right, label = "estimate", colour = :firebrick2)
     for day in 1:time
-        violin!(["$(day)"], rand(Poisson(intensities_true[day+1]),1000), side = :left, label = "", colour = :dodgerblue)
-        violin!(["$(day)"], rand(Poisson(intensities_estimate[day+1]),1000), side = :right, label = "", colour = :firebrick2)
+        violin!(["$(day)"], rand(distribution_true[day+1],1000), side = :left, label = "", colour = :dodgerblue)
+        violin!(["$(day)"], rand(distribution_estimate[day+1],1000), side = :right, label = "", colour = :firebrick2)
     end
     #Add where data is
     boxplot!(["0"], [seizure.count for seizure in data[i].seizure_counts if (0 ≤ seizure.time < 1)], label = "Data values", colour = :grey, linewidth = 3)
