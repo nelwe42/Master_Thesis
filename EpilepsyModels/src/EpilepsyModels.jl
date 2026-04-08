@@ -604,6 +604,8 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     catch e
         if e isa LinearAlgebra.SingularException
             @warn "Calculated Hessian is singular"
+        elseif e isa ArgumentError
+            @warn "Issue with calculated hessian: $(e)"
         else
             rethrow(e)
         end

@@ -66,13 +66,13 @@ drug_appropriate_dosing = false
 hierarchical_optimisation = false
 plotting = true
 
-#pk_model = PKBasic(θ=Input_θ_PKBasic)
+pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
-#seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
-seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
+#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
@@ -119,7 +119,7 @@ end
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
 if hierarchical_optimisation
-    #Normal optimisation
+    #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
                         bound_abs = bound_abs, lower_upper = lower_upper_bounds, 
                         solver_optim = solver_optim, ODE_options = ODE_options)
