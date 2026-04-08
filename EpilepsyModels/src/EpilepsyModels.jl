@@ -563,7 +563,9 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     end
     #Fallback definition of bounds if sth doesn't work
     bounds = [(-Inf, Inf) for i in eachindex(θ_use)]
+    bounds_sandwich = [(-Inf, Inf) for i in eachindex(θ_use)]
     try
+        #Set bounds for simple inverse hessian CI
         H_inv = inv(H)
         #println(H_inv)
         positive_diagonal = true
@@ -578,6 +580,27 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
         else
             @warn "Negative diagonal entry in inverse hessian"
         end
+        #Set bounds for sandwich CI
+        Bread = H_inv
+        if !(finite_not_forward)
+            grad = ForwardDiff.gradient(f,θ_use)
+        else
+            grad = FiniteDiff.finite_difference_gradient(f, θ_use)
+        end
+        Meat = grad * (grad')
+        Sandwich = Bread*Meat*Bread
+        positive_diagonal = true
+        for i in eachindex(θ_use)
+            positive_diagonal = Sandwich[i,i]<0 && positive_diagonal
+        end
+        if positive_diagonal
+            q = quantile(Normal(), (1-(1-confidence)/2))
+            #By symmetry other one is just the negative
+            #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
+            bounds_sandwich = [(θ_use[i] - sqrt(Sandwich[i,i])*q, θ_use[i] + sqrt(Sandwich[i,i])*q) for i in eachindex(θ_use)]
+        else
+            @warn "Negative diagonal entry in sandwich estimator"
+        end
     catch e
         if e isa LinearAlgebra.SingularException
             @warn "Calculated Hessian is singular"
@@ -586,25 +609,27 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
         end
     end
     #now assign intervals to correct keys
-    CI = ComponentArray(bounds, getaxes(θ_use))
+    CIs = (InverseHessian = ComponentArray(bounds, getaxes(θ_use)), Sandwich = ComponentArray(bounds_sandwich, getaxes(θ_use)))
     #println("CI untransformed: ", CI)
     #transform logscale ones, can't use partial transform since entries are now tuples, have to broadcast
-    for label in logscale
-        if label in labels(CI.PK) || Symbol(label) in keys(CI.PK)
-            indices = label2index(CI.PK,label)
-            for index in indices
-                @inbounds CI.PK[index] = exp.(CI.PK[index])
+    for CI in CIs    
+        for label in logscale
+            if label in labels(CI.PK) || Symbol(label) in keys(CI.PK)
+                indices = label2index(CI.PK,label)
+                for index in indices
+                    @inbounds CI.PK[index] = exp.(CI.PK[index])
+                end
             end
-        end
 
-        if label in labels(CI.Seizure) || Symbol(label) in keys(CI.Seizure)
-            indices = label2index(CI.Seizure,label)
-            for index in indices
-                @inbounds CI.Seizure[index] = exp.(CI.Seizure[index])
+            if label in labels(CI.Seizure) || Symbol(label) in keys(CI.Seizure)
+                indices = label2index(CI.Seizure,label)
+                for index in indices
+                    @inbounds CI.Seizure[index] = exp.(CI.Seizure[index])
+                end
             end
         end
     end
-    return CI
+    return CIs
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements

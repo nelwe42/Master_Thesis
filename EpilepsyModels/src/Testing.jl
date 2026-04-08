@@ -31,10 +31,11 @@ Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 #Seizure Models
 Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
-Input_θ_SeizureNegativeBinomial = ComponentArray((a = 1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
+#Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
+Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
 Maxiters_optimiser = 200
-Population_size = 2 #5 #10 #20
+Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -57,7 +58,7 @@ optim_lower_bounds = nothing
 optim_upper_bounds = nothing 
 Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = 20.0 #nothing
-fail_hard = true
+fail_hard = false
 
 run_hessian = true
 finite_diff_hessian = false
@@ -66,9 +67,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)

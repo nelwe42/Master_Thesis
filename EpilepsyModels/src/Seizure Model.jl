@@ -51,7 +51,7 @@ function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Pers
 end
 
 @with_kw struct SeizureNegativeBinomial{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
-    θ::T=ComponentArray((a = 2.0, o = 0.01, prev = 0.0, b = SA[0.0])) #a base rate, prev impact of previous day, o overdispersion, b coefficient of drug 
+    θ::T=ComponentArray((a = log(2.0), o = 0.01, prev = 0.0, b = SA[0.0])) #a base rate, prev impact of previous day, o overdispersion, b coefficient of drug 
     cov::T2 = (:seizure_prev_day,) #depends on if seizure occured on previous day
 end
 
@@ -67,7 +67,7 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
         return nothing
     end
     o = θ.o
-    if o ≤ 0 || !isfinite(o)
+    if o ≤ zero(o) || !isfinite(o)
         return nothing
     end
     seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-1 ≤ seizure.time <n)]))
@@ -76,9 +76,12 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     if !isfinite(mean)
         return nothing
     end
-    mean = max(0,mean)
+    mean = exp(mean)
     #Transform from representation with mean to with success probability
     p = o/(mean+o)
+    if !(zero(p) < p ≤ one(p))
+        return nothing
+    end
     distribution = NegativeBinomial(o,p)
     #on day n natural number beginning with 0 are exposed to drug from time n to n+1
     #day 0 ist interval (0,1], day named after first number
