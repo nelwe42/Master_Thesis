@@ -412,3 +412,89 @@ function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; ti
     append!(person.measurements, measurements)
     return sol
 end
+
+#4)Functions for visualisation
+
+#functions for plotting fit, with or without true or estimated parameters given, solutions given
+function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, individuals::AbstractVector = [1], display_plot::Bool = true)
+    
+    output = Plots.Plot[]
+    sols = sols_true
+    sols2 = sols_estimated
+    #Plot PK behavior (for each drug)
+    names = get_keys_PK(mod)
+    #Iterate over indices for which to plot
+    for i in individuals
+        #Iterate over drugs 
+        for s in names.s
+            pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)")
+            #true plot if param specified
+            if !isnothing(sols)
+                plot!(sols[i], idxs = s, label="Concentration $(s)")
+            end
+            #add scattered measurements
+            x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
+            y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
+            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
+            #add estimate plot if specified
+            if !isnothing(sols2)
+                plot!(sols2[i], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
+            end
+            #add to output
+            append!(output, [pl])
+            if display_plot
+                display(pl)
+            end
+        end
+    end
+
+    #Plot all trajectories in one
+    Population_size = length(data)
+    for s in names.s
+        pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)")
+        if !isnothing(sols)
+            plot!(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue)
+            for i in 2:Population_size
+                plot!(sols[i], idxs = s, label = "", linecolor = :blue)
+            end
+        end
+        for i in 1:Population_size
+            x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
+            y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
+            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
+        end
+        #add estimate plots
+        if !isnothing(sols2)
+            plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
+            for i in 2:Population_size
+                plot!(sols2[i], idxs = s, label = "", linecolor = :red)
+            end
+        end
+        plot!(legend=:outerbottom, legendcolumns=2)
+        #add to output
+        append!(output, [pl])
+        if display_plot
+            display(pl)
+        end
+    end
+
+    return output
+end
+
+#function above for solutions not given
+function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, individuals::AbstractVector = [1], 
+    endpoint::AbstractFloat = data[1].measurements[end].timepoint, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+    
+    if !isnothing(true_param)
+        sols = [solve_PK(mod, true_param, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+    else
+        sols = nothing
+    end
+    if !isnothing(estimate_param)
+        sols2 = [solve_PK(mod, estimate_param, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+    else 
+        sols2 = nothing
+    end
+    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, display_plot = display_plot)
+    return output
+end

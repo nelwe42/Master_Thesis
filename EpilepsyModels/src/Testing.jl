@@ -147,67 +147,11 @@ if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     println("Confidence Intervals: ", CI)
 end
 
-if plotting
-    #Plot PK behavior (for each drug)
-    names = EpilepsyModels.get_keys_PK(mod.pk_model)
-    i = 1 #index of person for which plotting is done
-    sol = EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options)
-    Estimate_θ = estimate.u
-    sol2 = EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options)
-    for s in names.s
-        pl = plot(sol, idxs = s, label="Concentration $(s)", 
-            xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)")
-        x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
-        y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
-        plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
-        #add estimate plot
-        pl = plot!(sol2, idxs = s, label="Estimated concentration $(s)", linecolor = :red)
-
-        display(pl)
-    end
-
-    #Plot all trajectories in one
-    sols = [EpilepsyModels.solve_PK(mod.pk_model, mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options) for i in 1:Population_size]
-    for s in names.s
-        pl = plot(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue,
-            xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)")
-        for i in 2:Population_size
-            plot!(sols[i], idxs = s, label = "", linecolor = :blue)
-        end
-        for i in 1:Population_size
-            x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
-            y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
-            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
-        end
-        #add estimate plots
-        sols2 = [EpilepsyModels.solve_PK(mod.pk_model, Estimate_θ.PK, data[i], endpoint = Obs_Duration, options = ODE_options) for i in 1:Population_size]
-        plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
-        for i in 2:Population_size
-            plot!(sols2[i], idxs = s, label = "", linecolor = :red)
-        end
-        plot!(legend=:outerbottom, legendcolumns=2)
-        display(pl)
-    end
-
-    #Plot Seizure Probabilities for person i
-    time = 10
-    pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for first $(time) days")
-    distribution_true = [EpilepsyModels.distribution(seizure_model, sol, Float64(n), person=data[i], names=pk_model.keys) for n in 0:time]
-    seizure_model_estimate = typeof(seizure_model).name.wrapper(θ = estimate.u.Seizure)
-    distribution_estimate = [EpilepsyModels.distribution(seizure_model_estimate, sol2, Float64(n), person=data[i], names=pk_model.keys) for n in 0:time]
-    #Plot distributions, first day separate so label only once
-    violin!(["0"], rand(distribution_true[1],1000), side = :left, label = "true", colour = :dodgerblue)
-    violin!(["0"], rand(distribution_estimate[1],1000), side = :right, label = "estimate", colour = :firebrick2)
-    for day in 1:time
-        violin!(["$(day)"], rand(distribution_true[day+1],1000), side = :left, label = "", colour = :dodgerblue)
-        violin!(["$(day)"], rand(distribution_estimate[day+1],1000), side = :right, label = "", colour = :firebrick2)
-    end
-    #Add where data is
-    boxplot!(["0"], [seizure.count for seizure in data[i].seizure_counts if (0 ≤ seizure.time < 1)], label = "Data values", colour = :grey, linewidth = 3)
-    for day in 1:time
-        boxplot!(["$(day)"], [seizure.count for seizure in data[i].seizure_counts if (day ≤ seizure.time < day+1)], label = "", colour = :grey, linewidth = 3)
-    end
-    display(pl2)
+if plotting && SciMLBase.successful_retcode(estimate.retcode)
+    #Plot fit for specified individuals
+    individuals = [1]
+    time_seizures = 10
+    plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_seizures = time_seizures, options = ODE_options)
 end
 
 println("Done")

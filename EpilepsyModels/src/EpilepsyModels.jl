@@ -10,7 +10,7 @@ using Parameters
 using LinearAlgebra
 using OptimizationOptimJL
 
-export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical,
+export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
 BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, 
 BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, FullModel
 
@@ -674,6 +674,33 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
         end
     end
     return population
+end
+
+function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
+    individuals::AbstractVector = [1], endpoint::AbstractFloat = data[1].measurements[end].timepoint, time_seizures::Union{AbstractFloat,Int} = 10, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+
+    output = Plots.Plot[]
+    if !isnothing(true_param)
+        sols = [solve_PK(mod.pk_model, true_param.PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+    else
+        sols = nothing
+    end
+    if !isnothing(estimate_param)
+        sols2 = [solve_PK(mod.pk_model, estimate_param.PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+    else 
+        sols2 = nothing
+    end
+
+    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, display_plot = display_plot)
+    append!(output, pk_output)
+    if isnothing(estimate_param)
+        estimate_seizure = nothing
+    else 
+        estimate_seizure = estimate_param.Seizure
+    end
+    seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, names = mod.pk_model.keys, individuals = individuals, time = time_seizures, display_plot = display_plot)
+    append!(output, seizure_output)
+    return output
 end
 
 end # module EpilepsyModels

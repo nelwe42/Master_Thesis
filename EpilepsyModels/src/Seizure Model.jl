@@ -127,3 +127,61 @@ function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; start
     append!(person.seizure_counts, new_seizures)
     end
 end
+
+#4) Functions for visualisation
+
+#Plots fit for person i up to time given solutions from PK model (if they should be plotted)
+function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, names::NamedTuple, individuals::AbstractVector = [1], time::Union{AbstractFloat, Int} = 10, display_plot::Bool = true)
+    output = Plots.Plot[]
+    #Cut down time to full days
+    if time isa AbstractFloat
+        time = Int(floor(time))
+    end
+    sols = sols_true
+    sols2 = sols_estimated
+    if !isnothing(estimate_param) && isnothing(sols2)
+        error("Estimate solutions are missing")
+    end
+    if !isnothing(estimate_param)
+        seizure_model_estimate = typeof(mod).name.wrapper(θ = estimate_param)
+    end
+    for i in individuals
+        pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for first $(time) days")
+        if !isnothing(sols)
+            distribution_true = [distribution(mod, sols[i], Float64(n), person=data[i], names=names) for n in 0:time]
+        end
+        if !isnothing(estimate_param)
+            distribution_estimate = [distribution(seizure_model_estimate, sols2[i], Float64(n), person=data[i], names=names) for n in 0:time]
+        end
+        #Plot distributions, first day separate so label only once, only on separate sides if not both plotted
+        if !isnothing(estimate_param) && !isnothing(sols)
+            violin!(["0"], rand(distribution_true[1],1000), side = :left, label = "true", colour = :dodgerblue)
+            violin!(["0"], rand(distribution_estimate[1],1000), side = :right, label = "estimate", colour = :firebrick2)
+            for day in 1:time
+                violin!(["$(day)"], rand(distribution_true[day+1],1000), side = :left, label = "", colour = :dodgerblue)
+                violin!(["$(day)"], rand(distribution_estimate[day+1],1000), side = :right, label = "", colour = :firebrick2)
+            end
+        elseif !isnothing(estimate_param)
+            violin!(["0"], rand(distribution_estimate[1],1000), label = "estimate", colour = :firebrick2)
+            for day in 1:time
+                violin!(["$(day)"], rand(distribution_estimate[day+1],1000), label = "", colour = :firebrick2)
+            end
+        elseif !isnothing(sols)
+            violin!(["0"], rand(distribution_true[1],1000), label = "true", colour = :dodgerblue)
+            for day in 1:time
+                violin!(["$(day)"], rand(distribution_true[day+1],1000), label = "", colour = :dodgerblue)
+                end
+        end
+        #Add where data is
+        boxplot!(["0"], [seizure.count for seizure in data[i].seizure_counts if (0 ≤ seizure.time < 1)], label = "Data values", colour = :grey, linewidth = 3)
+        for day in 1:time
+            boxplot!(["$(day)"], [seizure.count for seizure in data[i].seizure_counts if (day ≤ seizure.time < day+1)], label = "", colour = :grey, linewidth = 3)
+        end
+        #add to output
+        append!(output, [pl2])
+        if display_plot
+            display(pl2)
+        end
+    end
+    return output
+end
