@@ -570,7 +570,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
         #println(H_inv)
         positive_diagonal = true
         for i in eachindex(θ_use)
-            positive_diagonal = H_inv[i,i]<0 && positive_diagonal
+            positive_diagonal = (0 ≤ H_inv[i,i]) && positive_diagonal
         end
         if positive_diagonal
             q = quantile(Normal(), (1-(1-confidence)/2))
@@ -588,10 +588,12 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
             grad = FiniteDiff.finite_difference_gradient(f, θ_use)
         end
         Meat = grad * (grad')
+        println("Bread= ", Bread)
+        println("Meat= ", Meat)
         Sandwich = Bread*Meat*Bread
         positive_diagonal = true
         for i in eachindex(θ_use)
-            positive_diagonal = Sandwich[i,i]<0 && positive_diagonal
+            positive_diagonal = (0 ≤ Sandwich[i,i]) && positive_diagonal
         end
         if positive_diagonal
             q = quantile(Normal(), (1-(1-confidence)/2))

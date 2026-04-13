@@ -66,10 +66,10 @@ drug_appropriate_dosing = false
 hierarchical_optimisation = false
 plotting = true
 
-pk_model = PKBasic(θ=Input_θ_PKBasic)
+#pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
@@ -144,7 +144,7 @@ println("Relative errors: ", errors)
 if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, finite_not_forward=finite_diff_hessian, ODE_options = ODE_options)
     #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
-    println("Confidence Intervals Inverse Hessian:", CI)
+    println("Confidence Intervals: ", CI)
 end
 
 if plotting

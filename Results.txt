@@ -398,3 +398,91 @@ Multistart best start: 1 Number of Starts: 5
 True Objective Value: 138.5370469930195
 True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
 -> failed bc maxiters reached
+
+Run on bc35bc7 First version of inverse hessian works, to be optimised with:
+Input_θ = ComponentArray((PK = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2)), 
+           Seizure = ComponentArray((a = 4, b = [-0.05]))))
+Maxiters_optimiser = 1000
+Population_size = 2
+wo_treatment = 0.0 
+Obs_Duration = wo_treatment + 20.0 
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+
+pk_model = PKBasic(θ=Input_θ.PK)
+seizure_model = SeizureBasic(θ = Input_θ.Seizure)
+person_gen = PersonGeneratorLEV()
+dose_gen = PolyDoses(pk_model)
+
+Estimate: retcode: Success
+u: (PK = (k_el = 2.127181351269861, k_abs = 0.5116159337131265, σ = 0.6141236388747133), Seizure = (a = 6.749045256354058, b = [-1.3207138887528114]))
+Final objective value:     92.98490093629127
+True Objective Value: 81.33061612701138
+True θ: (PK = (k_el = 2.0, k_abs = 5.0, σ = 0.2), Seizure = (a = 4.0, b = [-0.05]))
+Starting hessian forwarddiff
+Starting hessian finitediff
+Starting inverse
+H_inv finitediff = 
+[4.371094387552601e-9 -9.596690573226804e-11 2.9685479563471973e-19 -2.418030098351202e-15 8.155988749860625e-19;
+ -9.596690573226804e-11 1.0012275483238915e-10 -4.3733248237153356e-20 7.854266911483294e-17 -3.517929845077184e-20; 
+ 2.9685479563471973e-19 -4.3733248237153356e-20 9.456806943548418e-10 -1.7388113800463195e-25 6.194827934564865e-29; 
+ -2.418030098351202e-15 7.854266911483294e-17 -1.7388113800463195e-25 4.4001317107785727e-8 -4.0213161418423365e-10; 
+ 8.155988749860625e-19 -3.517929845077184e-20 6.194827934564865e-29 -4.0213161418423365e-10 1.7464263996428987e-10]
+H_inv forwarddiff = 
+[0.037975161740546645 0.017386950028918276 -0.005019105648991451 0.008721742503985495 -0.022157764416493794; 
+0.01738695002891827 0.06822364284634545 -0.017081107079035526 0.027405056885764 -0.004054791754327774; 
+-0.005019105648991449 -0.017081107079035523 0.04592327538324808 -0.006895879905825633 0.001434575862138428; 
+0.008721742503985441 0.027405056885764084 -0.006895879905825651 1.8003606191018158 -0.8104761008911218; 
+-0.022157764416493753 -0.004054791754327811 0.0014345758621384375 -0.8104761008911218 0.3997056568553094]
+Confidence Intervals Inverse Hessian:(PK = (k_el = SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}[[1.7452389210064645, 2.5091237815332574]], k_abs = SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}[[-0.0003199163618416989, 1.0235517837880947]], σ = SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}[[1.2142285190823214, 2.81268169004817]]), 
+Seizure = (a = SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}[[4.119214238839999, 9.378876273868116]], b = SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true}[[-2.559847788381166, -0.08157998912445685]]))
+->switched back to current commit, executed that inverse_hessian on same estimate and data after fixing really annoying mistake
+
+Confidence Intervals Inverse Hessian:(InverseHessian = (PK = (k_el = (1.7452389210064645, 2.5091237815332574), k_abs = (-0.0003199163618416989, 1.0235517837880947), σ = (0.4035020412857775, 0.9346863342324631)), Seizure = (a = (4.119214238839999, 9.378876273868116), b = [(-2.559847788381166, -0.08157998912445685)])), 
+Sandwich = (PK = (k_el = (2.126311049324366, 2.1280516532153557), k_abs = (0.507043261777052, 0.5161886056492011), σ = (0.6139134065749522, 0.6143339431677219)), Seizure = (a = (6.73667630787454, 6.761414204833575), b = [(-1.3252498969774154, -1.3161778805282074)])))
+-> error with sandwich somewhere shouldn't those be wider?
+
+
+After correcting error in function reused old CBZ estimation to calculate CI:
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+#Seizure Models
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
+
+Maxiters_optimiser = 200
+Population_size = 5 
+wo_treatment = 0.0 
+Obs_Duration = wo_treatment + 20.0 
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+logscale = ("σ",)
+solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+
+#Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
+#All bounds are in transformed space (i.e. log-scale for logscale parameters).
+max_threads_simul = 5
+Multistart_nstarts = 5
+Multistart_seed = 42
+Multistart_include_initial = true
+bound_abs = nothing
+optim_lower_bounds = nothing
+optim_upper_bounds = nothing 
+Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Multistart_bounds = 20.0 
+
+drug_appropriate_dosing = false
+hierarchical_optimisation = false
+
+
+Estimate: (PK = (k_abs = 9.239296177572577, c1 = 45.611786070612645, c2 = 1.8150868541824858, c3 = 33.21275397207852, v1 = 2.22540277137502, σ = 0.19779579118441556), Seizure = (a = 3.6539797273663557, b = [0.14804206569129502]))
+Retcode: Success
+Objective: 182.35928581172922
+Multistart best start: 1 Number of Starts: 5
+True Objective Value: 186.1727633481045
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))
+
+Confidence Intervals: 
+(InverseHessian = (PK = (k_abs = (5.7248638278845485, 12.753728527260606), c1 = (44.025935698046524, 47.197636443178766), c2 = (1.6700631804299975, 1.9601105279349742), c3 = (31.332470812612712, 35.09303713154432), v1 = (2.054673888023505, 2.396131654726535), σ = (0.15359325913038152, 0.2547193492199956)), Seizure = (a = (2.738138537791624, 4.5698209169410875), b = [(0.03418475267285134, 0.2618993787097387)])), 
+Sandwich = (PK = (k_abs = (9.22721842015307, 9.251373934992083), c1 = (45.61107343363444, 45.61249870759085), c2 = (1.81487702051481, 1.8152966878501617), c3 = (33.210310127026794, 33.21519781713024), v1 = (2.2252939675432644, 2.225511575206776), σ = (0.19747392925100193, 0.19811817771925166)), Seizure = (a = (3.6538093961377345, 3.654150058594977), b = [(0.14802915653848933, 0.1480549748441007)])))
+->same problem as above, sandwich looks wrong, inverse hessian looks good

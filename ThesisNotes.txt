@@ -60,6 +60,7 @@ PK Valproate:
     Drug-Drug Interaction and Patient Characteristics by Yukawa et al. 
 -k_abs constant, V = v1*weight
 -CL = c1*weight^c2*dose(mg/day)^c3*c4^gender(1 for female, 0 for male)
+-talk a bit about Valproate for women in risk of pregnancy usually hard to control epilepsy, but here observed CL for women actually lower?
 -no induction effect for daily dose, usual question of if model appropriate at beginning of treatment
 -dose relation still controversial, see e.g. Nonparametric population modeling of valproate pharmacokinetics in epileptic patients using routine
     serum monitoring data: implications for dosage by Bondareva et al., but less so than for Carbamazepine
