@@ -416,8 +416,23 @@ end
 #4)Functions for visualisation
 
 #functions for plotting fit, with or without true or estimated parameters given, solutions given
-function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, individuals::AbstractVector = [1], display_plot::Bool = true)
-    
+function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+    individuals::AbstractVector = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = nothing, display_plot::Bool = true)
+    if !isnothing(sols_true)
+        endpoint = sols_true[1].t[end]
+    elseif !isnothing(sols_estimated)
+        endpoint = sols_estimated[1].t[end]
+    else
+        endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time)
+    end
+    if time isa Tuple
+        if time[1]<0 || time[2] > endpoint || time[1] > time[2]
+            error("Incorrectly defined time window for PK plotting")
+        end
+    end
+    if time isa Number
+        time = (0.0,Float64(time))
+    end
     output = Plots.Plot[]
     sols = sols_true
     sols2 = sols_estimated
@@ -427,18 +442,18 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
     for i in individuals
         #Iterate over drugs 
         for s in names.s
-            pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)")
+            pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)", tspan = time)
             #true plot if param specified
             if !isnothing(sols)
-                plot!(sols[i], idxs = s, label="Concentration $(s)")
+                plot!(sols[i], idxs = s, label="Concentration $(s)", tspan = time)
             end
             #add scattered measurements
             x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
             y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
-            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
+            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "", tspan = time)
             #add estimate plot if specified
             if !isnothing(sols2)
-                plot!(sols2[i], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
+                plot!(sols2[i], idxs = s, label="Estimated concentration $(s)", linecolor = :red, tspan = time)
             end
             #add to output
             append!(output, [pl])
@@ -451,23 +466,23 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
     #Plot all trajectories in one
     Population_size = length(data)
     for s in names.s
-        pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)")
+        pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)", tspan = time)
         if !isnothing(sols)
-            plot!(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue)
+            plot!(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue, tspan = time)
             for i in 2:Population_size
-                plot!(sols[i], idxs = s, label = "", linecolor = :blue)
+                plot!(sols[i], idxs = s, label = "", linecolor = :blue, tspan = time)
             end
         end
         for i in 1:Population_size
             x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
             y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
-            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "")
+            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "", tspan = time)
         end
         #add estimate plots
         if !isnothing(sols2)
-            plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red)
+            plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red, tspan = time)
             for i in 2:Population_size
-                plot!(sols2[i], idxs = s, label = "", linecolor = :red)
+                plot!(sols2[i], idxs = s, label = "", linecolor = :red, tspan = time)
             end
         end
         plot!(legend=:outerbottom, legendcolumns=2)
@@ -483,7 +498,7 @@ end
 
 #function above for solutions not given
 function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, individuals::AbstractVector = [1], 
-    endpoint::AbstractFloat = data[1].measurements[end].timepoint, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+    endpoint::AbstractFloat = data[1].measurements[end].timepoint, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = (0, endpoint), display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
     
     if !isnothing(true_param)
         sols = [solve_PK(mod, true_param, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
@@ -495,6 +510,6 @@ function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentAr
     else 
         sols2 = nothing
     end
-    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, display_plot = display_plot)
+    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, time = time, display_plot = display_plot)
     return output
 end

@@ -10,6 +10,7 @@ Drugs most of interest:
 -based on Switching the Manufacturer of Antiepileptic Drugs Is Associated with Higher Risk of Seizures: A Nationwide
     Study of Prescription Data in Germany data until 2016, Table 1
 -most interesting: Lamotrigin, Levetiracetam, Valproate, Carbamazepine
+-refer back to Established & new Jan for AED over time plots, maybe add Lacosamide/Oxcabazepine?
 
 Consider only adults, for children very different PK
 

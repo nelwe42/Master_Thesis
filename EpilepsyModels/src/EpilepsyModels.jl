@@ -677,7 +677,8 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
 end
 
 function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
-    individuals::AbstractVector = [1], endpoint::AbstractFloat = data[1].measurements[end].timepoint, time_seizures::Union{AbstractFloat,Int} = 10, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+    individuals::AbstractVector = [1], endpoint::AbstractFloat = data[1].measurements[end].timepoint, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = (0, endpoint), 
+    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
 
     output = Plots.Plot[]
     if !isnothing(true_param)
@@ -691,7 +692,7 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
         sols2 = nothing
     end
 
-    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, display_plot = display_plot)
+    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, time = time_pk, display_plot = display_plot)
     append!(output, pk_output)
     if isnothing(estimate_param)
         estimate_seizure = nothing

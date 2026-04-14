@@ -35,12 +35,12 @@ Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
 Maxiters_optimiser = 200
-Population_size = 5 #10 #20
+Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ",)
-#logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
+#logscale = ("σ",)
+logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
@@ -67,9 +67,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
@@ -150,8 +150,9 @@ end
 if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #Plot fit for specified individuals
     individuals = [1]
-    time_seizures = 10
-    plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_seizures = time_seizures, options = ODE_options)
+    time_seizures = (0,10)
+    time_pk = (0.0, Obs_Duration)
+    plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options)
 end
 
 println("Done")
