@@ -555,6 +555,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     θ_use = deepcopy(θ)
     #transform as specified
     partial_transform_to_logscale!(θ_use, logscale = logscale)
+    #println("Gradient: ", ForwardDiff.gradient(f,θ_use))
     if !(finite_not_forward)
         #This takes very long
         H = ForwardDiff.hessian(f,θ_use)
