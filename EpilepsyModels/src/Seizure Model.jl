@@ -142,12 +142,11 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
     else
         endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time)
     end
-    if time isa Tuple
-        if time[1]<0 || time[2] > endpoint || time[1] > time[2]
-            error("Incorrectly defined time window for seizure plotting")
-        end
-    else
+    if time isa Number
         time = (0,time)
+    end
+    if time[1]<0 || time[2] > endpoint || time[1] > time[2]
+        error("Incorrectly defined time window for seizure plotting")
     end
     #Cut down time to full days
     time = Int.(floor.(time))

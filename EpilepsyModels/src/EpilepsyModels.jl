@@ -536,16 +536,16 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
 end
 
 #finite_not_forward allows to switch to finite_diff hessian instead of ForwardDiff, often faster but less accurate
-function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, sandwich::Bool = true, ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
-    return inverse_hessian(θ, p, confidence = confidence, logscale = logscale, finite_not_forward=finite_not_forward)
+    return inverse_hessian(θ, p, confidence = confidence, logscale = logscale, finite_not_forward=finite_not_forward, sandwich = sandwich)
 end
 
-function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false)
+function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, sandwich::Bool = true)
     #check whether accidentally entered percentage instead of confidence in (0,1)
     if confidence>1
         confidence = confidence/100
@@ -582,27 +582,31 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
             @warn "Negative diagonal entry in inverse hessian"
         end
         #Set bounds for sandwich CI
-        Bread = H_inv
-        if !(finite_not_forward)
-            grad = ForwardDiff.gradient(f,θ_use)
-        else
-            grad = FiniteDiff.finite_difference_gradient(f, θ_use)
-        end
-        Meat = grad * (grad')
-        println("Bread= ", Bread)
-        println("Meat= ", Meat)
-        Sandwich = Bread*Meat*Bread
-        positive_diagonal = true
-        for i in eachindex(θ_use)
-            positive_diagonal = (0 ≤ Sandwich[i,i]) && positive_diagonal
-        end
-        if positive_diagonal
-            q = quantile(Normal(), (1-(1-confidence)/2))
-            #By symmetry other one is just the negative
-            #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
-            bounds_sandwich = [(θ_use[i] - sqrt(Sandwich[i,i])*q, θ_use[i] + sqrt(Sandwich[i,i])*q) for i in eachindex(θ_use)]
-        else
-            @warn "Negative diagonal entry in sandwich estimator"
+        if sandwich
+            Bread = H_inv
+            p_indices_not_data = Tuple(setdiff(keys(p), (:data,)))
+            p_per_person = Tuple(merge(NamedTuple{p_indices_not_data}(p), (data = (person,),)) for person in p.data)
+            if !(finite_not_forward)
+                grads = Tuple(ForwardDiff.gradient(x -> get_negloglikelihood(x, p_person),θ_use) for p_person in p_per_person)
+            else
+                grads = Tuple(ForwardDiff.finite_difference_gradient(x -> get_negloglikelihood(x, p_person),θ_use) for p_person in p_per_person)
+            end 
+            Meat = sum(Tuple(grad * (grad') for grad in grads))
+            #println("Bread= ", Bread)
+            #println("Meat= ", Meat)
+            Sandwich = Bread*Meat*Bread
+            positive_diagonal = true
+            for i in eachindex(θ_use)
+                positive_diagonal = (0 ≤ Sandwich[i,i]) && positive_diagonal
+            end
+            if positive_diagonal
+                q = quantile(Normal(), (1-(1-confidence)/2))
+                #By symmetry other one is just the negative
+                #Note q>= 0 since quantile of standard normal positive for >=0.5, ensured for confidence<=1
+                bounds_sandwich = [(θ_use[i] - sqrt(Sandwich[i,i])*q, θ_use[i] + sqrt(Sandwich[i,i])*q) for i in eachindex(θ_use)]
+            else
+                @warn "Negative diagonal entry in sandwich estimator"
+            end
         end
     catch e
         if e isa LinearAlgebra.SingularException
@@ -614,7 +618,11 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
         end
     end
     #now assign intervals to correct keys
-    CIs = (InverseHessian = ComponentArray(bounds, getaxes(θ_use)), Sandwich = ComponentArray(bounds_sandwich, getaxes(θ_use)))
+    if sandwich
+        CIs = (InverseHessian = ComponentArray(bounds, getaxes(θ_use)), Sandwich = ComponentArray(bounds_sandwich, getaxes(θ_use)))
+    else 
+        CIs = (InverseHessian = ComponentArray(bounds, getaxes(θ_use)),)
+    end
     #println("CI untransformed: ", CI)
     #transform logscale ones, can't use partial transform since entries are now tuples, have to broadcast
     for CI in CIs    
@@ -678,10 +686,18 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
 end
 
 function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
-    individuals::AbstractVector = [1], endpoint::AbstractFloat = data[1].measurements[end].timepoint, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = (0, endpoint), 
+    individuals::AbstractVector = [1], endpoint::Union{AbstractFloat, Nothing} = nothing, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, 
     time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
 
     output = Plots.Plot[]
+    if isnothing(endpoint)
+        measurements_ends = Tuple(person.measurements[end].timepoint for person in data)
+        seizure_ends = Tuple(person.seizure_counts[end].time+1 for person in data)
+        endpoint = max(measurements_ends...,seizure_ends...)
+    end
+    if isnothing(time_pk)
+        time_pk = (0.0, endpoint)
+    end
     if !isnothing(true_param)
         sols = [solve_PK(mod.pk_model, true_param.PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
     else

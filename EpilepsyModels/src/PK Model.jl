@@ -417,7 +417,7 @@ end
 
 #functions for plotting fit, with or without true or estimated parameters given, solutions given
 function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
-    individuals::AbstractVector = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = nothing, display_plot::Bool = true)
+    individuals::AbstractVector = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true)
     if !isnothing(sols_true)
         endpoint = sols_true[1].t[end]
     elseif !isnothing(sols_estimated)
@@ -425,13 +425,13 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
     else
         endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time)
     end
-    if time isa Tuple
-        if time[1]<0 || time[2] > endpoint || time[1] > time[2]
-            error("Incorrectly defined time window for PK plotting")
-        end
-    end
     if time isa Number
         time = (0.0,Float64(time))
+    elseif isnothing(time)
+        time = (0,endpoint)
+    end
+    if time[1]<0 || time[2] > endpoint || time[1] > time[2]
+        error("Incorrectly defined time window for PK plotting")
     end
     output = Plots.Plot[]
     sols = sols_true
@@ -498,8 +498,16 @@ end
 
 #function above for solutions not given
 function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, individuals::AbstractVector = [1], 
-    endpoint::AbstractFloat = data[1].measurements[end].timepoint, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = (0, endpoint), display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+    endpoint::Union{Nothing, AbstractFloat} = nothing, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
     
+    if isnothing(endpoint)
+        measurements_ends = Tuple(person.measurements[end].timepoint for person in data)
+        seizure_ends = Tuple(person.seizure_counts[end].time+1 for person in data)
+        endpoint = max(measurements_ends...,seizure_ends...)
+    end
+    if isnothing(time)
+        time = (0.0, endpoint)
+    end
     if !isnothing(true_param)
         sols = [solve_PK(mod, true_param, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
     else
