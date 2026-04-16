@@ -472,7 +472,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)
             #Create OptimisationProblem with start and bounds (might be nothing)
             problem = OptimizationProblem(objective, starts_list[i], p, lb=lb, ub=ub)
-            solutions[i] = solve(problem, solver_optim, maxiters = maxiters)
+            solutions[i] = solve(problem, solver_optim, maxiters = maxiters, store_trace = true)
         end
     end
     for i in 1:n_starts

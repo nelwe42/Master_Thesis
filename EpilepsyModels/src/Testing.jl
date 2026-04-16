@@ -35,7 +35,7 @@ Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
 Maxiters_optimiser = 200
-Population_size = 5 #10 #20
+Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -50,7 +50,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
 max_threads_simul = 5
-Multistart_nstarts = 5
+Multistart_nstarts = 1
 Multistart_seed = 42
 Multistart_include_initial = true
 bound_abs = nothing #100.0
@@ -60,7 +60,7 @@ Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ
 Multistart_bounds = 20.0 #nothing
 fail_hard = false
 
-run_hessian = true
+run_hessian = false
 sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = false
@@ -68,9 +68,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
@@ -154,6 +154,36 @@ if plotting && SciMLBase.successful_retcode(estimate.retcode)
     time_seizures = (0,10)
     time_pk = (0.0, Obs_Duration)
     plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options)
+end
+
+plot_change = false
+#Plotting change for k_abs/other param specified through index
+if plot_change
+using ModelingToolkit
+    point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ)
+    point = Input_θ
+    index = 1 #index of parameter to consider, here k_abs
+    index_name = :k_abs
+    θ_use = deepcopy(point)
+    names = mod.pk_model.keys
+    sys = EpilepsyModels.create_ode_system(mod.pk_model)
+    problems = Tuple(EpilepsyModels.create_problem(mod.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_use.PK)]
+    EpilepsyModels.partial_transform_to_logscale!(θ_use, logscale = logscale)
+    p = (m = mod, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    function negloglikeli(x::AbstractFloat)
+        θ_vary = copy(θ_use)
+        θ_vary[index] = x
+        return EpilepsyModels.get_negloglikelihood(θ_vary, p)
+    end
+    plot_for = [exp(-50), 10.0] #plotting range in untransformed space
+    if String(index_name) in logscale
+        plot_for .= log.(plot_for)
+    end
+    x = range(plot_for[1], plot_for[2], length=100)
+    y = negloglikeli.(x)
+    plot(x, y, title="True Values, logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
+    #plot(negloglikeli, plot_for[1], plot_for[2])
 end
 
 println("Done")
