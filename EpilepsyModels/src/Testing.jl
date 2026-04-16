@@ -68,9 +68,9 @@ hierarchical_optimisation = false
 plotting = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
@@ -160,10 +160,16 @@ plot_change = false
 #Plotting change for k_abs/other param specified through index
 if plot_change
 using ModelingToolkit
-    point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ)
-    point = Input_θ
-    index = 1 #index of parameter to consider, here k_abs
-    index_name = :k_abs
+    point, name_point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), "Default_Start"
+    #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
+    point[2] = 24.0 
+    name_point = "Default_Start_with_c1=$(point[2])"
+    #point, name_point = ComponentArray(PK = mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Default_Start_true_PK
+    #point, name_point = Input_θ, :True_Values
+    #point, name_point = estimate.u, :Estimate
+    #index of parameter to consider, name
+    index, index_name = 1, :k_abs
+    #index, index_name = 2, :c1
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
@@ -182,8 +188,9 @@ using ModelingToolkit
     end
     x = range(plot_for[1], plot_for[2], length=100)
     y = negloglikeli.(x)
-    plot(x, y, title="True Values, logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
+    pl = plot!(x, y, title="$(name_point), logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
     #plot(negloglikeli, plot_for[1], plot_for[2])
+    display(pl)
 end
 
 println("Done")
