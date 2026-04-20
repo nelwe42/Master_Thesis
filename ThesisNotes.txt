@@ -72,3 +72,20 @@ PK Valproate:
 PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0))
 
 discuss implications of treatment effect in logscale
+
+logscale behavior in inference, in initial default guess at least for low k_abs values tends towards zero,
+gets less pronounced for c1 higher(for this see pictures Default start problem and default start higher c1)
+holding all but k_abs fixed to true values local minimum gets visible though grows less pronounced with more people
+(see Local min little log), mostly dependent on c1 value (see Sensitivity to cq CBZ/LEV),
+for k_abs in logscale very flat in low k_abs though far from optimal (local min medium log), if goes there during pull
+in initial start then in logscale very hard to get out again, gradient so small thinks is in local minimum
+-> will likely mostly disappear with better starts, k_abs and c1 just needs to escape low values once, 
+in default start plots can see once k_abs is past like 2 it's not drawn to 0 as strongly
+-> maybe up multistart bounds to 50.0
+-> try out k_abs and c1 default value 24.0, also natural since is just 1/h, but my time unit is days
+    -> for this c1 ends up huge, jumps up to 85 in logscale immediately on first step and stays there
+    -> for LEV looks good on 2 people just setting both to 1.5*24, for CBZ problem persists
+-> high slope c1 at beginning for too low starting value but highish k_abs, for logscale escapes to very high, 
+   low slope there so difficulty to get back
+
+-> reasonable starting values, bounds based on literature important for inference in base rates

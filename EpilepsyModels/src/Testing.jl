@@ -39,8 +39,8 @@ Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ",)
-#logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
+#logscale = ("σ",)
+logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
@@ -119,6 +119,8 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
+test_mod.pk_model.θ[1] = 3.0*24.0
+test_mod.pk_model.θ[2] = 3.0*24.0
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -160,16 +162,16 @@ plot_change = false
 #Plotting change for k_abs/other param specified through index
 if plot_change
 using ModelingToolkit
-    point, name_point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), "Default_Start"
+    point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
     #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
-    point[2] = 24.0 
-    name_point = "Default_Start_with_c1=$(point[2])"
+    point[1] = 24.0*1.0
+    name_point = "Default_Start_with_k_abs=$(point[1])"
     #point, name_point = ComponentArray(PK = mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Default_Start_true_PK
     #point, name_point = Input_θ, :True_Values
     #point, name_point = estimate.u, :Estimate
     #index of parameter to consider, name
-    index, index_name = 1, :k_abs
-    #index, index_name = 2, :c1
+    #index, index_name = 1, :k_abs
+    index, index_name = 2, :c1
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
@@ -182,13 +184,13 @@ using ModelingToolkit
         θ_vary[index] = x
         return EpilepsyModels.get_negloglikelihood(θ_vary, p)
     end
-    plot_for = [exp(-50), 10.0] #plotting range in untransformed space
+    plot_for = [100, exp(50)] #plotting range in untransformed space
     if String(index_name) in logscale
         plot_for .= log.(plot_for)
     end
     x = range(plot_for[1], plot_for[2], length=100)
     y = negloglikeli.(x)
-    pl = plot!(x, y, title="$(name_point), logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
+    pl = plot(x, y, title="$(name_point) \n logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
     #plot(negloglikeli, plot_for[1], plot_for[2])
     display(pl)
 end

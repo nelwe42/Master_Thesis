@@ -442,7 +442,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     starts = Matrix{Float64}(undef, n_starts, d)
     row_idx = 1
     if multistart_include_initial
-        starts[row_idx, :] .= clamp.(Float64.(θ_0_vec), lower, upper)
+        starts[row_idx, :] .= Float64.(θ_0_vec)
         row_idx += 1
     end
     n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
