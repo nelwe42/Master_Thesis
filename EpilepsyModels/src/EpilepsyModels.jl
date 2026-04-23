@@ -232,7 +232,7 @@ function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractV
 end
 
 function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
-                objective_fail_hard::Bool = false, objective_warn::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
+                objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -294,7 +294,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     else 
         problem_PK = OptimizationProblem(objective_PK, θ_0_PK, p_PK, lb = lb.PK, ub = ub.PK)
     end
-    estimate_PK = solve(problem_PK, solver_optim, maxiters = maxiters) 
+    estimate_PK = solve(problem_PK, solver_optim, maxiters = maxiters, store_trace = store_trace) 
     #transform parameters back into non logscale
     partial_transform_to_logscale_partwise!(estimate_PK.u, logscale = logscale, detransform = true)
 
@@ -312,7 +312,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     else 
         problem_Seizure = OptimizationProblem(objective_Seizure, θ_0_Seizure, p_Seizure, lb = lb.Seizure, ub = ub.Seizure)
     end
-    estimate_Seizure = solve(problem_Seizure, solver_optim, maxiters = maxiters) 
+    estimate_Seizure = solve(problem_Seizure, solver_optim, maxiters = maxiters, store_trace = store_trace) 
     #transform parameters back into non logscale
     partial_transform_to_logscale_partwise!(estimate_Seizure.u, logscale = logscale, detransform = true)
 
@@ -330,7 +330,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
 end
 
 function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
-    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
+    objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
@@ -472,7 +472,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)
             #Create OptimisationProblem with start and bounds (might be nothing)
             problem = OptimizationProblem(objective, starts_list[i], p, lb=lb, ub=ub)
-            solutions[i] = solve(problem, solver_optim, maxiters = maxiters, store_trace = true)
+            solutions[i] = solve(problem, solver_optim, maxiters = maxiters, store_trace = store_trace)
         end
     end
     for i in 1:n_starts

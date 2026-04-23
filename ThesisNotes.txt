@@ -84,8 +84,29 @@ in default start plots can see once k_abs is past like 2 it's not drawn to 0 as 
 -> maybe up multistart bounds to 50.0
 -> try out k_abs and c1 default value 24.0, also natural since is just 1/h, but my time unit is days
     -> for this c1 ends up huge, jumps up to 85 in logscale immediately on first step and stays there
-    -> for LEV looks good on 2 people just setting both to 1.5*24, for CBZ problem persists
+    -> for LEV looks good on 2 people just setting both to 1.5*24, for CBZ problem persists, fine for bigger values too for LEV
 -> high slope c1 at beginning for too low starting value but highish k_abs, for logscale escapes to very high, 
-   low slope there so difficulty to get back
+   low slope there so difficulty to get back, close to 1 linear and logscale comparable but in logscale real step is bigger
 
+-> for CBZ cutoff higher, c3 also increases clearance to consider but start in 0 since dont want to assume impact of dose
+-> while for LEV c1=k_abs closeish to reality for CBZ not the case, starting guesses should respect that
+-> k_abs = 1*24, c1 = 3*24 worked great, fit good even if k_abs vastly overestimated that just happens
+-> starts should respect expected ratio of rates, how much is too much preknowledge?
+-> try for k_abs = 1.5*24, half is a natural guess, also went well apart from overestimated k_abs
+-> try other values with same ratio, not successfull
+-> see CBZ behavior folder in logscale problem for plots, c1 optimum largely the same independent of k_abs,
+    for c1 between 66 and 67 direction where kabs is pushed changes drastically
+    -> c1 shouldn't be too high or low so won't overshoot in either direction
+    -> k_abs pretty sensitive to c1, if too high overshoots backwards again for high c1 and 
+        for low overshoots to high, but less of a problem in fit at the end
+            -> anything from 1*24 to 2*24 worked fine
+    -> all plots for reasonable window 24*1-5*24
+    -> other influences on c1 start behavior within said window seizure variables, c2 monior 
+        c3 has influence, but only when large (>=36) which realistically won't happen,
+        v1 also has big impact, when larger slope is much steeper, not advisable
+
+-> in logscale more sensitive to overshooting from initial values in one direction and getting stuck, 
+especially for main rates PK
+-> large enough initial guess and somewhat reasonable ratio between them important
+-> try a few multiples of 24 in 0.5 steps for each or provide reasonable bounds to prevent overshooting
 -> reasonable starting values, bounds based on literature important for inference in base rates

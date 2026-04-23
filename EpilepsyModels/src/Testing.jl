@@ -16,6 +16,11 @@ using StaticArrays
 using Random
 using Distributions
 using BenchmarkTools
+using ModelingToolkit
+
+#This will redirect output to txt file, not including error messages/warnings
+#open("stdout.txt", "w") do io
+#redirect_stdout(io) do
 
 println("Included")
 
@@ -34,13 +39,14 @@ Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
-Maxiters_optimiser = 200
+Maxiters_optimiser = 1
 Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #logscale = ("σ",)
-logscale = ("σ", "k_abs", "c1", "v1", "a") #-> Unstable in estimation, end up at local minima
+logscale = ("σ", "k_abs", "c1", "v1", "a")
+#logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
@@ -66,6 +72,8 @@ finite_diff_hessian = false
 drug_appropriate_dosing = false
 hierarchical_optimisation = false
 plotting = true
+optimisation_trace = true
+show_trace = false
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
@@ -119,18 +127,19 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-test_mod.pk_model.θ[1] = 3.0*24.0
-test_mod.pk_model.θ[2] = 3.0*24.0
+test_mod.pk_model.θ[1] = 1.5*24.0 
+test_mod.pk_model.θ[2] = 3*24.0
+#test_mod.pk_model.θ[4] = 1.0
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
-                        bound_abs = bound_abs, lower_upper = lower_upper_bounds, 
+                        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
                         solver_optim = solver_optim, ODE_options = ODE_options)
     println("True Objective Value: ", get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 else
     #Multistart optimisation
     estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
-        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard,
+        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
         multistart = Multistart_nstarts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
     println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
@@ -138,16 +147,32 @@ end
 #True values for comparison
 println("True θ: ", Input_θ)
 #Show relative error
-errors = deepcopy(Input_θ)
-for i in eachindex(errors)
-    errors[i] = abs(estimate.u[i] - Input_θ[i])/abs(Input_θ[i])
+errors_rel = deepcopy(Input_θ)
+errors_abs = deepcopy(Input_θ)
+for i in eachindex(errors_rel)
+    errors_rel[i] = abs(estimate.u[i] - Input_θ[i])/abs(Input_θ[i])
 end
-println("Relative errors: ", errors)
+for i in eachindex(errors_abs)
+    errors_abs[i] = abs(estimate.u[i] - Input_θ[i])
+end
+println("Relative errors: ", errors_rel)
+println("Absolute errors: ", errors_abs)
 #Testing out hessian confidence intervals if flag is set
 if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, finite_not_forward=finite_diff_hessian, sandwich = sandwich, ODE_options = ODE_options)
     #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
     println("Confidence Intervals: ", CI)
+end
+
+if optimisation_trace && show_trace
+    if !(hierarchical_optimisation)
+        println(estimate.raw.original.trace)
+    else
+        println("PK trace: ")
+        println(estimate.estimate_PK.original.trace)
+        println("Seizure trace: ")
+        println(estimate.estimate_Seizure.original.trace)
+    end
 end
 
 if plotting && SciMLBase.successful_retcode(estimate.retcode)
@@ -161,17 +186,19 @@ end
 plot_change = false
 #Plotting change for k_abs/other param specified through index
 if plot_change
-using ModelingToolkit
+indices_interest = [5]#[3,4,5] 
+for j in indices_interest
+for multi in 1:10
     point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
     #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
-    point[1] = 24.0*1.0
-    name_point = "Default_Start_with_k_abs=$(point[1])"
-    #point, name_point = ComponentArray(PK = mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Default_Start_true_PK
+    point[j] = multi #24*0.5*multi
+    name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
     #point, name_point = Input_θ, :True_Values
     #point, name_point = estimate.u, :Estimate
     #index of parameter to consider, name
     #index, index_name = 1, :k_abs
     index, index_name = 2, :c1
+    #index, index_name = j, "$(j)"
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
@@ -184,15 +211,19 @@ using ModelingToolkit
         θ_vary[index] = x
         return EpilepsyModels.get_negloglikelihood(θ_vary, p)
     end
-    plot_for = [100, exp(50)] #plotting range in untransformed space
+    plot_for = [25, 24*5.0] #plotting range in untransformed space
     if String(index_name) in logscale
         plot_for .= log.(plot_for)
     end
     x = range(plot_for[1], plot_for[2], length=100)
     y = negloglikeli.(x)
     pl = plot(x, y, title="$(name_point) \n logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
-    #plot(negloglikeli, plot_for[1], plot_for[2])
     display(pl)
+end
+end
 end
 
 println("Done")
+
+#end
+#end
