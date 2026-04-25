@@ -1,6 +1,6 @@
 using Pkg
 
-Pkg.instantiate()
+#Pkg.instantiate()
 println("Starting")
 #Pkg.develop(path = ".//EpilepsyModels")
 include("EpilepsyModels.jl")
@@ -8,7 +8,7 @@ include("EpilepsyModels.jl")
 using .EpilepsyModels
 using ComponentArrays
 using OptimizationOptimJL
-#using OptimizationBBO
+using OptimizationBBO
 using LineSearches
 using DifferentialEquations
 using Plots
@@ -20,10 +20,13 @@ using BenchmarkTools
 using ModelingToolkit
 
 #This will redirect output to txt file, not including error messages/warnings
+#path = "."
+path = "/home/s6newell_hpc"
 #open("/home/s6newell_hpc/output.txt", "w") do io
-open("output.txt", "w") do io
+open(joinpath(path,"output.txt"), "w") do io
+open(joinpath(path,"errors.txt"), "w") do io_err
 redirect_stdout(io) do
-redirect_stderr(io) do
+redirect_stderr(io_err) do
 
 println("Included")
 
@@ -79,9 +82,9 @@ optimisation_trace = true
 show_trace = false
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
@@ -103,7 +106,7 @@ data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoi
 println("Generated")
 println(data[1].covariates)
 
-#=
+
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
 if isnothing(optim_upper_bounds) && (!isnothing(Variance_bound) || !isnothing(optim_lower_bounds))
     upper_bounds = ComponentArray(fill(Inf, length(Input_θ)), getaxes(Input_θ))
@@ -132,8 +135,8 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-test_mod.pk_model.θ[1] = 1.5*24.0 
-test_mod.pk_model.θ[2] = 3*24.0
+#test_mod.pk_model.θ[1] = 1.5*24.0 
+#test_mod.pk_model.θ[2] = 3*24.0
 #test_mod.pk_model.θ[4] = 1.0
 if hierarchical_optimisation
     #Hierarchical optimisation
@@ -228,10 +231,11 @@ end
 end
 end
 
-=#
+
 
 println("Done")
 
+end
 end
 end
 end
