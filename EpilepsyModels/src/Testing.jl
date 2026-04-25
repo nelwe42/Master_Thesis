@@ -1,5 +1,6 @@
 using Pkg
 
+Pkg.instantiate()
 println("Starting")
 #Pkg.develop(path = ".//EpilepsyModels")
 include("EpilepsyModels.jl")
@@ -7,7 +8,7 @@ include("EpilepsyModels.jl")
 using .EpilepsyModels
 using ComponentArrays
 using OptimizationOptimJL
-using OptimizationBBO
+#using OptimizationBBO
 using LineSearches
 using DifferentialEquations
 using Plots
@@ -19,8 +20,10 @@ using BenchmarkTools
 using ModelingToolkit
 
 #This will redirect output to txt file, not including error messages/warnings
-#open("stdout.txt", "w") do io
-#redirect_stdout(io) do
+#open("/home/s6newell_hpc/output.txt", "w") do io
+open("output.txt", "w") do io
+redirect_stdout(io) do
+redirect_stderr(io) do
 
 println("Included")
 
@@ -39,7 +42,7 @@ Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
-Maxiters_optimiser = 1
+Maxiters_optimiser = 200
 Population_size = 2 #5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
@@ -98,7 +101,9 @@ Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
+println(data[1].covariates)
 
+#=
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
 if isnothing(optim_upper_bounds) && (!isnothing(Variance_bound) || !isnothing(optim_lower_bounds))
     upper_bounds = ComponentArray(fill(Inf, length(Input_θ)), getaxes(Input_θ))
@@ -223,7 +228,10 @@ end
 end
 end
 
+=#
+
 println("Done")
 
-#end
-#end
+end
+end
+end
