@@ -23,10 +23,10 @@ using ModelingToolkit
 #path = "."
 path = "/home/s6newell_hpc"
 #open("/home/s6newell_hpc/output.txt", "w") do io
-open(joinpath(path,"output.txt"), "w") do io
-open(joinpath(path,"errors.txt"), "w") do io_err
-redirect_stdout(io) do
-redirect_stderr(io_err) do
+#open(joinpath(path,"output.txt"), "w") do io
+#open(joinpath(path,"errors.txt"), "w") do io_err
+#redirect_stdout(io) do
+#redirect_stderr(io_err) do
 
 println("Included")
 
@@ -41,7 +41,7 @@ Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.6,
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 #Seizure Models
-Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
@@ -82,10 +82,10 @@ optimisation_trace = true
 show_trace = false
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
@@ -135,9 +135,10 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-#test_mod.pk_model.θ[1] = 1.5*24.0 
-#test_mod.pk_model.θ[2] = 3*24.0
+test_mod.pk_model.θ[1] = 1.5*24.0 
+#test_mod.pk_model.θ[2] = 1.0*24.0
 #test_mod.pk_model.θ[4] = 1.0
+test_mod.pk_model.θ[4] = 0.5
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -194,19 +195,19 @@ end
 plot_change = false
 #Plotting change for k_abs/other param specified through index
 if plot_change
-indices_interest = [5]#[3,4,5] 
+indices_interest = [1,2,3,4,5,6,8,9]#[3,4,5] 
 for j in indices_interest
-for multi in 1:10
+#for multi in 1:10
     point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
     #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
-    point[j] = multi #24*0.5*multi
-    name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
+    #point[j] = multi #24*0.5*multi
+    #name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
     #point, name_point = Input_θ, :True_Values
     #point, name_point = estimate.u, :Estimate
     #index of parameter to consider, name
     #index, index_name = 1, :k_abs
-    index, index_name = 2, :c1
-    #index, index_name = j, "$(j)"
+    #index, index_name = 2, :c1
+    index, index_name = j, "$(labels(point)[j])"
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
@@ -219,7 +220,7 @@ for multi in 1:10
         θ_vary[index] = x
         return EpilepsyModels.get_negloglikelihood(θ_vary, p)
     end
-    plot_for = [25, 24*5.0] #plotting range in untransformed space
+    plot_for = [exp(-10), 5] #plotting range in untransformed space
     if String(index_name) in logscale
         plot_for .= log.(plot_for)
     end
@@ -227,7 +228,7 @@ for multi in 1:10
     y = negloglikeli.(x)
     pl = plot(x, y, title="$(name_point) \n logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
     display(pl)
-end
+#end
 end
 end
 
@@ -235,7 +236,7 @@ end
 
 println("Done")
 
-end
-end
-end
-end
+#end
+#end
+#end
+#end

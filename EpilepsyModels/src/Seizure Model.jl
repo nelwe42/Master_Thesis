@@ -151,10 +151,18 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
     #Cut down time to full days
     time = Int.(floor.(time))
     
-    sols = sols_true
-    sols2 = sols_estimated
+    sols = sols_true[individuals]
+    if !isnothing(sols) && any(.!(SciMLBase.successful_retcode.(sols)))
+        @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
+        sols = nothing
+    end
+    sols2 = sols_estimated[individuals]
     if !isnothing(estimate_param) && isnothing(sols2)
         error("Estimate solutions are missing")
+    end
+    if !isnothing(sols2) && any(.!(SciMLBase.successful_retcode.(sols2)))
+        @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
+        estimate_param = nothing
     end
     if !isnothing(estimate_param)
         seizure_model_estimate = typeof(mod).name.wrapper(θ = estimate_param)
@@ -163,9 +171,17 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for day $(time[1]) to $(time[2])")
         if !isnothing(sols)
             distribution_true = [distribution(mod, sols[i], Float64(n), person=data[i], names=names) for n in time[1]:time[2]]
+            if any(isnothing.(distribution_true))
+                @warn "Distribution for true parameters is not well-defined"
+                sols = nothing
+            end
         end
         if !isnothing(estimate_param)
             distribution_estimate = [distribution(seizure_model_estimate, sols2[i], Float64(n), person=data[i], names=names) for n in time[1]:time[2]]
+            if any(isnothing.(distribution_estimate))
+                @warn "Distribution for estimate parameters is not well-defined"
+                estimate_param = nothing
+            end
         end
         #Plot distributions, first day separate so label only once, only on separate sides if not both plotted
         if !isnothing(estimate_param) && !isnothing(sols)

@@ -434,6 +434,14 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
         error("Incorrectly defined time window for PK plotting")
     end
     output = Plots.Plot[]
+    if !isnothing(sols_true) && any(.!(SciMLBase.successful_retcode.(sols_true)))
+        @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
+        sols_true = nothing
+    end
+    if !isnothing(sols_estimated) && any(.!(SciMLBase.successful_retcode.(sols_estimated)))
+        @warn "Unsuccessful ODE solve in estimated parameters, true parameters will be ignored for plotting"
+        sols_estimated = nothing
+    end
     sols = sols_true
     sols2 = sols_estimated
     #Plot PK behavior (for each drug)
