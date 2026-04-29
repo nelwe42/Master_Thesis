@@ -140,6 +140,22 @@ function PolyDosesRandom(m::PKModel; default_min_dose::AbstractFloat = 1.0, defa
     return PolyDosesRandom(dose_distr, distr_first, distr_first, names, names, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
 end
 
+#for 4 preimplemented mono drug PK models assign default min/avg etc from literature
+function PolyDosesRandom(m::PKModel, appropriate_dosing::Bool)
+    dose_distr = (d_VPA = (min = 150.0, avg_num = 5.0, max_num = 14), d_LEV = (min = 100.0, avg_num = 10.0, max_num = 30), s_LEV_unnormalised = (min = 100.0, avg_num = 10.0, max_num = 30),
+                d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
+    if (typeof(m).name.wrapper in [PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG]) && appropriate_dosing 
+        info = dose_distr[m.keys.d][1]
+        dose_gen = PolyDosesRandom(m, default_min_dose = info.min, default_avg_multiple_dose = info.avg_num, default_max_multiple_dose = info.max_num, times_per_day_first = 2)
+    else
+        dose_gen = PolyDosesRandom(m, default_min_dose = 100.0)
+        if appropriate_dosing
+            @warn "No appropriate dosing preset for this drug"
+        end
+    end
+    return dose_gen
+end
+
 #picks first drug from distribution, with specified probability also second drug from that distribution, wo_treatment gives first dosetime, times per day and doses specified in model
 #if second picked drug is same as first, no second drug is assigned
 #when called again on person with doses already assigned, next doses are picked independently from current ones

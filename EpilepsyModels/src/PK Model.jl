@@ -224,6 +224,42 @@ function create_ode_system(mod::PKVPA)
     return internal_model
 end
 
+#A model for the PK behavior of Lamotrigine
+@with_kw struct PKLTG{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
+    cov::T2 = (:weight, :kidney_disease, :smoking) 
+    set_daily_doses::T3 = ()
+    keys::T4 = (d = SA[:d_LTG], s = SA[:s_LTG], S = SA[:S_LTG], obs = SA[(:obs_LTG, :s_LTG)]) #for observations also records corresponding internal state
+end
+
+function create_ode_system(mod::PKLTG) 
+    #V = v1*(1+v2*(TBW-70))
+    #CL = c1*(Weight normalised)^c2*(1-c3*(kidney disease yes/no))*(1+c4*smoking)
+    #Absorption rate k_abs/V, elimination CL/V
+    θ = mod.θ
+    interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
+    type_use = typeof(interpolator).name.wrapper
+    #Define model, @mtkmodel doesnt agree with callable parameters
+    @parameters k_abs=θ.k_abs c1=θ.c1 c2=θ.c2 c3=θ.c3 c4=θ.c4 v1=θ.v1 v2=θ.v2 σ=θ.σ #normal system parameters
+    #callable parameters for covariates
+    @parameters (weight::type_use)(..) [tunable=false] 
+    @parameters (smoking::type_use)(..) [tunable=false] 
+    @parameters (kidney_disease::type_use)(..) [tunable=false]
+    @variables d_LTG(t) = 0.0  # depot compartment - no drug at beginning
+    @variables s_LTG(t) = 0.0  # internal/central compartment
+    @variables S_LTG(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
+    @variables obs_LTG(t)
+    #d_LTG is not concentration but dose, so rate there not normalised by volume
+    eqs = [D(d_LTG) ~ -k_abs * d_LTG,
+            D(s_LTG) ~ (k_abs/(v1*(1+v2*(weight(t)-70)))) * d_LTG - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)*(1+c4*smoking(t))/(v1*(1+v2*(weight(t)-70)))) * s_LTG,
+            D(S_LTG) ~ s_LTG, 
+            obs_LTG ~ Normal(s_LTG, σ)]
+    
+    @mtkcompile internal_model = System(eqs, t)
+
+    return internal_model
+end
+
 #2)Dosing and callback creation for all models
 function dose_affect!(integrator; idx_d, dose_amount)
         integrator.u[idx_d] += dose_amount  # Add dose to depot (d)

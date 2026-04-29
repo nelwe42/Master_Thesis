@@ -40,18 +40,19 @@ Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 
 Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
+Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 0.197, c4 = 0.34, v1 = 76.2, v2 = 0.0181, σ=0.2))
 #Seizure Models
-Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.05]))
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
 Maxiters_optimiser = 200
-Population_size = 2 #5 #10 #20
+Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-#logscale = ("σ",)
-logscale = ("σ", "k_abs", "c1", "v1", "a")
+logscale = ("σ",)
+#logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -85,21 +86,19 @@ show_trace = false
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKLTG(θ=Input_θ_PKLTG)
+#Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
+if (typeof(pk_model).name.wrapper in [PKVPA])
+    Input_θ_SeizureBasic.b = SA[0.05]
+end
 seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-dose_distr = (d_VPA = (min = 150.0, avg_num = 5.0, max_num = 14), d_LEV = (min = 100.0, avg_num = 10.0, max_num = 30), s_LEV_unnormalised = (min = 100.0, avg_num = 10.0, max_num = 30),
-                d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
-if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA]) && drug_appropriate_dosing #add PKLTG here later
-    info = dose_distr[pk_model.keys.d][1]
-    dose_gen = PolyDosesRandom(pk_model, default_min_dose = info.min, default_avg_multiple_dose = info.avg_num, default_max_multiple_dose = info.max_num, times_per_day_first = 2)
-else
-    dose_gen = PolyDosesRandom(pk_model, default_min_dose = 100.0)
-end
+dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
@@ -135,10 +134,10 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-test_mod.pk_model.θ[1] = 1.5*24.0 
+#test_mod.pk_model.θ[1] = 1.5*24.0 
 #test_mod.pk_model.θ[2] = 1.0*24.0
 #test_mod.pk_model.θ[4] = 1.0
-test_mod.pk_model.θ[4] = 0.5
+#test_mod.pk_model.θ[4] = 0.5
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -198,11 +197,11 @@ if plot_change
 indices_interest = [1,2,3,4,5,6,8,9]#[3,4,5] 
 for j in indices_interest
 #for multi in 1:10
-    point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
+    #point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
     #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
     #point[j] = multi #24*0.5*multi
     #name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
-    #point, name_point = Input_θ, :True_Values
+    point, name_point = Input_θ, :True_Values
     #point, name_point = estimate.u, :Estimate
     #index of parameter to consider, name
     #index, index_name = 1, :k_abs

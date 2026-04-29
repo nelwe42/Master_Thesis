@@ -38,6 +38,7 @@ end
     #probability of previous CBZ therapy and kidney disease can be adjusted 
     prob_kidney_disease::T = 0.1
     prob_prev_CBZ::T = 0.0
+    prob_smoking::T = 0.189 #ratio of smokers Germany 2021 according to Mikrozensus, ignoring differences in sex, age, Bundesland
 end
 
 function generate_population(m::BigFourPersonGenerator, n::Int = 10)
@@ -50,6 +51,6 @@ function generate_population(m::BigFourPersonGenerator, n::Int = 10)
     heights = Tuple(rand(Normal(170,7)) for i in 1:n)
     @inbounds population = Tuple(Person(covariates = (height = heights[i], weight = rand(Normal(26.0, 3.5))*(heights[i]/100)^2, 
                                 kidney_disease = Float64(rand(Bernoulli(m.prob_kidney_disease))), 
-                                prev_CBZ = Float64(rand(Bernoulli(m.prob_prev_CBZ))), gender = Float64(rand(Bernoulli(0.5))))) for i in 1:n)
+                                prev_CBZ = Float64(rand(Bernoulli(m.prob_prev_CBZ))), smoking = Float64(rand(Bernoulli(m.prob_smoking))), gender = Float64(rand(Bernoulli(0.5))))) for i in 1:n)
     return population
 end

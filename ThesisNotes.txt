@@ -110,3 +110,16 @@ especially for main rates PK
 -> large enough initial guess and somewhat reasonable ratio between them important
 -> try a few multiples of 24 in 0.5 steps for each or provide reasonable bounds to prevent overshooting
 -> reasonable starting values, bounds based on literature important for inference in base rates
+
+PK Lamotrigine:
+-based on Pharmacokinetics of lamotrigine and its metabolite N-2-glucuronide: Influence of polymorphism of UDP glucuronosyltransferases and drug transporters
+-genetic factors ignored
+-measurements taken after 2 months so potential autoinduction not captured
+    -> Sources of lamotrigine pharmacokinetic variability: A systematic review of population pharmacokinetic analyses 
+        mentions studies found autoinduction, but not clinically relevant
+-k_abs estimated as constant
+-CL = c1*(Weight normalised)^c2*(1-c3*(kidney disease yes/no))*(1+c4*smoking)
+-actually creatinine clearance not kidney disease yes/no, got parameter by insertin 50 for CLCr, below 60 is threshold for chronic kiney disease
+-here would also get factors for Inh like VPA and Ind like CBZ (only Bool for present or not) -> add in multidrug model
+-V = v1*(1+v2*(TBW-70))
+-Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 0.197, c4 = 0.34, v1 = 76.2, v2 = 0.0181, σ=0.2))
