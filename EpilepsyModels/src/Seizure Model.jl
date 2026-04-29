@@ -150,13 +150,20 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
     end
     #Cut down time to full days
     time = Int.(floor.(time))
-    
-    sols = sols_true[individuals]
+    if isnothing(sols_true)
+        sols = nothing
+    else
+        sols = sols_true[individuals]
+    end
     if !isnothing(sols) && any(.!(SciMLBase.successful_retcode.(sols)))
         @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
         sols = nothing
     end
-    sols2 = sols_estimated[individuals]
+    if isnothing(sols_estimated)
+        sols2 = nothing
+    else
+        sols2 = sols_estimated[individuals]
+    end
     if !isnothing(estimate_param) && isnothing(sols2)
         error("Estimate solutions are missing")
     end
