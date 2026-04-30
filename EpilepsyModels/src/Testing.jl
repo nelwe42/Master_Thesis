@@ -22,13 +22,14 @@ using ModelingToolkit
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-#open("/home/s6newell_hpc/output.txt", "w") do io
-#open(joinpath(path,"output.txt"), "w") do io
-#open(joinpath(path,"errors.txt"), "w") do io_err
-#redirect_stdout(io) do
-#redirect_stderr(io_err) do
+open(joinpath(path,"output.txt"), "w") do io
+open(joinpath(path,"errors.txt"), "w") do io_err
+redirect_stdout(io) do
+redirect_stderr(io_err) do
 
 println("Included")
+
+try
 
 #set seed
 Random.seed!(42)
@@ -40,7 +41,7 @@ Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 
 Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
-Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 0.197, c4 = 0.34, v1 = 2.14, σ=0.2))
+Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 0.00328, c4 = 0.34, v1 = 2.14, σ=0.2))
 #Seizure Models
 Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
@@ -51,8 +52,8 @@ Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-logscale = ("σ",)
-#logscale = ("σ", "k_abs", "c1", "v1", "a")
+#logscale = ("σ",)
+logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -134,8 +135,8 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-#test_mod.pk_model.θ[1] = 1.5*24.0 
-#test_mod.pk_model.θ[2] = 1.0*24.0
+test_mod.pk_model.θ[1] = 3.0*24.0 
+test_mod.pk_model.θ[2] = 3.0*24.0
 #test_mod.pk_model.θ[4] = 1.0
 #test_mod.pk_model.θ[4] = 0.5
 if hierarchical_optimisation
@@ -235,7 +236,11 @@ end
 
 println("Done")
 
-#end
-#end
-#end
-#end
+catch e
+    @warn e
+end
+
+end
+end
+end
+end

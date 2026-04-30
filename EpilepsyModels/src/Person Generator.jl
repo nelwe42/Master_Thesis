@@ -39,6 +39,7 @@ end
     prob_kidney_disease::T = 0.1
     prob_prev_CBZ::T = 0.0
     prob_smoking::T = 0.189 #ratio of smokers Germany 2021 according to Mikrozensus, ignoring differences in sex, age, Bundesland
+    creatinine_distr = ((101, 30.5/1.96), (86.9, 25.8/1.96)) #info on creatinine distr for each gender
 end
 
 function generate_population(m::BigFourPersonGenerator, n::Int = 10)
@@ -49,8 +50,12 @@ function generate_population(m::BigFourPersonGenerator, n::Int = 10)
     #draw heights first because weights dependent on them
     #gender equally distributed, 1 for female, 0 for male
     heights = Tuple(rand(Normal(170,7)) for i in 1:n)
+    genders = Tuple(Float64(rand(Bernoulli(0.5))) for i in 1:n)
     @inbounds population = Tuple(Person(covariates = (height = heights[i], weight = rand(Normal(26.0, 3.5))*(heights[i]/100)^2, 
                                 kidney_disease = Float64(rand(Bernoulli(m.prob_kidney_disease))), 
-                                prev_CBZ = Float64(rand(Bernoulli(m.prob_prev_CBZ))), smoking = Float64(rand(Bernoulli(m.prob_smoking))), gender = Float64(rand(Bernoulli(0.5))))) for i in 1:n)
+                                CLCr = rand(Normal(m.creatinine_distr[genders[i]+1]...)),
+                                prev_CBZ = Float64(rand(Bernoulli(m.prob_prev_CBZ))), 
+                                smoking = Float64(rand(Bernoulli(m.prob_smoking))), 
+                                gender = genders[i])) for i in 1:n)
     return population
 end

@@ -227,14 +227,15 @@ end
 #A model for the PK behavior of Lamotrigine
 @with_kw struct PKLTG{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ=0.5)) 
-    cov::T2 = (:weight, :kidney_disease, :smoking) 
+    cov::T2 = (:weight, :kidney_disease, :CLCr, :smoking) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:d_LTG], s = SA[:s_LTG], S = SA[:S_LTG], obs = SA[(:obs_LTG, :s_LTG)]) #for observations also records corresponding internal state
 end
 
 function create_ode_system(mod::PKLTG) 
     #V = v1*TBW
-    #CL = c1*(Weight normalised)^c2*(1-c3*(kidney disease yes/no))*(1+c4*smoking)
+    #CL = c1*(Weight normalised)^c2*(1-c3*(CLCr -110))*(1+c4*smoking)
+    #if only kindey_disease yes/no known sets CLCr to 50, if both known only CLCr is used (ensured in create_problem)
     #Absorption rate k_abs/V, elimination CL/V
     θ = mod.θ
     interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
@@ -245,13 +246,14 @@ function create_ode_system(mod::PKLTG)
     @parameters (weight::type_use)(..) [tunable=false] 
     @parameters (smoking::type_use)(..) [tunable=false] 
     @parameters (kidney_disease::type_use)(..) [tunable=false]
+    @parameters (CLCr::type_use)(..) [tunable=false]
     @variables d_LTG(t) = 0.0  # depot compartment - no drug at beginning
     @variables s_LTG(t) = 0.0  # internal/central compartment
     @variables S_LTG(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_LTG(t)
     #d_LTG is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_LTG) ~ -k_abs * d_LTG,
-            D(s_LTG) ~ (k_abs/(v1*(weight(t)))) * d_LTG - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)*(1+c4*smoking(t))/(v1*(weight(t)))) * s_LTG,
+            D(s_LTG) ~ (k_abs/(v1*(weight(t)))) * d_LTG - (c1*(weight(t)/70)^c2*(1+c3*(CLCr(t)-110+50*kidney_disease(t)))*(1+c4*smoking(t))/(v1*(weight(t)))) * s_LTG,
             D(S_LTG) ~ s_LTG, 
             obs_LTG ~ Normal(s_LTG, σ)]
     
@@ -330,6 +332,19 @@ end
 function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
     ode_system = create_ode_system(mod)
+    #check if just one of kidney_disease and creatinine clearance passed, if then set other to 0
+    if issubset(mod.cov, keys(covariates))
+        covariates = NamedTuple{mod.cov}(covariates)
+        #if both CLCr and kidney_disease given set kidney_disease=0 for ODE system
+        if issubset(([:kidney_disease], [:CLCr]), mod.cov)
+            merge(NamedTuple{Tuple(setdiff(mod.cov,(:kidney_disease,)))}(covariates), (kidney_disease=0,))
+        end
+        covariates = NamedTuple{mod.cov}(covariates)
+    elseif setdiff(mod.cov, keys(covariates)) in ([:kidney_disease], [:CLCr])
+        covariates = merge(NamedTuple{Tuple(intersect(mod.cov,keys(covariates)))}(covariates), NamedTuple{Tuple(setdiff(mod.cov, keys(covariates)))}([0]))
+    else
+        error("Covariates of data does not match covariates required by PK model")
+    end
 
     #Create Callbacks for doses, autoinduction and other potential dose related behavior
     names = get_keys_PK(mod)
@@ -347,7 +362,18 @@ end
 #same function for ode_system already given, given a person instead of dosing and covariates
 function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Person, endpoint::AbstractFloat = 10.0)
     dosing = person.dosing
-    covariates = NamedTuple{mod.cov}(person.covariates)
+    #check if just one of kidney_disease and creatinine clearance passed, if then set other to 0
+    if issubset(mod.cov, keys(person.covariates))
+        covariates = NamedTuple{mod.cov}(person.covariates)
+        #if both CLCr and kidney_disease given set kidney_disease=0 for ODE system
+        if issubset(([:kidney_disease], [:CLCr]), mod.cov)
+            merge(NamedTuple{Tuple(setdiff(mod.cov,(:kidney_disease,)))}(covariates), (kidney_disease=0,))
+        end
+    elseif setdiff(mod.cov, keys(person.covariates)) in ([:kidney_disease], [:CLCr])
+        covariates = merge(NamedTuple{Tuple(intersect(mod.cov,keys(person.covariates)))}(person.covariates), NamedTuple{Tuple(setdiff(mod.cov, keys(person.covariates)))}([0]))
+    else
+        error("Covariates of data does not match covariates required by PK model")
+    end
 
     #Create Callbacks for doses, autoinduction and other potential dose related behavior
     names = get_keys_PK(mod)
