@@ -73,7 +73,7 @@ end
 #A model for the PK behavior of Levetiracetam
 @with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
-    cov::T2 = (:weight, :height, :kidney_disease) 
+    cov::T2 = (:weight, :height, :kidney_disease, :CLCr) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:d_LEV], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
 end
@@ -93,13 +93,14 @@ function create_ode_system(mod::PKLEV)
     @parameters (weight::type_use)(..) [tunable=false] 
     @parameters (height::type_use)(..) [tunable=false] 
     @parameters (kidney_disease::type_use)(..) [tunable=false]
+    @parameters (CLCr::type_use)(..) [tunable=false]
     @variables d_LEV(t) = 0.0  # depot compartment - no drug at beginning
     @variables s_LEV(t) = 0.0  # internal/central compartment
     @variables S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_LEV(t)
     #d_LEV is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_LEV) ~ -k_abs * d_LEV,
-            D(s_LEV) ~ (k_abs/(v1*BSA_normalised(weight(t), height(t))^v2)) * d_LEV - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
+            D(s_LEV) ~ (k_abs/(v1*BSA_normalised(weight(t), height(t))^v2)) * d_LEV - (c1*(weight(t)/70)^c2*((CLCr(t)+50*kidney_disease(t))/110)^c3/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
             D(S_LEV) ~ s_LEV, 
             obs_LEV ~ Normal(s_LEV, σ)]
     
@@ -253,7 +254,7 @@ function create_ode_system(mod::PKLTG)
     @variables obs_LTG(t)
     #d_LTG is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_LTG) ~ -k_abs * d_LTG,
-            D(s_LTG) ~ (k_abs/(v1*(weight(t)))) * d_LTG - (c1*(weight(t)/70)^c2*(1+c3*(CLCr(t)-110+50*kidney_disease(t)))*(1+c4*smoking(t))/(v1*(weight(t)))) * s_LTG,
+            D(s_LTG) ~ (k_abs/(v1*(weight(t)))) * d_LTG - (c1*(weight(t)/70)^c2*(1+c3*((CLCr(t)+50*kidney_disease(t))/110-1))*(1+c4*smoking(t))/(v1*(weight(t)))) * s_LTG,
             D(S_LTG) ~ s_LTG, 
             obs_LTG ~ Normal(s_LTG, σ)]
     
