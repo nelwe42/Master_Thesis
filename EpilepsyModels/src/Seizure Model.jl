@@ -147,6 +147,7 @@ end
 #4) Functions for visualisation
 
 #Plots fit for person i up to time given solutions from PK model (if they should be plotted)
+#estimate and true distributions plotted in same timeframes as individuals data
 function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, display_plot::Bool = true)
     
@@ -164,8 +165,6 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
     if time[1]<0 || time[2] > endpoint || time[1] > time[2]
         error("Incorrectly defined time window for seizure plotting")
     end
-    #Cut down time to full days
-    time = Int.(floor.(time))
     if isnothing(sols_true)
         sols = nothing
     else
@@ -191,16 +190,19 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         seizure_model_estimate = typeof(mod).name.wrapper(θ = estimate_param)
     end
     for i in individuals
-        pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for day $(time[1]) to $(time[2])")
+        #Get timepoints and corresponding indices for plotting from seizure data
+        indices = [index for index in eachindex(data[i].seizure_counts) if data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]]
+        intervals = [data[i].seizure_counts[index].time for index in indices]
+        pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
         if !isnothing(sols)
-            distribution_true = [distribution(mod, sols[i], Float64(n), person=data[i], names=names) for n in time[1]:time[2]]
+            distribution_true = [distribution(mod, sols[i], interval[1], person=data[i], record_interval=(interval[2]-interval[1]),names=names) for interval in intervals]
             if any(isnothing.(distribution_true))
                 @warn "Distribution for true parameters is not well-defined"
                 sols = nothing
             end
         end
         if !isnothing(estimate_param)
-            distribution_estimate = [distribution(seizure_model_estimate, sols2[i], Float64(n), person=data[i], names=names) for n in time[1]:time[2]]
+            distribution_estimate = [distribution(seizure_model_estimate, sols2[i], interval[1], person=data[i], record_interval = (interval[2]-interval[1]), names=names) for interval in intervals]
             if any(isnothing.(distribution_estimate))
                 @warn "Distribution for estimate parameters is not well-defined"
                 estimate_param = nothing
@@ -208,27 +210,35 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         end
         #Plot distributions, first day separate so label only once, only on separate sides if not both plotted
         if !isnothing(estimate_param) && !isnothing(sols)
-            violin!(["$(time[1])"], rand(distribution_true[1],1000), side = :left, label = "true", colour = :dodgerblue)
-            violin!(["$(time[1])"], rand(distribution_estimate[1],1000), side = :right, label = "estimate", colour = :firebrick2)
-            for day in (time[1]+1):time[2]
-                violin!(["$(day)"], rand(distribution_true[day-time[1]+1],1000), side = :left, label = "", colour = :dodgerblue)
-                violin!(["$(day)"], rand(distribution_estimate[day-time[1]+1],1000), side = :right, label = "", colour = :firebrick2)
+            violin!(["$(intervals[1])"], rand(distribution_true[1],1000), side = :left, label = "true", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], rand(distribution_estimate[1],1000), side = :right, label = "estimate", colour = :firebrick2)
+            for j in eachindex(intervals)
+                if j>1
+                    violin!(["$(intervals[j])"], rand(distribution_true[j],1000), side = :left, label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], rand(distribution_estimate[j],1000), side = :right, label = "", colour = :firebrick2)
+                end
             end
         elseif !isnothing(estimate_param)
-            violin!(["$(time[1])"], rand(distribution_estimate[1],1000), label = "estimate", colour = :firebrick2)
-            for day in (time[1]+1):time[2]
-                violin!(["$(day)"], rand(distribution_estimate[day-time[1]+1],1000), label = "", colour = :firebrick2)
+            violin!(["$(intervals[1])"], rand(distribution_estimate[1],1000), label = "estimate", colour = :firebrick2)
+            for j in eachindex(intervals)
+                if j>1
+                    violin!(["$(intervals[j])"], rand(distribution_estimate[j],1000), label = "", colour = :firebrick2)
+                end
             end
         elseif !isnothing(sols)
-            violin!(["$(time[1])"], rand(distribution_true[1],1000), label = "true", colour = :dodgerblue)
-            for day in (time[1]+1):time[2]
-                violin!(["$(day)"], rand(distribution_true[day-time[1]+1],1000), label = "", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], rand(distribution_true[1],1000), label = "true", colour = :dodgerblue)
+            for j in eachindex(intervals)
+                if j>1
+                    violin!(["$(intervals[j])"], rand(distribution_true[j],1000), label = "", colour = :dodgerblue)
                 end
+            end
         end
         #Add where data is
-        boxplot!(["$(time[1])"], [seizure.count for seizure in data[i].seizure_counts if (time[1] ≤ seizure.time[1] < (time[1]+1))], label = "Data values", colour = :grey, linewidth = 3)
-        for day in (time[1]+1):time[2]
-            boxplot!(["$(day)"], [seizure.count for seizure in data[i].seizure_counts if (day ≤ seizure.time[1] < day+1)], label = "", colour = :grey, linewidth = 3)
+        boxplot!(["$(intervals[1])"], [data[i].seizure_counts[indices[1]].count], label = "Data values", colour = :grey, linewidth = 3)
+        for j in eachindex(intervals)
+            if j>1
+                boxplot!(["$(intervals[j])"], [data[i].seizure_counts[indices[j]].count], label = "", colour = :grey, linewidth = 3)
+            end
         end
         #add to output
         append!(output, [pl2])

@@ -70,7 +70,8 @@ Multistart_nstarts = 1
 Multistart_seed = 42
 Multistart_include_initial = true
 bound_abs = nothing #100.0
-optim_lower_bounds = nothing
+optim_lower_bounds = ComponentArray(PK= ComponentArray((k_abs = 1.0, c1 = 0.0, c2 = 0.0, c3 = -Inf, c4 = -Inf, v1 = 0.0, σ=0.0)), Seizure=ComponentArray(a = 0.0, b=SA[-Inf])) #nothing
+EpilepsyModels.partial_transform_to_logscale!(optim_lower_bounds, logscale=logscale)
 optim_upper_bounds = nothing 
 Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = 20.0 #nothing
