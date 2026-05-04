@@ -34,13 +34,13 @@ function SeizureBasic(N::Int64)
     return obj
 end
 
-#basic distribution function for day starting at n, requires sol from chosen PK model
-function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
+#basic distribution function for record_interval in days starting at n, requires sol from chosen PK model
+function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
-    intensity = θ.a
-    intensity -= θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
+    intensity = θ.a*record_interval
+    intensity -= θ.b'*(sol(n+record_interval, idxs = names.S)-sol(n,idxs = names.S))
     if !isfinite(intensity)
         return nothing
     end
@@ -61,8 +61,8 @@ function SeizureNegativeBinomial(N::Int64)
     return obj
 end
 
-#negative binomial distribution function for day starting at n, depends on if seizure on day n-1, requires sol from chosen PK model
-function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+#negative binomial distribution function for record_interval starting at n, depends on if seizure on previous interval, requires sol from chosen PK model
+function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
@@ -70,9 +70,9 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     if o ≤ zero(o) || !isfinite(o)
         return nothing
     end
-    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-1 ≤ seizure.time <n)]))
-    mean = θ.a + θ.prev*seizure_prev_day
-    mean -= θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
+    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-record_interval ≤ seizure.time <n)]))
+    mean = θ.a*record_interval + θ.prev*seizure_prev_day*(1/record_interval)
+    mean -= θ.b'*(sol(n+record_interval, idxs = names.S)-sol(n,idxs = names.S))
     if !isfinite(mean)
         return nothing
     end
@@ -90,25 +90,39 @@ end
 
 #2) Implement Seizure Probabilities, Likelihoods and Data Generators for discrete, nonrandom
 
-#k_n number of seizures on day n
-function Seizure_prob_day(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Int64; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
-    distribute = distribution(m,sol,n, person = person, names=names, θ = θ)
+#k_n number of seizures (or presence/absence) on day n
+function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Union{Int64, Bool}, record_interval::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+    distribute = distribution(m,sol,n, person = person, record_interval = record_interval, names=names, θ = θ)
     if isnothing(distribute)
         return 0.0
     end
-    return pdf(distribute, k_n)
+    if (k_n isa Bool) && (eltype(distribute) != Bool)
+        prob_false = pdf(distribute, 0)
+        if k_n 
+            return 1-prob_false
+        else
+            return prob_false
+        end
+    else
+        return pdf(distribute, k_n)
+    end
 end
 
 function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
     prob = zero(eltype(θ))
     for i in eachindex(person.seizure_counts) 
-        @inbounds time = person.seizure_counts[i].time #get timepoint out of named tuple
+        @inbounds time = person.seizure_counts[i].time #get time interval out of named tuple
         @inbounds count = person.seizure_counts[i].count #get count out of tuple
-        log_day_prob = log(Seizure_prob_day(m, sol, time, count, person = person, names = names, θ=θ))
-        if !isfinite(log_day_prob)
+        start = time[1]
+        interval = time[2] - time[1]
+        if interval < 0
+            error("Seizure time interval bounds in wrong order")
+        end
+        log_interval_prob = log(Seizure_prob_interval(m, sol, start, count, interval, person = person, names = names, θ=θ))
+        if !isfinite(log_interval_prob)
             return -Inf
         else
-            prob += log_day_prob
+            prob += log_interval_prob
         end
     end
     return prob
@@ -121,11 +135,13 @@ end
 #3) Implement generation of seizures for discrete, nonrandom models
 
 #generates and appends seizures to person for given number of days start
-function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; start::AbstractFloat = 0.0, day_number::AbstractFloat = 10.0, names::NamedTuple)
-    if day_number >=1
-    new_seizures = [(time = n, count = rand(distribution(m, sol, n, person = person, names=names))) for n in start:(start+day_number-1)]
-    append!(person.seizure_counts, new_seizures)
+function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:1.0:10.0, just_Bool::Bool = false, names::NamedTuple)
+    if !(just_Bool)
+        new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))) for i in 1:(length(timepoints)-1)]
+    else
+        new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = (rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))>0)) for i in 1:(length(timepoints)-1)]
     end
+    append!(person.seizure_counts, new_seizures)
 end
 
 #4) Functions for visualisation
@@ -140,7 +156,7 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
     elseif !isnothing(sols_estimated)
         endpoint = sols_estimated[1].t[end]
     else
-        endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time)
+        endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time[2])
     end
     if time isa Number
         time = (0,time)
@@ -210,9 +226,9 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
                 end
         end
         #Add where data is
-        boxplot!(["$(time[1])"], [seizure.count for seizure in data[i].seizure_counts if (time[1] ≤ seizure.time < (time[1]+1))], label = "Data values", colour = :grey, linewidth = 3)
+        boxplot!(["$(time[1])"], [seizure.count for seizure in data[i].seizure_counts if (time[1] ≤ seizure.time[1] < (time[1]+1))], label = "Data values", colour = :grey, linewidth = 3)
         for day in (time[1]+1):time[2]
-            boxplot!(["$(day)"], [seizure.count for seizure in data[i].seizure_counts if (day ≤ seizure.time < day+1)], label = "", colour = :grey, linewidth = 3)
+            boxplot!(["$(day)"], [seizure.count for seizure in data[i].seizure_counts if (day ≤ seizure.time[1] < day+1)], label = "", colour = :grey, linewidth = 3)
         end
         #add to output
         append!(output, [pl2])

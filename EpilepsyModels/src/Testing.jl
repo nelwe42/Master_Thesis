@@ -52,6 +52,8 @@ Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
+Seizure_timepoints = 0.0:1.0:Obs_Duration
+no_counts_seizure = false
 #logscale = ("σ",)
 logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
@@ -81,13 +83,13 @@ drug_appropriate_dosing = false
 hierarchical_optimisation = false
 plotting = true
 optimisation_trace = true
-show_trace = false
+show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 if (typeof(pk_model).name.wrapper in [PKVPA])
@@ -102,7 +104,7 @@ person_gen = BigFourPersonGenerator()
 dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
-data = generate_data(mod, Population_size, Obs_Duration, timepoints = PK_timepoints, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 println("Generated")
 println(data[1].covariates)
 
@@ -135,10 +137,10 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-test_mod.pk_model.θ[1] = 3.0*24.0 
-test_mod.pk_model.θ[2] = 3.0*24.0
+test_mod.pk_model.θ[1] = 1.5*24.0 
+test_mod.pk_model.θ[2] = 10.0
 #test_mod.pk_model.θ[4] = 1.0
-#test_mod.pk_model.θ[4] = 0.5
+test_mod.pk_model.θ[4] = 0.5
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -211,7 +213,7 @@ for j in indices_interest
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
-    problems = Tuple(EpilepsyModels.create_problem(mod.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time)) for person in data)
+    problems = Tuple(EpilepsyModels.create_problem(mod.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_use.PK)]
     EpilepsyModels.partial_transform_to_logscale!(θ_use, logscale = logscale)
     p = (m = mod, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)

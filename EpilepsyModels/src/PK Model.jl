@@ -390,15 +390,25 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
 end
 
 #solve ODE without system given
-function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23()),))
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
+    if !isnothing(start)
+        new_tspan = (start[1], endpoint)
+        new_u0 = start[2]
+        prob = remake(prob, tspan=new_tspan, u0=new_u0)
+    end
     sol = solve(prob,options...; callback = PositiveDomain())
     return sol
 end
 
 #solve ODE given system
-function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, options = (AutoTsit5(Rosenbrock23()),))
+function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, sys, person=person, endpoint=endpoint)
+    if !isnothing(start)
+        new_tspan = (start[1], endpoint)
+        new_u0 = start[2]
+        prob = remake(prob, tspan=new_tspan, u0=new_u0)
+    end
     sol = solve(prob,options...; callback = PositiveDomain())
     return sol
 end
@@ -452,9 +462,9 @@ end
 
 #generates noisy measurements, returns solution for use in seizure model
 #if no endpoint given assumes timepoints are increasing
-function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23()),))
+function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
-    sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, options = options)
+    sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, start = start, options = options)
     if !(SciMLBase.successful_retcode(sol))
         @warn "Unsuccessful ODE solve in data generation, you might want to adjust model parameters"
     end
@@ -465,8 +475,8 @@ function generate_measurements!(mod::PKModel, person::Person; timepoints::Abstra
 end
 
 #same function but given ODE system
-function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], options = (AutoTsit5(Rosenbrock23()),))
-    sol = solve_ODE(mod, sys, person=person, endpoint = endpoint, options = options)
+function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
+    sol = solve_ODE(mod, sys, person=person, endpoint = endpoint, start = start, options = options)
     if !(SciMLBase.successful_retcode(sol))
         @warn "Unsuccessful ODE solve in data generation, you might want to adjust model parameters"
     end
@@ -486,7 +496,7 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
     elseif !isnothing(sols_estimated)
         endpoint = sols_estimated[1].t[end]
     else
-        endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time)
+        endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time[2])
     end
     if time isa Number
         time = (0.0,Float64(time))
@@ -573,7 +583,7 @@ function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentAr
     
     if isnothing(endpoint)
         measurements_ends = Tuple(person.measurements[end].timepoint for person in data)
-        seizure_ends = Tuple(person.seizure_counts[end].time+1 for person in data)
+        seizure_ends = Tuple(person.seizure_counts[end].time[2] for person in data)
         endpoint = max(measurements_ends...,seizure_ends...)
     end
     if isnothing(time)

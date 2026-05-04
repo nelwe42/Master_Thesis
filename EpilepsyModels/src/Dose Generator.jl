@@ -64,12 +64,13 @@ end
 #picks first drug from distribution, with specified probability also second drug from that distribution, wo_treatment gives first dosetime, times per day and doses specified in model
 #if second picked drug is same as first, no second drug is assigned
 #when called again on person with doses already assigned, next doses are picked independently from current ones
+#when doses already assigned next doses start only on following day not same one
 #when a drug not contained in names is picked, the attribute assign_not_supported decides if assigned anyway
 function assign_dose!(m::PolyDoses, person::Person; names::NamedTuple = (d = keys(m.default_doses),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
     if isempty(person.dosing)
         last_dosetime = -1
     else
-        last_dosetime = person.dosing[end].t
+        last_dosetime = floor(person.dosing[end].t)
     end
     #for first wo_treatment time no treatment, don't need to add zero callbacks to dosing
     no_dose = min(wo_treatment,timeframe)
@@ -159,13 +160,14 @@ end
 #picks first drug from distribution, with specified probability also second drug from that distribution, wo_treatment gives first dosetime, times per day and doses specified in model
 #if second picked drug is same as first, no second drug is assigned
 #when called again on person with doses already assigned, next doses are picked independently from current ones
+#when doses already assigned next doses start only on following day not same one
 #when a drug not contained in names is picked, the attribute assign_not_supported decides if assigned anyway
 #doses drawn according to specified distribution, multiple of min_dose via binomial with given values
 function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d = keys(m.default_doses),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
     if isempty(person.dosing)
         last_dosetime = -1
     else
-        last_dosetime = person.dosing[end].t
+        last_dosetime = floor(person.dosing[end].t)
     end
     #for first wo_treatment time no treatment, don't need to add zero callbacks to dosing
     no_dose = min(wo_treatment,timeframe)
