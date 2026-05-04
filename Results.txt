@@ -1008,3 +1008,35 @@ Objective: 173.86452344367194
 Multistart best start: 1 Number of Starts: 1
 True Objective Value: 178.98881019719062
 True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))
+
+Tried VPA more logscale with lower bounds on some:
+optim_lower_bounds = ComponentArray(PK= ComponentArray((k_abs = 1.0, c1 = 0.0, c2 = 0.0, c3 = -Inf, c4 = -Inf, v1 = 0.0, σ=0.0)), Seizure=ComponentArray(a = 0.0, b=SA[-Inf])) #nothing
+(untransformed bounds in linear scale)
+Estimate: (PK = (k_abs = 158.23323859171015, c1 = 7.571794979739793e7, c2 = 1.4131306410204756, c3 = 102.56636357960073, c4 = -391.7548952553413, v1 = 3.0062060470031635e6, σ = 0.07308659144321523), Seizure = (a = 351.23664547071957, b = [-67.33958853708913]))
+Retcode: Success
+Objective: 824461.5365686924
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 180.47666431353286
+
+On Marvin ran VPA with lower bounds (and reset some) with less logscale:
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
+Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
+Maxiters_optimiser = 200
+Population_size = 5 
+wo_treatment = 0.0 
+Obs_Duration = wo_treatment + 20.0 
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+Seizure_timepoints = 0.0:1.0:Obs_Duration
+no_counts_seizure = false
+logscale = ("σ",)
+optim_lower_bounds = ComponentArray(PK= ComponentArray((k_abs = 1.0, c1 = 0.0, c2 = 0.0, c3 = -Inf, c4 = -Inf, v1 = 0.0, σ=0.0)), Seizure=ComponentArray(a = 0.0, b=SA[-Inf])) (untransformed)
+Starting point: (PK = (k_abs = 36.0, c1 = 10.0, c2 = 1.0, c3 = 0.5, c4 = 0.0, v1 = 1.0, σ = 0.1), Seizure = (a = 2.0, b = [0.0]))
+
+Estimate: (PK = (k_abs = 3241.5020729272296, c1 = 978.7660665074395, c2 = 98.48336979921903, c3 = 41.07202999504598, c4 = -382.4956520471408, v1 = 99.27484054983556, σ = 0.05128495325527494), Seizure = (a = 196.27329174243408, b = [-38438.44959939268]))
+Retcode: Success
+Objective: 1.6244586815531887e6
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 180.47666431301394
+True θ: (PK = (k_abs = 44.64, c1 = 0.37439999999999996, c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+
+

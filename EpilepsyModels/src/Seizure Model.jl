@@ -210,34 +210,34 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         end
         #Plot distributions, first day separate so label only once, only on separate sides if not both plotted
         if !isnothing(estimate_param) && !isnothing(sols)
-            violin!(["$(intervals[1])"], rand(distribution_true[1],1000), side = :left, label = "true", colour = :dodgerblue)
-            violin!(["$(intervals[1])"], rand(distribution_estimate[1],1000), side = :right, label = "estimate", colour = :firebrick2)
+            violin!(["$(intervals[1])"], Float64.(rand(distribution_true[1],1000)), side = :left, label = "true", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], Float64.(rand(distribution_estimate[1],1000)), side = :right, label = "estimate", colour = :firebrick2)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], rand(distribution_true[j],1000), side = :left, label = "", colour = :dodgerblue)
-                    violin!(["$(intervals[j])"], rand(distribution_estimate[j],1000), side = :right, label = "", colour = :firebrick2)
+                    violin!(["$(intervals[j])"], Float64.(rand(distribution_true[j],1000)), side = :left, label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], Float64.(rand(distribution_estimate[j],1000)), side = :right, label = "", colour = :firebrick2)
                 end
             end
         elseif !isnothing(estimate_param)
-            violin!(["$(intervals[1])"], rand(distribution_estimate[1],1000), label = "estimate", colour = :firebrick2)
+            violin!(["$(intervals[1])"], Float64.(rand(distribution_estimate[1],1000)), label = "estimate", colour = :firebrick2)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], rand(distribution_estimate[j],1000), label = "", colour = :firebrick2)
+                    violin!(["$(intervals[j])"], Float64.(rand(distribution_estimate[j],1000)), label = "", colour = :firebrick2)
                 end
             end
         elseif !isnothing(sols)
-            violin!(["$(intervals[1])"], rand(distribution_true[1],1000), label = "true", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], Float64.(rand(distribution_true[1],1000)), label = "true", colour = :dodgerblue)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], rand(distribution_true[j],1000), label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], Float64.(rand(distribution_true[j],1000)), label = "", colour = :dodgerblue)
                 end
             end
         end
         #Add where data is
-        boxplot!(["$(intervals[1])"], [data[i].seizure_counts[indices[1]].count], label = "Data values", colour = :grey, linewidth = 3)
+        boxplot!(["$(intervals[1])"], [Float64(data[i].seizure_counts[indices[1]].count)], label = "Data values", colour = :grey, linewidth = 3)
         for j in eachindex(intervals)
             if j>1
-                boxplot!(["$(intervals[j])"], [data[i].seizure_counts[indices[j]].count], label = "", colour = :grey, linewidth = 3)
+                boxplot!(["$(intervals[j])"], [Float64(data[i].seizure_counts[indices[j]].count)], label = "", colour = :grey, linewidth = 3)
             end
         end
         #add to output

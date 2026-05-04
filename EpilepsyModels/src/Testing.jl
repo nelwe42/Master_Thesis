@@ -54,8 +54,8 @@ Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
-#logscale = ("σ",)
-logscale = ("σ", "k_abs", "c1", "v1", "a")
+logscale = ("σ",)
+#logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -70,9 +70,10 @@ Multistart_nstarts = 1
 Multistart_seed = 42
 Multistart_include_initial = true
 bound_abs = nothing #100.0
-optim_lower_bounds = ComponentArray(PK= ComponentArray((k_abs = 1.0, c1 = 0.0, c2 = 0.0, c3 = -Inf, c4 = -Inf, v1 = 0.0, σ=0.0)), Seizure=ComponentArray(a = 0.0, b=SA[-Inf])) #nothing
+optim_lower_bounds = ComponentArray(PK= ComponentArray((k_abs = 1.0, c1 = 0.0, c2 = 0.0, c3 = -100.0, c4 = -100.0, v1 = 0.0, σ=0.0)), Seizure=ComponentArray(a = 0.0, b=SA[-100.0])) #nothing
 EpilepsyModels.partial_transform_to_logscale!(optim_lower_bounds, logscale=logscale)
-optim_upper_bounds = nothing 
+optim_upper_bounds = ComponentArray(PK= ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 100.0, c3 = 100.0, c4 = 100.0, v1 = 100.0, σ=100.0)), Seizure=ComponentArray(a = 100.0, b=SA[100.0]))
+EpilepsyModels.partial_transform_to_logscale!(optim_upper_bounds, logscale=logscale)
 Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = 20.0 #nothing
 fail_hard = false
@@ -240,7 +241,7 @@ end
 println("Done")
 
 #catch e
-#    @warn e
+#   @warn e
 #end
 
 #end
