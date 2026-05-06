@@ -22,14 +22,14 @@ using ModelingToolkit
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-#open(joinpath(path,"output.txt"), "w") do io
-#open(joinpath(path,"errors.txt"), "w") do io_err
-#redirect_stdout(io) do
-#redirect_stderr(io_err) do
+open(joinpath(path,"output.txt"), "w") do io
+open(joinpath(path,"errors.txt"), "w") do io_err
+redirect_stdout(io) do
+redirect_stderr(io_err) do
 
 println("Included")
 
-#try
+try
 
 #set seed
 Random.seed!(42)
@@ -40,7 +40,7 @@ Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
 Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
-Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = (0.748-0.183), c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 110*0.00328, c4 = 0.34, v1 = 2.14, σ=0.2))
 #Seizure Models
 Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
@@ -108,7 +108,6 @@ Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 println("Generated")
-println(data[1].covariates)
 
 
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
@@ -142,7 +141,7 @@ test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name
 test_mod.pk_model.θ[1] = 1.5*24.0 
 test_mod.pk_model.θ[2] = 10.0
 #test_mod.pk_model.θ[4] = 1.0
-test_mod.pk_model.θ[4] = 0.5
+test_mod.pk_model.θ[4] = 0.1
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -240,11 +239,11 @@ end
 
 println("Done")
 
-#catch e
-#   @warn e
-#end
+catch e
+   @warn e
+end
 
-#end
-#end
-#end
-#end
+end
+end
+end
+end

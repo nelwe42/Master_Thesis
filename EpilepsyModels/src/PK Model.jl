@@ -189,7 +189,7 @@ end
 
 #A model for the PK behavior of Valproate
 @with_kw struct PKVPA{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ = 0.1)) 
+    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, c4 = 1.0, v1 = 1.0, σ = 0.1)) 
     cov::T2 = (:gender, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none),) 
     #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter (not present here, just for sake of completeness)
@@ -216,7 +216,7 @@ function create_ode_system(mod::PKVPA)
     @variables obs_VPA(t)
     #d_VPA is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_VPA) ~ -k_abs * d_VPA,
-            D(s_VPA) ~ k_abs/(v1*weight(t)) * d_VPA - (c1*weight(t)^c2*d_VPA_daily^c3*c4^gender(t))/(v1*weight(t)) * s_VPA,
+            D(s_VPA) ~ k_abs/(v1*weight(t)) * d_VPA - (c1*weight(t)^c2*(d_VPA_daily)^c3*c4^gender(t))/(v1*weight(t)) * s_VPA,
             D(S_VPA) ~ s_VPA,
             obs_VPA ~ Normal(s_VPA, σ)]
     

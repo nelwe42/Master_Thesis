@@ -3,6 +3,7 @@ Discuss reasons for seizure model takes daily exposure, only calculated in seizu
 Basic Seizure Model:
 -problem with intensity=0 in initial iteration gives nonzero count inf negloglikeli
 -tradeoff between a and b if daily exposure stabilises too fast, days without medication can help
+-at some point when b*exposure > a can only tell b >= something, might also introduce unwanted zero gradients
 
 Drugs most of interest:
 -based on Real life pharmaceutical treatment patterns for adult patients with focal epilepsy in Germany: 
@@ -63,6 +64,8 @@ PK Valproate:
     Drug-Drug Interaction and Patient Characteristics by Yukawa et al. 
 -k_abs constant, V = v1*weight
 -CL = c1*weight^c2*dose(mg/day)^c3*c4^gender(1 for female, 0 for male)
+    -> in paper dose given in mg/kg/day, change coefficient for weight accordingly
+    -> introduce normalisation for dose, factor absorped into c1 in true parameters
 -talk a bit about Valproate for women in risk of pregnancy usually hard to control epilepsy, but here observed CL for women actually lower?
 -no induction effect for daily dose, usual question of if model appropriate at beginning of treatment
 -dose relation still controversial, see e.g. Nonparametric population modeling of valproate pharmacokinetics in epileptic patients using routine
@@ -71,7 +74,10 @@ PK Valproate:
 -use CL covariates from first paper, no k_abs or V reported, note CL in /ml in paper, adjusted by factor 1000
 -for k_abs and V slope averaged the ones reported in Mexican paper and Population pharmacokinetic model of valproate and prediction
     of valproate serum concentrations in children with epilepsy by Jiang, Wang, both actually for children
-PK = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000), c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=1.0))
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000)*(750^0.183), c2 = (0.748-0.183), c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
+-> continually didn't work, stay close when start in true values but don't reach from outside starts in many runs 
+-> perhaps some instability with CL and V,k_abs being from different papers though plotted curves looked fine
+-> replace with different model
 
 discuss implications of treatment effect in logscale
 

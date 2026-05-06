@@ -1039,4 +1039,22 @@ Multistart best start: 1 Number of Starts: 1
 True Objective Value: 180.47666431301394
 True θ: (PK = (k_abs = 44.64, c1 = 0.37439999999999996, c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
 
+Tried same thing with more bounds, also upper if fairly general:
+optim_lower_bounds = ComponentArray(PK= ComponentArray((k_abs = 1.0, c1 = 0.0, c2 = 0.0, c3 = -100.0, c4 = -100.0, v1 = 0.0, σ=0.0)), Seizure=ComponentArray(a = 0.0, b=SA[-100.0])) #nothing
+optim_upper_bounds = ComponentArray(PK= ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 100.0, c3 = 100.0, c4 = 100.0, v1 = 100.0, σ=100.0)), Seizure=ComponentArray(a = 100.0, b=SA[100.0]))
 
+Estimate: (PK = (k_abs = 50.506357500030305, c1 = 50.0063589760476, c2 = 50.0063589760476, c3 = 0.006358084303310026, c4 = 0.006358084303320076, v1 = 50.0063589760476, σ = 0.9999999999990314), Seizure = (a = 2.890000000060764, b = [0.006358084303453033]))
+Retcode: Success
+Objective: 4444.9049498378745
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 180.47666431301394
+True θ: (PK = (k_abs = 44.64, c1 = 0.37439999999999996, c2 = 0.748, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+-> Inference for this PK model is not working well, maybe replace
+
+Estimate: (PK = (k_abs = 50.4995317353325, c1 = 49.999605500818916, c2 = 49.99960550066956, c3 = 0.0024313121439331997, c4 = 0.0024313121152649223, v1 = 49.9996055005628, σ = 1.0), Seizure = (a = 0.07000000843890755, b = [0.002431311848307836]))
+Retcode: Success
+Objective: 139682.110029184
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 0.41228871417787194
+True θ: (PK = (k_abs = 44.64, c1 = 0.37439999999999996, c2 = 0.565, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+-> adjusted weight param to capture normalising dose to mg/kg/day, tried with appropriate dosing, continues not to work
