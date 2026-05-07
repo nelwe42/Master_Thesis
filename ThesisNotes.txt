@@ -77,7 +77,16 @@ PK Valproate:
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000)*(750^0.183), c2 = (0.748-0.183), c3 = 0.183, c4 = 0.898, v1 = 0.28, σ=0.2))
 -> continually didn't work, stay close when start in true values but don't reach from outside starts in many runs 
 -> perhaps some instability with CL and V,k_abs being from different papers though plotted curves looked fine
--> replace with different model
+-> replace with different model, take the one in Determination of the Optimal Concentration of Valproic Acid in Patients with Epilepsy: A Population Pharmacokinetic Pharmacodynamic Analysis
+-> other options see A systematic review of population pharmacokinetics of valproic acid
+-> Vd dependend on dose and very low k_abs (might be very specific formulation), only use CL 
+-> note dose dependence param is actually meant to be to the power so zero dose dependence possible
+-> note quote their own paper and say fixed PK param to previously reported values yet while comparable (at least for CL),
+    the param in both publications aren't the same, presumably some refitting happened but can't find where,
+    took params from newer publication
+-CL = c1*(dose/1000)^c2*c3^gender (no weight dependence as before), would also see CBZ effect here (and other drugs not considered so far)
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*0.577), c2 = 0.535, c3 = 0.875, v1 = 0.28, σ=0.2))
+
 
 discuss implications of treatment effect in logscale
 
