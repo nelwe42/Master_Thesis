@@ -1058,3 +1058,64 @@ Multistart best start: 1 Number of Starts: 1
 True Objective Value: 0.41228871417787194
 True θ: (PK = (k_abs = 44.64, c1 = 0.37439999999999996, c2 = 0.565, c3 = 0.183, c4 = 0.898, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
 -> adjusted weight param to capture normalising dose to mg/kg/day, tried with appropriate dosing, continues not to work
+
+Implemented new VPA model, tried with logscale = ("σ", "k_abs", "c1", "c3", "v1", "a")
+resetting defaults: 
+test_mod.pk_model.θ[1] = 3*24.0 
+test_mod.pk_model.θ[2] = 1.0*24.0
+test_mod.pk_model.θ[3] = 0.1
+
+Estimate: (PK = (k_abs = 59.09516584973748, c1 = 13.847101808434278, c2 = 0.538837024936204, c3 = 0.875273850339272, v1 = 0.2813310689465412, σ = 0.18676811989594566), Seizure = (a = 3.518672061036571, b = [0.04244449748012055]))
+Retcode: Success
+Objective: 135.48980998852014
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 137.6336715755706
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+Relative errors: (PK = (k_abs = 0.32381643928623377, c1 = 6.48607427585866e-5, c2 = 0.007172009226549476, c3 = 0.00031297181631081576, v1 = 0.004753817666218462, σ = 0.06615940052027175), Seizure = (a = 0.12033198474085727, b = [0.151110050397589]))
+Absolute errors: (PK = (k_abs = 14.455165849737476, c1 = 0.0008981915657209072, c2 = 0.00383702493620397, c3 = 0.0002738503392719638, v1 = 0.0013310689465411696, σ = 0.01323188010405435), Seizure = (a = 0.48132793896342907, b = [0.007555502519879451]))
+-> this worked, currently trying same thing with less logscale on Marvin
+-> starting c3 in 0.0 produces NaN gradient, think about why
+
+Same test with logscale just sigma significantly less good:
+Estimate: (PK = (k_abs = 80.82899828309836, c1 = -22.59307315595492, c2 = 910.1679645746584, c3 = -847.9138306977761, v1 = -192.36931253876497, σ = 0.9999999998409078), Seizure = (a = 1.3499999999934258, b = [9.631781066875897]))
+Retcode: Success
+Objective: 33739.37545318583
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 137.63367270415847
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+Relative errors: (PK = (k_abs = 0.8106854454099094, c1 = 2.6315044162301358, c2 = 1700.2485319152493, c3 = 970.0443779403156, v1 = 688.0332590670178, σ = 3.9999999992045385), Seizure = (a = 0.6625000000016436, b = [191.6356213375179]))
+Absolute errors: (PK = (k_abs = 36.18899828309836, c1 = 36.44107315595492, c2 = 909.6329645746584, c3 = 848.7888306977761, v1 = 192.64931253876497, σ = 0.7999999998409077), Seizure = (a = 2.650000000006574, b = [9.581781066875896]))
+
+Estimating both sigma and c2 in logscale produced similar results:
+Estimate: (PK = (k_abs = 79.22947234407569, c1 = -24.151698118331694, c2 = 1.9313760540635904e41, c3 = -848.8803490657367, v1 = -193.81961775782736, σ = 0.9999999999998694), Seizure = (a = 1.3499999999999917, b = [8.031662591267901]))
+Retcode: Success
+Objective: 33739.37544251979
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 137.63367270415847
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+Relative errors: (PK = (k_abs = 0.774853771148649, c1 = 2.7440567676438254, c2 = 3.610048699184281e41, c3 = 971.148970360842, v1 = 693.2129205636691, σ = 3.999999999999347), Seizure = (a = 0.6625000000000021, b = [159.63325182535803]))
+Absolute errors: (PK = (k_abs = 34.58947234407569, c1 = 37.99969811833169, c2 = 1.9313760540635904e41, c3 = 849.7553490657367, v1 = 194.09961775782736, σ = 0.7999999999998695), Seizure = (a = 2.6500000000000083, b = [7.981662591267901]))
+
+logscale = ("σ", "k_abs", "c1", "v1", "a")
+Estimate: (PK = (k_abs = 0.4121454464634123, c1 = 13.66113225817997, c2 = 0.5315193409199853, c3 = 0.8827873026604173, v1 = 0.0006692239932251828, σ = 0.9999999998887268), Seizure = (a = 3.464725141815502, b = [0.04122601864310047]))
+Retcode: Success
+Objective: 189.22097441231665
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 137.6336715755706
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+Relative errors: (PK = (k_abs = 0.9907673511096906, c1 = 0.013494204348644488, c2 = 0.006505904822457409, c3 = 0.008899774469048312, v1 = 0.9976099143099101, σ = 3.999999999443634), Seizure = (a = 0.13381871454612448, b = [0.17547962713799062]))
+Absolute errors: (PK = (k_abs = 44.22785455353659, c1 = 0.18686774182002885, c2 = 0.003480659080014714, c3 = 0.007787302660417272, v1 = 0.27933077600677486, σ = 0.7999999998887268), Seizure = (a = 0.5352748581844979, b = [0.008773981356899531]))
+-> worked well also without c3 in logscale, only kabs underestimated
+
+Problem with v1 and c1 getting negative but v1 more, just that in logscale?
+logscale = ("σ", "v1")
+PK start: (k_abs = 72.0, c1 = 24.0, c2 = 0.1, c3 = 1.0, v1 = 1.0, σ = 0.1)
+Estimate: (PK = (k_abs = 83.20677023709817, c1 = -30.06565455109733, c2 = 1070.8323607902748, c3 = 125.68852410027428, v1 = 1.212385047801784e119, σ = 0.9999999998409078), Seizure = (a = 1.3499999999982928, b = [12.491095954600317]))
+Retcode: Success
+Objective: 33739.37545316016
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 137.63367270415847
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.05]))
+Relative errors: (PK = (k_abs = 0.863950946171554, c1 = 3.1711189017256887, c2 = 2000.555814561261, c3 = 142.6440275431706, v1 = 4.329946599292085e119, σ = 3.9999999992045385), Seizure = (a = 0.6625000000004269, b = [248.8219190920063]))
+Absolute errors: (PK = (k_abs = 38.56677023709817, c1 = 43.91365455109733, c2 = 1070.2973607902748, c3 = 124.81352410027428, v1 = 1.212385047801784e119, σ = 0.7999999998409077), Seizure = (a = 2.6500000000017074, b = [12.441095954600316]))
+-> c1 still ended up negative, try just that in logscale next, c1 jumps tp negative very early, try setting it higher?

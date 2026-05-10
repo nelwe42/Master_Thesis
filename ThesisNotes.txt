@@ -85,6 +85,7 @@ Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*15.6/1000)*(750^0.1
     the param in both publications aren't the same, presumably some refitting happened but can't find where,
     took params from newer publication
 -CL = c1*(dose/1000)^c2*c3^gender (no weight dependence as before), would also see CBZ effect here (and other drugs not considered so far)
+-take maximum 100 with dose to ensure nonzero clearance after stop takinf VPA
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*0.577), c2 = 0.535, c3 = 0.875, v1 = 0.28, σ=0.2))
 
 

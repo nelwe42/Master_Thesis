@@ -22,14 +22,14 @@ using ModelingToolkit
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-#open(joinpath(path,"output.txt"), "w") do io
-#open(joinpath(path,"errors.txt"), "w") do io_err
-#redirect_stdout(io) do
-#redirect_stderr(io_err) do
+open(joinpath(path,"output.txt"), "w") do io
+open(joinpath(path,"errors.txt"), "w") do io_err
+redirect_stdout(io) do
+redirect_stderr(io_err) do
 
 println("Included")
 
-#try
+try
 
 #set seed
 Random.seed!(42)
@@ -55,9 +55,11 @@ PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 logscale = ("σ",)
+logscale = ("σ","c1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
+println("logscale = ", logscale)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
 ODE_options = (AutoTsit5(Rosenbrock23()),)
@@ -136,10 +138,11 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-#test_mod.pk_model.θ[1] = 1.5*24.0 
-#test_mod.pk_model.θ[2] = 10.0
+test_mod.pk_model.θ[1] = 3*24.0 
+test_mod.pk_model.θ[2] = 1.0*24.0
 #test_mod.pk_model.θ[4] = 1.0
-#test_mod.pk_model.θ[3] = 0.1
+test_mod.pk_model.θ[3] = 0.1
+println("PK start: ", test_mod.pk_model.θ)
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -237,11 +240,11 @@ end
 
 println("Done")
 
-#catch e
-#   @warn e
-#end
+catch e
+   @warn e
+end
 
-#end
-#end
-#end
-#end
+end
+end
+end
+end

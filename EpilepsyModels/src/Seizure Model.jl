@@ -107,6 +107,8 @@ function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, 
         return pdf(distribute, k_n)
     end
 end
+#here sum over possible distributions over timeframes unless general timeframe supported
+#set attribute need correlation and over how long, then sum over those seperately and pass too for next one
 
 function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
     prob = zero(eltype(θ))
@@ -133,6 +135,16 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, per
 end
 
 #3) Implement generation of seizures for discrete, nonrandom models
+
+#
+#models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
+function generate_seizure_timeframe(m::SeizureModelNonrandom, sol, n::AbstractFloat; person::Person, record_interval::AbstractFloat = 1.0, handover = (0, 0.0), generate_in_lumps::Bool = true, names::NamedTuple)
+    if m.timeframe.general_timeframe && generate_in_lumps
+        return rand(distribution(m, sol, n, record_interval = record_interval, person = person, names=names)), (0, 0.0)
+    end
+    #have to append here directly if want seizure_prev_day to work! -> don't handle per timeframe but all in one
+    #-> maybe create person copy here, do their seizures per those timeframes and then summarise/split them for given timepoints
+end
 
 #generates and appends seizures to person for given number of days start
 function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:1.0:10.0, just_Bool::Bool = false, names::NamedTuple)

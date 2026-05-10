@@ -199,6 +199,7 @@ end
 function create_ode_system(mod::PKVPA) 
     #k_abs constant, V=v1*weight
     #-CL = c1*(dose/1000)^c2*c3^gender(1 for female, 0 for male)
+    #take make with 100 around dose to avoid zero clearance when stop taking VPA
     #for multidrugmodel CBZ (and PB,PHT,CLB) dependence in clearance
     #Absorption rate k_abs/V, elimination CL/V
     θ = mod.θ
@@ -216,7 +217,7 @@ function create_ode_system(mod::PKVPA)
     @variables obs_VPA(t)
     #d_VPA is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_VPA) ~ -k_abs * d_VPA,
-            D(s_VPA) ~ k_abs/(v1*weight(t)) * d_VPA - (c1*(d_VPA_daily/1000)^c2*c3^gender(t))/(v1*weight(t)) * s_VPA,
+            D(s_VPA) ~ k_abs/(v1*weight(t)) * d_VPA - (c1*(max(100,d_VPA_daily)/1000)^c2*c3^gender(t))/(v1*weight(t)) * s_VPA,
             D(S_VPA) ~ s_VPA,
             obs_VPA ~ Normal(s_VPA, σ)]
     
