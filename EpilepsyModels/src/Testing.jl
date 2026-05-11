@@ -22,14 +22,14 @@ using ModelingToolkit
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-open(joinpath(path,"output.txt"), "w") do io
-open(joinpath(path,"errors.txt"), "w") do io_err
-redirect_stdout(io) do
-redirect_stderr(io_err) do
+#open(joinpath(path,"output.txt"), "w") do io
+#open(joinpath(path,"errors.txt"), "w") do io_err
+#redirect_stdout(io) do
+#redirect_stderr(io_err) do
 
 println("Included")
 
-try
+#try
 
 #set seed
 Random.seed!(42)
@@ -54,11 +54,11 @@ Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
-logscale = ("σ",)
-logscale = ("σ","c1")
+#logscale = ("σ",)
+#logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
-#logscale = ("σ", "c1", "v1", "a")
+logscale = ("σ", "c1", "v1", "a")
 println("logscale = ", logscale)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
@@ -90,8 +90,8 @@ show_trace = true
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 if (typeof(pk_model).name.wrapper in [PKVPA])
@@ -139,9 +139,10 @@ end
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
 test_mod.pk_model.θ[1] = 3*24.0 
-test_mod.pk_model.θ[2] = 1.0*24.0
+#test_mod.pk_model.θ[2] = 7.5
 #test_mod.pk_model.θ[4] = 1.0
-test_mod.pk_model.θ[3] = 0.1
+#test_mod.pk_model.θ[3] = 0.1
+#test_mod.pk_model.θ[5] = 0.5
 println("PK start: ", test_mod.pk_model.θ)
 if hierarchical_optimisation
     #Hierarchical optimisation
@@ -199,19 +200,21 @@ end
 plot_change = false
 #Plotting change for k_abs/other param specified through index
 if plot_change
-indices_interest = [1,2,3,4,5,6,8,9]#[3,4,5] 
+indices_interest = [5] #[1,2,3,4,5,6,8,9]#[3,4,5] 
 for j in indices_interest
 #for multi in 1:10
     #point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
     #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
     #point[j] = multi #24*0.5*multi
     #name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
-    point, name_point = Input_θ, :True_Values
+    #point, name_point = Input_θ, :True_Values
     #point, name_point = estimate.u, :Estimate
+    point, name_point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Set_Default_Start
     #index of parameter to consider, name
     #index, index_name = 1, :k_abs
     #index, index_name = 2, :c1
-    index, index_name = j, "$(labels(point)[j])"
+    #index, index_name = j, "$(labels(point)[j])"
+    index, index_name = 5, "v1"
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
@@ -224,7 +227,7 @@ for j in indices_interest
         θ_vary[index] = x
         return EpilepsyModels.get_negloglikelihood(θ_vary, p)
     end
-    plot_for = [exp(-10), 5] #plotting range in untransformed space
+    plot_for = [exp(-10), 2.5] #plotting range in untransformed space
     if String(index_name) in logscale
         plot_for .= log.(plot_for)
     end
@@ -240,11 +243,11 @@ end
 
 println("Done")
 
-catch e
-   @warn e
-end
+#catch e
+#   @warn e
+#end
 
-end
-end
-end
-end
+#end
+#end
+#end
+#end
