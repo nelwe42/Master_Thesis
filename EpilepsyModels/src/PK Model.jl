@@ -72,7 +72,7 @@ end
 
 #A model for the PK behavior of Levetiracetam
 @with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
+    θ::T=ComponentArray((k_abs = 72.0, c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :height, :kidney_disease, :CLCr) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:d_LEV], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
@@ -111,7 +111,7 @@ end
 
 #A model for the PK behavior of Levetiracetam, when absorption is not modelled
 @with_kw struct PKLEVNoAbsorption{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((c1 = 1.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
+    θ::T=ComponentArray((c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :height, :kidney_disease) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:s_LEV_unnormalised], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
@@ -149,7 +149,7 @@ end
 
 #A model for the PK behavior of Carbamazepine
 @with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 1.0, c3 = 0.0, v1 = 1.0, σ = 0.1)) 
+    θ::T=ComponentArray((k_abs = 36.0, c1 = 72.0, c2 = 1.0, c3 = 0.0, v1 = 1.0, σ = 0.1)) 
     cov::T2 = (:prev_CBZ, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_CBZ_daily, drug_var = :d_CBZ, autoinduction = true, ind_param = :ind_CBZ),) 
     #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter
@@ -189,7 +189,7 @@ end
 
 #A model for the PK behavior of Valproate
 @with_kw struct PKVPA{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 0.0, c3 = 1.0, v1 = 1.0, σ = 0.1)) 
+    θ::T=ComponentArray((k_abs = 72.0, c1 = 7.5, c2 = 0.1, c3 = 1.0, v1 = 0.5, σ = 0.1)) 
     cov::T2 = (:gender, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none),) 
     #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter (not present here, just for sake of completeness)
@@ -228,7 +228,7 @@ end
 
 #A model for the PK behavior of Lamotrigine
 @with_kw struct PKLTG{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
-    θ::T=ComponentArray((k_abs = 1.0, c1 = 1.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ=0.5)) 
+    θ::T=ComponentArray((k_abs = 72.0, c1 = 72.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :kidney_disease, :CLCr, :smoking) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:d_LTG], s = SA[:s_LTG], S = SA[:S_LTG], obs = SA[(:obs_LTG, :s_LTG)]) #for observations also records corresponding internal state

@@ -56,9 +56,9 @@ Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
-#logscale = ("σ", "k_abs", "c1", "v1", "a")
+logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
-logscale = ("σ", "c1", "v1", "a")
+#logscale = ("σ", "c1", "v1", "a")
 println("logscale = ", logscale)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
@@ -138,11 +138,6 @@ end
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
-test_mod.pk_model.θ[1] = 3*24.0 
-#test_mod.pk_model.θ[2] = 7.5
-#test_mod.pk_model.θ[4] = 1.0
-#test_mod.pk_model.θ[3] = 0.1
-#test_mod.pk_model.θ[5] = 0.5
 println("PK start: ", test_mod.pk_model.θ)
 if hierarchical_optimisation
     #Hierarchical optimisation
@@ -203,18 +198,20 @@ if plot_change
 indices_interest = [5] #[1,2,3,4,5,6,8,9]#[3,4,5] 
 for j in indices_interest
 #for multi in 1:10
-    #point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
+    point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
     #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
     #point[j] = multi #24*0.5*multi
     #name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
+    point[2] = 3*24.0
+    name_point = "Default_Start_with_c1=72.0"
     #point, name_point = Input_θ, :True_Values
     #point, name_point = estimate.u, :Estimate
-    point, name_point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Set_Default_Start
+    #point, name_point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Set_Default_Start
     #index of parameter to consider, name
-    #index, index_name = 1, :k_abs
+    index, index_name = 1, :k_abs
     #index, index_name = 2, :c1
     #index, index_name = j, "$(labels(point)[j])"
-    index, index_name = 5, "v1"
+    #index, index_name = 5, "v1"
     θ_use = deepcopy(point)
     names = mod.pk_model.keys
     sys = EpilepsyModels.create_ode_system(mod.pk_model)
@@ -227,7 +224,7 @@ for j in indices_interest
         θ_vary[index] = x
         return EpilepsyModels.get_negloglikelihood(θ_vary, p)
     end
-    plot_for = [exp(-10), 2.5] #plotting range in untransformed space
+    plot_for = [20.0, 120.0] #plotting range in untransformed space
     if String(index_name) in logscale
         plot_for .= log.(plot_for)
     end
@@ -239,7 +236,9 @@ for j in indices_interest
 end
 end
 
-
+#For adding custom xticks (as vertical lines) to plot
+#plot!([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)], seriestype="vline", xticks = ([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)],["log(1.0*24)","log(1.5*24)", "log(2.0*24)", "log(3.0*24)"]), linecolor = "grey", label="")
+#plot!(xticks = ([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)],["log(1.0*24)","log(1.5*24)", "log(2.0*24)", "log(3.0*24)"]))
 
 println("Done")
 
