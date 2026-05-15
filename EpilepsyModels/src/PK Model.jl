@@ -264,6 +264,81 @@ function create_ode_system(mod::PKLTG)
     return internal_model
 end
 
+#A model for the PK behavior of all 4 above drugs at once
+@with_kw struct PKBigFour{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+    θ::T=ComponentArray((k_abs_LTG = 72.0, c1_LTG = 72.0, c2_LTG = 0.0, c3_LTG = 0.0, c4_LTG = 0.0, c_Inh_LTG = 1.0, c_Ind_LTG = 1.0, v1_LTG = 1.0, σ_LTG=0.5,
+                        k_abs_VPA = 72.0, c1_VPA = 7.5, c2_VPA = 0.1, c3_VPA = 1.0, c_Ind_VPA = 1.0, v1_VPA = 0.5, σ_VPA = 0.1,
+                        k_abs_CBZ = 36.0, c1_CBZ = 72.0, c2_CBZ = 1.0, c3_CBZ = 0.0, v1_CBZ = 1.0, σ_CBZ = 0.1,
+                        k_abs_LEV = 72.0, c1_LEV = 72.0, c2_LEV = 1.0, c3_LEV = 1.0, c_Inh_LEV = 1.0, c_Ind_LEV = 1.0, v1_LEV = 40.0, v2_LEV = 1.0, σ_LEV=0.5)) 
+    cov::T2 = (:weight, :height, :kidney_disease, :CLCr, :smoking, :prev_CBZ, :gender) 
+    set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none), (drug_param = :d_CBZ_daily, drug_var = :d_CBZ, autoinduction = true, ind_param = :ind_CBZ))
+    keys::T4 = (d = SA[:d_LTG, :d_LEV, :d_CBZ, :d_VPA], s = SA[:s_LTG, :s_LEV, :s_CBZ, :s_VPA], S = SA[:S_LTG, :S_LEV, :S_CBZ, :S_VPA], obs = SA[(:obs_LTG, :s_LTG), (:obs_LEV, :s_LEV), (:obs_CBZ, :s_CBZ), (:obs_VPA, :s_VPA)]) #for observations also records corresponding internal state
+end
+
+#CL LEV: *1.22 if coadministered with CBZ (/PHT/PB/PD) Toublanc et al. (2008), *0.812 for VPA Pigeolet et al. (2007)
+#CL CBZ: only includes coadministration with PHT, not considered here
+#CL VPA: *1.22 if coadministered with CBZ, multipliers for PB, PHT, CLB not of interest here
+#CL LTG: *(1-0.579) for VPA or sertraline, *(1+0.546) for CBZ, PHT, PB
+#-> need set doses for VPA, CBZ to check if >0, already needed those for dose dependence anyway
+function create_ode_system(mod::PKBigFour) 
+    θ = mod.θ
+    BSA_normalised(weight, height) = sqrt(weight*height/3600)/1.68
+    interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
+    type_use = typeof(interpolator).name.wrapper
+    @parameters k_abs_LTG=θ.k_abs_LTG c1_LTG=θ.c1_LTG c2_LTG=θ.c2_LTG c3_LTG=θ.c3_LTG c4_LTG=θ.c4_LTG c_Inh_LTG = θ.c_Inh_LTG c_Ind_LTG = θ.c_Ind_LTG v1_LTG=θ.v1_LTG σ_LTG=θ.σ_LTG 
+    @parameters k_abs_VPA=θ.k_abs_VPA c1_VPA = θ.c1_VPA c2_VPA = θ.c2_VPA c3_VPA = θ.c3_VPA c_Ind_VPA = θ.c_Ind_VPA v1_VPA = θ.v1_VPA σ_VPA=θ.σ_VPA
+    @parameters d_VPA_daily = 0.0 [tunable=false]
+    @parameters k_abs_CBZ=θ.k_abs_CBZ c1_CBZ = θ.c1_CBZ c2_CBZ = θ.c2_CBZ c3_CBZ = θ.c3_CBZ v1_CBZ = θ.v1_CBZ σ_CBZ=θ.σ_CBZ 
+    @parameters d_CBZ_daily = 0.0 [tunable=false]
+    @parameters k_abs_LEV=θ.k_abs_LEV c1_LEV=θ.c1_LEV c2_LEV=θ.c2_LEV c3_LEV=θ.c3_LEV c_Inh_LEV = θ.c_Inh_LEV c_Ind_LEV = θ.c_Ind_LEV v1_LEV=θ.v1_LEV v2_LEV=θ.v2_LEV σ_LEV=θ.σ_LEV
+    #callable parameters for covariates
+    @parameters (weight::type_use)(..) [tunable=false] 
+    @parameters (height::type_use)(..) [tunable=false] 
+    @parameters (smoking::type_use)(..) [tunable=false] 
+    @parameters (kidney_disease::type_use)(..) [tunable=false]
+    @parameters (CLCr::type_use)(..) [tunable=false]
+    @parameters (gender::type_use)(..) [tunable=false]
+    @parameters (prev_CBZ::type_use)(..) [tunable=false] 
+    @parameters ind_CBZ = 14*prev_CBZ(0.0) [tunable = false]
+    @variables d_LTG(t) = 0.0  
+    @variables d_VPA(t) = 0.0
+    @variables d_CBZ(t) = 0.0
+    @variables d_LEV(t) = 0.0
+    @variables s_LTG(t) = 0.0  
+    @variables s_VPA(t) = 0.0
+    @variables s_CBZ(t) = 0.0
+    @variables s_LEV(t) = 0.0
+    @variables S_LTG(t) = 0.0  
+    @variables S_VPA(t) = 0.0
+    @variables S_CBZ(t) = 0.0
+    @variables S_LEV(t) = 0.0
+    @variables obs_LTG(t)
+    @variables obs_VPA(t) 
+    @variables obs_CBZ(t) 
+    @variables obs_LEV(t) 
+    
+    eqs = [D(d_LTG) ~ -k_abs_LTG * d_LTG,
+            D(d_VPA) ~ -k_abs_VPA * d_VPA,
+            D(d_CBZ) ~ -k_abs_CBZ * d_CBZ,
+            D(d_LEV) ~ -k_abs_LEV * d_LEV,
+            D(s_LTG) ~ (k_abs_LTG/(v1_LTG*(weight(t)))) * d_LTG - (c1_LTG*(weight(t)/70)^c2_LTG*(1+c3_LTG*((CLCr(t)+50*kidney_disease(t))/110-1))*(1+c4_LTG*smoking(t))*c_Ind_LTG^(d_CBZ_daily>0)*c_Inh_LTG^(d_VPA_daily>0)/(v1_LTG*(weight(t)))) * s_LTG,
+            D(s_VPA) ~ k_abs_VPA/(v1_VPA*weight(t)) * d_VPA - (c1_VPA*(max(100,d_VPA_daily)/1000)^c2_VPA*c3_VPA^gender(t)*c_Ind_VPA^(d_CBZ_daily>0))/(v1_VPA*weight(t)) * s_VPA,
+            D(s_CBZ) ~ k_abs_CBZ/(v1_CBZ*weight(t)) * d_CBZ - (c1_CBZ*(c2_CBZ^(ind_CBZ>=14))+c3_CBZ*log(max(d_CBZ_daily/400, 1/4)))/(v1_CBZ*weight(t)) * s_CBZ,
+            D(s_LEV) ~ (k_abs_LEV/(v1_LEV*BSA_normalised(weight(t), height(t))^v2_LEV)) * d_LEV - (c1_LEV*(weight(t)/70)^c2_LEV*((CLCr(t)+50*kidney_disease(t))/110)^c3_LEV*c_Ind_LEV^(d_CBZ_daily>0)*c_Inh_LEV^(d_VPA_daily>0)/(v1_LEV*BSA_normalised(weight(t), height(t))^v2_LEV)) * s_LEV,
+            D(S_LTG) ~ s_LTG, 
+            D(S_VPA) ~ s_VPA,
+            D(S_CBZ) ~ s_CBZ,
+            D(S_LEV) ~ s_LEV,
+            obs_LTG ~ Normal(s_LTG, σ_LTG),
+            obs_VPA ~ Normal(s_VPA, σ_VPA),
+            obs_CBZ ~ Normal(s_CBZ, σ_CBZ),
+            obs_LEV ~ Normal(s_LEV, σ_LEV)]
+
+    @mtkcompile internal_model = System(eqs, t)
+
+    return internal_model
+end
+
 #2)Dosing and callback creation for all models
 function dose_affect!(integrator; idx_d, dose_amount)
         integrator.u[idx_d] += dose_amount  # Add dose to depot (d)

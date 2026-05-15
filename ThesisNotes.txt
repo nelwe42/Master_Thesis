@@ -157,3 +157,10 @@ Poisson per day, both depend on covariates, Pk solution but given that dependenc
 Remember time = n, record_interval = s means seizures occuring in [n, n+s)
 Note also this way of generating no comparability between data generated with different record intervals bc params are different
 not the same as summing over data generated daily (cost of more flexibility in record intervals)
+
+PK Big Four:
+-largely the same as four combined and with interaction terms
+-CL LEV: *1.22 if coadministered with CBZ (/PHT/PB/PD) Toublanc et al. (2008), *0.812 for VPA Pigeolet et al. (2007)
+-CL CBZ: only includes coadministration with PHT, not considered here
+-CL VPA: *1.22 if coadministered with CBZ, multipliers for PB, PHT, CLB not of interest here
+-CL LTG: *(1-0.579) for VPA or sertraline, *(1+0.546) for CBZ, PHT, PB

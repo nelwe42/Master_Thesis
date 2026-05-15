@@ -123,7 +123,7 @@ function PolyDosesRandom(dose_distr::NamedTuple, distr_first::NamedTuple, distr_
     names_first = keys(distr_first)
     names_second = keys(distr_second)
     #check keys in distr_first/second have a key in default doses
-    dose_names = keys(default_doses)
+    dose_names = keys(dose_distr)
     if !(isempty(setdiff(names_first, dose_names))) || !(isempty(setdiff(names_second, dose_names)))
         @warn "Not all possible drug choices have an assigned default dose"
     end
@@ -148,6 +148,9 @@ function PolyDosesRandom(m::PKModel, appropriate_dosing::Bool)
     if (typeof(m).name.wrapper in [PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG]) && appropriate_dosing 
         info = dose_distr[m.keys.d][1]
         dose_gen = PolyDosesRandom(m, default_min_dose = info.min, default_avg_multiple_dose = info.avg_num, default_max_multiple_dose = info.max_num, times_per_day_first = 2)
+    elseif m isa PKBigFour && appropriate_dosing
+        distr_first = (d_VPA = 1/4, d_LEV = 1/4, d_LTG = 1/4, d_CBZ = 1/4)
+        return PolyDosesRandom(dose_distr, distr_first, distr_first, prob_second = 0.5, times_per_day_first = 2, times_per_day_second = 2)
     else
         dose_gen = PolyDosesRandom(m, default_min_dose = 100.0)
         if appropriate_dosing
