@@ -89,20 +89,38 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     problems = p.problems
     system = p.system
     indices = p.indices_θ
+    if hasproperty(p, :max_threads)
+        thread_num = max(1, p.max_threads)
+    else
+        thread_num = 1
+    end
+    individuals = length(data)
+    people_per_thread = Int(ceil(individuals/thread_num))
     θ_use = copy(θ)
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale!(θ_use, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ_use))
     try
-        for i in eachindex(data)
-            @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
-            if !(SciMLBase.successful_retcode(sol))
-                return Inf
+        loglikelihoods = Array{Union{Float64, ForwardDiff.Dual}}(undef, individuals)
+        keep_going = Threads.Atomic{Bool}(true)
+        Threads.@threads for j in 1:min(individuals, thread_num)
+            for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, individuals)
+                if !keep_going[]
+                    break
+                end
+                @inbounds sol = solve_PK(problems[i], system, θ_use.PK, indices_θ = indices, options = options)
+                if !(SciMLBase.successful_retcode(sol))
+                    keep_going[] = false
+                    break
+                end
+                @inbounds loglikelihoods[i] = get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
+                @inbounds loglikelihoods[i] += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
             end
-            @inbounds loglikeli += get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
-            @inbounds loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
         end
-        return -loglikeli
+        if !keep_going[]
+            return Inf
+        end
+        return -sum(loglikelihoods)
     catch e
         fail_hard = hasproperty(p, :objective_fail_hard) ? p.objective_fail_hard : false
         if fail_hard
@@ -329,7 +347,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     end
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
@@ -392,7 +410,10 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         vectorised = true
     end
 
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    n_starts = max(multistart, 1)
+    thread_num = max(max_threads, 1)
+    internal_threads = Int(floor(thread_num/min(n_starts, thread_num)))
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     if vectorised
         objective = OptimizationFunction(get_negloglikelihood_vectorised, Optimization.AutoForwardDiff())
         #Change everything to vectors
@@ -402,8 +423,6 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
     else
         objective = OptimizationFunction(get_negloglikelihood, Optimization.AutoForwardDiff())
     end
-    n_starts = max(multistart, 1)
-    thread_num = max(max_threads, 1)
 
     lower = zeros(Float64, d)
     upper = zeros(Float64, d)
@@ -472,7 +491,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::T
         for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)
             #Create OptimisationProblem with start and bounds (might be nothing)
             problem = OptimizationProblem(objective, starts_list[i], p, lb=lb, ub=ub)
-            solutions[i] = solve(problem, solver_optim, maxiters = maxiters, store_trace = store_trace)
+            solutions[i] = solve(problem, solver_optim, maxiters = maxiters, maxtime = maxtime, store_trace = store_trace)
         end
     end
     for i in 1:n_starts

@@ -22,14 +22,14 @@ using ModelingToolkit
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-#open(joinpath(path,"output.txt"), "w") do io
-#open(joinpath(path,"errors.txt"), "w") do io_err
-#redirect_stdout(io) do
-#redirect_stderr(io_err) do
+open(joinpath(path,"output.txt"), "w") do io
+open(joinpath(path,"errors.txt"), "w") do io_err
+redirect_stdout(io) do
+redirect_stderr(io_err) do
 
 println("Included")
 
-#try
+try
 
 #set seed
 Random.seed!(42)
@@ -45,7 +45,7 @@ Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c
 Input_θ_PKBigFour = ComponentArray((k_abs_LTG = (24*1.96), c1_LTG = (24*2.4), c2_LTG = 0.938, c3_LTG = 110*0.00328, c4_LTG = 0.34, c_Inh_LTG = (1-0.579), c_Ind_LTG = (1+0.546), v1_LTG = 2.14, σ_LTG=0.2,
             k_abs_VPA = (24*1.86), c1_VPA = (24*0.577), c2_VPA = 0.535, c3_VPA = 0.875, c_Ind_VPA = 1.22, v1_VPA = 0.28, σ_VPA=0.2,
             k_abs_CBZ = (24*0.45), c1_CBZ = (24*1.96), c2_CBZ = 1.73, c3_CBZ = 24*1.36, v1_CBZ = 164.0/75.0, σ_CBZ=0.2,
-            k_abs_LEV = (24*3.5), c1_LEV = (24*4.0), c2_LEV = 0.25, c3_LEV = 0.122, v1_LEV = 29.7, v2_LEV = 2.85, σ_LEV=0.2, c_Inh_LEV = 0.812, c_Ind_LEV = 1.22))
+            k_abs_LEV = (24*3.5), c1_LEV = (24*4.0), c2_LEV = 0.25, c3_LEV = 0.122, c_Inh_LEV = 0.812, c_Ind_LEV = 1.22, v1_LEV = 29.7, v2_LEV = 2.85, σ_LEV=0.2))
 #Seizure Models
 Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
 Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2, 0.2, 0.2, 0.05]))
@@ -53,15 +53,18 @@ Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2, 0.2, 0.2, 0.05]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
 Maxiters_optimiser = 200
-Population_size = 5 #10 #20
+#Max_Time = 5*60.0 #
+Max_Time = 4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
+Population_size = 20 #5 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 20.0 #40.0
+Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
-logscale = ("σ", "k_abs", "c1", "v1", "a")
+#logscale = ("σ", "k_abs", "c1", "v1", "a")
+logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 println("logscale = ", logscale)
@@ -72,7 +75,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
-max_threads_simul = 5
+max_threads_simul = 20
 Multistart_nstarts = 1
 Multistart_seed = 42
 Multistart_include_initial = true
@@ -88,7 +91,7 @@ sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = false
 hierarchical_optimisation = false
-plotting = true
+plotting = false
 optimisation_trace = true
 show_trace = true
 
@@ -143,7 +146,7 @@ if isnothing(lower_bounds)
 end
 
 #create test mod of same types as true ones
-test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(), person_gen, dose_gen)
+test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(length(pk_model.keys.S)), person_gen, dose_gen)
 println("PK start: ", test_mod.pk_model.θ)
 if hierarchical_optimisation
     #Hierarchical optimisation
@@ -153,7 +156,7 @@ if hierarchical_optimisation
     println("True Objective Value: ", get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 else
     #Multistart optimisation
-    estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+    estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
         multistart = Multistart_nstarts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
@@ -248,11 +251,11 @@ end
 
 println("Done")
 
-#catch e
-#   @warn e
-#end
+catch e
+   @warn e
+end
 
-#end
-#end
-#end
-#end
+end
+end
+end
+end

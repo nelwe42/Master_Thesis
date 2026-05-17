@@ -30,7 +30,8 @@ end
 
 #Outer Constructor to make default for N drugs
 function SeizureBasic(N::Int64)
-    obj = SeizureBasic(θ = ComponentArray((a = 2.0, b = SA[0 for i in 1:N])))
+    B = [0.0 for i in 1:N]
+    obj = SeizureBasic(θ = ComponentArray((a = 2.0, b = SA[B...])))
     return obj
 end
 
