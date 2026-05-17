@@ -665,7 +665,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:1.0:time, just_Bool::Bool = false, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:1.0:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -675,14 +675,14 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
     for person in population
         assign_dose!(m.dose_gen, person, names = names, timeframe = time, wo_treatment = wo_treatment)
         sol = generate_measurements!(m.pk_model, sys, person, timepoints = timepoints_PK, endpoint = time, options = ODE_options)
-        generate_seizures!(m.seizure_model, sol, person, timepoints = timepoints_seizure, just_Bool = just_Bool, names=names)
-        #note for time = 10 seizure counts end on day 9 (end on midnight between day 9 and 10)
+        generate_seizures!(m.seizure_model, sol, person, timepoints = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+        summarise_seizures!(m.seizure_model, person, timepoints = timepoints_seizure, just_Bool= just_Bool)
     end
     return population
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:1.0:time, just_Bool::Bool = false, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:1.0:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -696,7 +696,7 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
         current_timepoints_PK = [t for t in timepoints_PK if 0.0 <= t < passed_time] #filter timepoints in this interval
         sol = generate_measurements!(m.pk_model, sys, person, timepoints = current_timepoints_PK, endpoint = passed_time, options = ODE_options)
         current_timepoints_seizure = [t for t in timepoints_seizure if 0.0 <= t < passed_time]
-        generate_seizures!(m.seizure_model, sol, person, timepoints=current_timepoints_seizure, just_Bool = just_Bool, names=names)
+        generate_seizures!(m.seizure_model, sol, person, timepoints=current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
         while passed_time < time
             sol_prev = sol
             increment = min(time, passed_time + update_reg) - passed_time
@@ -707,8 +707,9 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
             start_solution = min(passed_time-increment, current_timepoints_seizure[1])
             assign_dose!(m.dose_gen, person, names=names, timeframe = increment)
             sol = generate_measurements!(m.pk_model, sys, person, timepoints = current_timepoints_PK, endpoint = passed_time, start = (start_solution, sol_prev(start_solution)), options = ODE_options)
-            generate_seizures!(m.seizure_model, sol, person, timepoints = current_timepoints_seizure, just_Bool = just_Bool, names=names)
+            generate_seizures!(m.seizure_model, sol, person, timepoints = current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
         end
+        summarise_seizures!(m.seizure_model, person, timepoints = timepoints_seizure, just_Bool= just_Bool)
     end
     return population
 end

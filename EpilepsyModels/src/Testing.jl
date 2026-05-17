@@ -22,14 +22,14 @@ using ModelingToolkit
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-open(joinpath(path,"output.txt"), "w") do io
-open(joinpath(path,"errors.txt"), "w") do io_err
-redirect_stdout(io) do
-redirect_stderr(io_err) do
+#open(joinpath(path,"output.txt"), "w") do io
+#open(joinpath(path,"errors.txt"), "w") do io_err
+#redirect_stdout(io) do
+#redirect_stderr(io_err) do
 
 println("Included")
 
-try
+#try
 
 #set seed
 Random.seed!(42)
@@ -47,8 +47,8 @@ Input_θ_PKBigFour = ComponentArray((k_abs_LTG = (24*1.96), c1_LTG = (24*2.4), c
             k_abs_CBZ = (24*0.45), c1_CBZ = (24*1.96), c2_CBZ = 1.73, c3_CBZ = 24*1.36, v1_CBZ = 164.0/75.0, σ_CBZ=0.2,
             k_abs_LEV = (24*3.5), c1_LEV = (24*4.0), c2_LEV = 0.25, c3_LEV = 0.122, c_Inh_LEV = 0.812, c_Ind_LEV = 1.22, v1_LEV = 29.7, v2_LEV = 2.85, σ_LEV=0.2))
 #Seizure Models
-Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2]))
-Input_θ_SeizureBasic = ComponentArray((a = 4.0, b = SA[0.2, 0.2, 0.2, 0.05]))
+Input_θ_SeizureBasic_one = ComponentArray((a = 4.0, b = SA[0.2]))
+Input_θ_SeizureBasic_four = ComponentArray((a = 4.0, b = SA[0.2, 0.2, 0.2, 0.05]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 
@@ -63,8 +63,8 @@ Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
-#logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
+logscale = ("σ", "k_abs", "c1", "v1", "a")
+#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 println("logscale = ", logscale)
@@ -96,17 +96,21 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic.b = SA[0.05]
 end
-seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic)
+if (typeof(pk_model).name.wrapper in [PKBigFour])
+    seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_four)
+else
+    seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
+end
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -251,11 +255,11 @@ end
 
 println("Done")
 
-catch e
-   @warn e
-end
+#catch e
+#   @warn e
+#end
 
-end
-end
-end
-end
+#end
+#end
+#end
+#end

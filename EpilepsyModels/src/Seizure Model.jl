@@ -16,6 +16,9 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 #For this need some getter for which are random effects?
 
 #Every model specification should have: ComponentArray of parameters, list of keys of required covariates
+#specify timeframe model supports, what kind of autocorrelation it needs
+#models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
+#models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
 #Every model should have function returning distribution given day/further information
 
 #Within discrete/continuous and (non)random returning seizure probability, likelihoods and 
@@ -26,6 +29,8 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 @with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = 2.0, b = SA[0.0])) #a base rate, b coefficient of drug 
     cov::T2 = () #no covariates required
+    timeframe = (general_timeframe = true, inherent_timeframe = 1.0)
+    autocorrelation = (false, 0.0)
 end
 
 #Outer Constructor to make default for N drugs
@@ -37,7 +42,7 @@ end
 
 #basic distribution function for record_interval in days starting at n, requires sol from chosen PK model
 function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
-    if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
+    if any(x -> !isfinite(x), (sol(n+record_interval, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
     intensity = θ.a*record_interval
@@ -54,6 +59,8 @@ end
 @with_kw struct SeizureNegativeBinomial{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = log(2.0), o = 0.01, prev = 0.0, b = SA[0.0])) #a base rate, prev impact of previous day, o overdispersion, b coefficient of drug 
     cov::T2 = (:seizure_prev_day,) #depends on if seizure occured on previous day
+    timeframe = (general_timeframe = false, inherent_timeframe = 1.0)
+    autocorrelation = (true, 1.0)
 end
 
 #Outer Constructor to make default for N drugs
@@ -63,7 +70,7 @@ function SeizureNegativeBinomial(N::Int64)
 end
 
 #negative binomial distribution function for record_interval starting at n, depends on if seizure on previous interval, requires sol from chosen PK model
-function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
+function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
@@ -71,9 +78,9 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     if o ≤ zero(o) || !isfinite(o)
         return nothing
     end
-    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-record_interval ≤ seizure.time <n)]))
-    mean = θ.a*record_interval + θ.prev*seizure_prev_day*(1/record_interval)
-    mean -= θ.b'*(sol(n+record_interval, idxs = names.S)-sol(n,idxs = names.S))
+    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-1 ≤ seizure.time <n)]))
+    mean = θ.a + θ.prev*seizure_prev_day
+    mean -= θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
     if !isfinite(mean)
         return nothing
     end
@@ -137,24 +144,62 @@ end
 
 #3) Implement generation of seizures for discrete, nonrandom models
 
-#
 #models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
-function generate_seizure_timeframe(m::SeizureModelNonrandom, sol, n::AbstractFloat; person::Person, record_interval::AbstractFloat = 1.0, handover = (0, 0.0), generate_in_lumps::Bool = true, names::NamedTuple)
+#models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
+#distribution only needs attribute record_interval if have general_timeframe
+function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:1.0:10.0, just_Bool::Bool = false, generate_in_lumps::Bool = true, names::NamedTuple)
     if m.timeframe.general_timeframe && generate_in_lumps
-        return rand(distribution(m, sol, n, record_interval = record_interval, person = person, names=names)), (0, 0.0)
+        if !(just_Bool)
+            new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))) for i in 1:(length(timepoints)-1)]
+        else
+            new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = (rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))>0)) for i in 1:(length(timepoints)-1)]
+        end
+        append!(person.seizure_counts, new_seizures)
     end
-    #have to append here directly if want seizure_prev_day to work! -> don't handle per timeframe but all in one
-    #-> maybe create person copy here, do their seizures per those timeframes and then summarise/split them for given timepoints
+    #Check timepoints admissable, can get weird for Floats
+    steps = m.timeframe.inherent_timeframe
+    admissable = true
+    for i in eachindex(timepoints)
+        if i == length(timepoints) || !admissable
+            break
+        end
+        interval = timepoints[i+1] - timepoints[i]
+        admissable = admissable && isapprox(round(interval / steps) * steps, interval)
+    end
+    if !(admissable)
+        error("Given timepoints are not compatible with inherent timeframe of model")
+    end
+    #Generate first in inherent timeframe
+    endpoint = max(timepoints...)
+    if !(m.autocorrelation[1])
+        #generate all directly
+        new_seizures = [(time = (j, j+steps), count = rand(distribution(m, sol, j, person = person, names=names))) for j in timepoints[1]:steps:(endpoint-steps)]
+        #summarise seizures now and append
+        if !(just_Bool)
+            summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time < timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
+        else
+            summarised = [(time = (timepoints[i], timepoints[i+1]), count = (0<sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time < timepoints[i+1])]))) for i in 1:(length(timepoints)-1)]
+        end
+        append!(person.seizure_counts, summarised)
+    else
+        #need info about previous seizures for autocorrelation, append to person stepwise, need to summarise after all data generation done
+        for j in timepoints[1]:steps:(endpoint-steps)
+            append!(person.seizure_counts, [(time = (j, j+steps), count = rand(distribution(m, sol, j, person = person, names=names)))])
+        end
+    end
 end
 
-#generates and appends seizures to person for given number of days start
-function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:1.0:10.0, just_Bool::Bool = false, names::NamedTuple)
-    if !(just_Bool)
-        new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))) for i in 1:(length(timepoints)-1)]
-    else
-        new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = (rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))>0)) for i in 1:(length(timepoints)-1)]
+function summarise_seizures!(m::SeizureModelNonrandom, person::Person; timepoints::AbstractVector=0.0:1.0:10.0, just_Bool::Bool = false)
+    if !m.autocorrelation[1]
+        return
     end
-    append!(person.seizure_counts, new_seizures)
+    if !(just_Bool)
+        summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time < timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
+    else
+        summarised = [(time = (timepoints[i], timepoints[i+1]), count = (0<sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time < timepoints[i+1])]))) for i in 1:(length(timepoints)-1)]
+    end
+    empty!(person.seizure_counts)
+    append!(person.seizure_counts, summarised)
 end
 
 #4) Functions for visualisation
