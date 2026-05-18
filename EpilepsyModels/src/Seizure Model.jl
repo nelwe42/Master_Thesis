@@ -78,7 +78,7 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     if o ≤ zero(o) || !isfinite(o)
         return nothing
     end
-    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-1 ≤ seizure.time <n)]))
+    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-1 ≤ seizure.time[1] && seizure.time[2] ≤ n)]))
     mean = θ.a + θ.prev*seizure_prev_day
     mean -= θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
     if !isfinite(mean)
@@ -176,9 +176,9 @@ function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timep
         new_seizures = [(time = (j, j+steps), count = rand(distribution(m, sol, j, person = person, names=names))) for j in timepoints[1]:steps:(endpoint-steps)]
         #summarise seizures now and append
         if !(just_Bool)
-            summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time < timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
+            summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time[1] && seizure.time[2] ≤ timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
         else
-            summarised = [(time = (timepoints[i], timepoints[i+1]), count = (0<sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time < timepoints[i+1])]))) for i in 1:(length(timepoints)-1)]
+            summarised = [(time = (timepoints[i], timepoints[i+1]), count = (0<sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time[1] && seizure.time[2] ≤ timepoints[i+1])]))) for i in 1:(length(timepoints)-1)]
         end
         append!(person.seizure_counts, summarised)
     else
@@ -194,9 +194,9 @@ function summarise_seizures!(m::SeizureModelNonrandom, person::Person; timepoint
         return
     end
     if !(just_Bool)
-        summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time < timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
+        summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time[1] && seizure.time[2] ≤ timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
     else
-        summarised = [(time = (timepoints[i], timepoints[i+1]), count = (0<sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time < timepoints[i+1])]))) for i in 1:(length(timepoints)-1)]
+        summarised = [(time = (timepoints[i], timepoints[i+1]), count = (0<sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time[1] && seizure.time[2] ≤ timepoints[i+1])]))) for i in 1:(length(timepoints)-1)]
     end
     empty!(person.seizure_counts)
     append!(person.seizure_counts, summarised)

@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --partition=intelsr_short
+#SBATCH --partition=intelsr_medium
 #SBATCH --account=ag_irumls_hasenauer
-#SBATCH --time=5:00:00
-#SBATCH --ntasks=20
+#SBATCH --time=10:30:00
+#SBATCH --ntasks=22
 #SBATCH --chdir=~
 
 julia --project=/home/s6newell_hpc/EpilepsyModels /home/s6newell_hpc/EpilepsyModels/src/Testing.jl

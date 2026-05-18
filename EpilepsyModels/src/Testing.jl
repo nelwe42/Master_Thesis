@@ -54,8 +54,8 @@ Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev
 
 Maxiters_optimiser = 200
 #Max_Time = 5*60.0 #
-Max_Time = 4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 20 #5 #10 #20
+Max_Time = 10.0*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
+Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -75,7 +75,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
-max_threads_simul = 20
+max_threads_simul = 5
 Multistart_nstarts = 1
 Multistart_seed = 42
 Multistart_include_initial = true
