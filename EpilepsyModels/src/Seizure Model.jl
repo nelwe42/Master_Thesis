@@ -4,6 +4,7 @@ using Random
 using Parameters
 using ComponentArrays
 using StaticArrays
+using Combinatorics
 
 #Overtype of Seizure Models that will go into full model
 abstract type SeizureModel end
@@ -19,6 +20,7 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 #specify timeframe model supports, what kind of autocorrelation it needs
 #models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
 #models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
+#if have autocorrelation distribution takes extra argument seizures, if general timeframe takes extra argument record_interval
 #Every model should have function returning distribution given day/further information
 
 #Within discrete/continuous and (non)random returning seizure probability, likelihoods and 
@@ -70,7 +72,7 @@ function SeizureNegativeBinomial(N::Int64)
 end
 
 #negative binomial distribution function for record_interval starting at n, depends on if seizure on previous interval, requires sol from chosen PK model
-function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, seizures::AbstractVector = person.seizure_counts, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
@@ -78,7 +80,7 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     if o ≤ zero(o) || !isfinite(o)
         return nothing
     end
-    seizure_prev_day = (0 < sum([seizure.count for seizure in person.seizure_counts if (n-1 ≤ seizure.time[1] && seizure.time[2] ≤ n)]))
+    seizure_prev_day = (0 < sum([seizure.count for seizure in seizures if (n-1 ≤ seizure.time[1] && seizure.time[2] ≤ n)]))
     mean = θ.a + θ.prev*seizure_prev_day
     mean -= θ.b'*(sol(n+1, idxs = names.S)-sol(n,idxs = names.S))
     if !isfinite(mean)
@@ -115,8 +117,31 @@ function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, 
         return pdf(distribute, k_n)
     end
 end
-#here sum over possible distributions over timeframes unless general timeframe supported
-#set attribute need correlation and over how long, then sum over those seperately and pass too for next one
+
+function log_Seizure_prob_instance(m::SeizureModelNonrandom, sol; person::Person, seizures::AbstractVector = person.seizure_counts, names::NamedTuple, θ::ComponentArray = m.θ)
+    prob = zero(eltype(θ))   
+    for seizure in seizures
+        if !(m.autocorrelation[1])
+            distribute = distribution(m, sol, seizure.time[1], person = person, names=names, θ = θ)
+        else
+            distribute = distribution(m, sol, seizure.time[1], person = person, seizures = seizures, names=names, θ = θ)
+        end
+        if isnothing(distribute)
+            return -Inf
+        end
+        if (seizure.count isa Bool) && (eltype(distribute) != Bool)
+            prob_false = pdf(distribute, 0)
+            if seizure.count 
+                prob += log(1-prob_false)
+            else
+                prob += log(prob_false)
+            end
+        else
+            prob += log(pdf(distribute, seizure.count))
+        end
+    end
+    return prob
+end
 
 function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
     prob = zero(eltype(θ))
@@ -139,7 +164,70 @@ function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Com
 end
 
 function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, person::Person; names::NamedTuple)
-    return log_Seizure_prob(m, sol, person, θ=θ, names = names)
+    if m.timeframe.general_timeframe
+        return log_Seizure_prob(m, sol, person, θ=θ, names = names)
+    elseif !(m.autocorrelation[1])
+        prob = zero(eltype(θ))
+        for i in eachindex(person.seizure_counts) 
+            @inbounds time = person.seizure_counts[i].time #get time interval out of named tuple
+            @inbounds count = person.seizure_counts[i].count #get count out of tuple
+            start = time[1]
+            interval = time[2] - time[1]
+            if interval < 0
+                error("Seizure time interval bounds in wrong order")
+            end
+            multiple = Int(round(interval/m.timeframe.inherent_timeframe)) #how many timeframes of model occur in interval
+            if count isa Bool
+                #calculate likelihood of no seizures occuring in timeframe multiple
+                seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = zero(eltype(θ))) for j in 1:multiple]
+                log_prob_none = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ = θ)
+                if !isfinite(log_prob_none)
+                    return -Inf
+                end
+                if count
+                    prob += log(1-exp(log_prob_none))
+                else
+                    prob += log_prob_none
+                end
+            else
+                for counts in multiexponents(multiple, count) #sum over possible combinations for this count over multiple timeframes
+                    seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = counts[j]) for j in 1:multiple]
+                    log_interval_prob = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ=θ)
+                    if !isfinite(log_interval_prob)
+                        return -Inf
+                    else
+                        prob += log_interval_prob
+                    end
+                end
+            end
+        end
+        return prob
+    else
+        prob = zero(eltype(θ))
+        if isempty(person.seizure_counts)
+            return prob
+        end
+        if !(person.seizure_counts[1].count isa Bool)
+            #First collect all possible combinations leading to this summarised output
+            per_timeframe = (multiexponents(Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)), entry.count) for entry in person.seizure_counts)
+        else
+            #Same for boolean input
+            per_timeframe = (entry.count ? filter(any, collect(Iterators.product(fill((true, false),Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)))...))) : (fill(false,Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe))),) for entry in person.seizure_counts)
+        end
+        start = person.seizure_counts[1].time[1]
+        for combi in Iterators.product(per_timeframe...)
+            combi = collect(Iterators.flatten(combi))
+            #Need to flatten those vectors somehow?
+            seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = combi[j]) for j in eachindex(combi)]
+            log_interval_prob = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ=θ)
+            if !isfinite(log_interval_prob)
+                return -Inf
+            else
+                prob += log_interval_prob
+            end
+        end
+        return prob
+    end
 end
 
 #3) Implement generation of seizures for discrete, nonrandom models

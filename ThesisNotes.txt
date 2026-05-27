@@ -164,3 +164,6 @@ PK Big Four:
 -CL CBZ: only includes coadministration with PHT, not considered here
 -CL VPA: *1.22 if coadministered with CBZ, multipliers for PB, PHT, CLB not of interest here
 -CL LTG: *(1-0.579) for VPA or sertraline, *(1+0.546) for CBZ, PHT, PB
+
+-implicitly assume in likelihood for autocorrelation only depend on if and not on count previously if only bool is given
+-otherwise cannot be calculated
