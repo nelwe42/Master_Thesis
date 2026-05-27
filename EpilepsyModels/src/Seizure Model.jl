@@ -118,13 +118,13 @@ function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, 
     end
 end
 
-function log_Seizure_prob_instance(m::SeizureModelNonrandom, sol; person::Person, seizures::AbstractVector = person.seizure_counts, names::NamedTuple, θ::ComponentArray = m.θ)
+function log_Seizure_prob_instance(m::SeizureModelNonrandom, sol; person::Person, seizures::AbstractVector = person.seizure_counts, prev_seizures::AbstractVector = seizures, names::NamedTuple, θ::ComponentArray = m.θ)
     prob = zero(eltype(θ))   
     for seizure in seizures
         if !(m.autocorrelation[1])
             distribute = distribution(m, sol, seizure.time[1], person = person, names=names, θ = θ)
         else
-            distribute = distribution(m, sol, seizure.time[1], person = person, seizures = seizures, names=names, θ = θ)
+            distribute = distribution(m, sol, seizure.time[1], person = person, seizures = prev_seizures, names=names, θ = θ)
         end
         if isnothing(distribute)
             return -Inf
@@ -190,15 +190,17 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, per
                     prob += log_prob_none
                 end
             else
+                count_sum = zero(eltype(θ)) #storing sum over combinations for this count (sum outside log)
                 for counts in multiexponents(multiple, count) #sum over possible combinations for this count over multiple timeframes
                     seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = counts[j]) for j in 1:multiple]
                     log_interval_prob = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ=θ)
                     if !isfinite(log_interval_prob)
                         return -Inf
                     else
-                        prob += log_interval_prob
+                        count_sum += exp(log_interval_prob)
                     end
                 end
+                prob += log(count_sum)
             end
         end
         return prob
@@ -209,24 +211,43 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, per
         end
         if !(person.seizure_counts[1].count isa Bool)
             #First collect all possible combinations leading to this summarised output
-            per_timeframe = (multiexponents(Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)), entry.count) for entry in person.seizure_counts)
+            per_timeframe = Tuple(multiexponents(Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)), entry.count) for entry in person.seizure_counts)
         else
             #Same for boolean input
-            per_timeframe = (entry.count ? filter(any, collect(Iterators.product(fill((true, false),Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)))...))) : (fill(false,Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe))),) for entry in person.seizure_counts)
+            per_timeframe = Tuple(entry.count ? filter(any, collect(Iterators.product(fill((true, false),Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)))...))) : [(fill(false,Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe))),)] for entry in person.seizure_counts)
         end
         start = person.seizure_counts[1].time[1]
-        for combi in Iterators.product(per_timeframe...)
-            combi = collect(Iterators.flatten(combi))
-            #Need to flatten those vectors somehow?
-            seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = combi[j]) for j in eachindex(combi)]
-            log_interval_prob = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ=θ)
-            if !isfinite(log_interval_prob)
-                return -Inf
+        sums = []
+        len = 1
+        prev_seizures = []
+        start_current = start
+        for i in eachindex(per_timeframe)
+            if !isempty(prev_seizures)
+                start_current = start + length(prev_seizures[1])*m.timeframe.inherent_timeframe
+            end
+            len = len * length(per_timeframe[i])
+            sums_prev = sums
+            sums = Array{AbstractFloat}(undef, len)
+            a = collect(per_timeframe[i])
+            if i == 1 
+                for j in eachindex(a)
+                    current = [(time = start_current+(k-1)*m.timeframe.inherent_timeframe, count = a[j][k]) for k in eachindex(a[j])]
+                    sums[j] = log_Seizure_prob_instance(m, sol, person = person, seizures = current, names = names, θ=θ)
+                end
+                prev_seizures = a
             else
-                prob += log_interval_prob
+                for prev in eachindex(prev_seizures)
+                    previous = [(time = start+(k-1)*m.timeframe.inherent_timeframe, count = prev_seizures[prev][k]) for k in eachindex(prev_seizures[prev])]
+                    for j in eachindex(a)
+                        current = [(time = start_current+(k-1)*m.timeframe.inherent_timeframe, count = a[j][k]) for k in eachindex(a[j])]
+                        sums[(1-prev)*length(a)+j] = sums_prev[prev] + log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = previous, names = names, θ=θ)
+                    end
+                end
+                prev_seizures = [(previous...,option...) for previous in prev_seizures for option in a]
             end
         end
-        return prob
+        #Finally sum (outside logscale) over all possible paths
+        return log(sum(exp.(sums)))
     end
 end
 
@@ -243,6 +264,7 @@ function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timep
             new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = (rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))>0)) for i in 1:(length(timepoints)-1)]
         end
         append!(person.seizure_counts, new_seizures)
+        return
     end
     #Check timepoints admissable, can get weird for Floats
     steps = m.timeframe.inherent_timeframe
