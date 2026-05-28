@@ -232,7 +232,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, per
             if i == 1 
                 for j in eachindex(a)
                     current = [(time = start_current+(k-1)*m.timeframe.inherent_timeframe, count = a[j][k]) for k in eachindex(a[j])]
-                    sums[j] = log_Seizure_prob_instance(m, sol, person = person, seizures = current, names = names, θ=θ)
+                    sums[j] = log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = current, names = names, θ=θ)
                 end
                 prev_seizures = a
             else
@@ -240,13 +240,13 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, per
                     previous = [(time = start+(k-1)*m.timeframe.inherent_timeframe, count = prev_seizures[prev][k]) for k in eachindex(prev_seizures[prev])]
                     for j in eachindex(a)
                         current = [(time = start_current+(k-1)*m.timeframe.inherent_timeframe, count = a[j][k]) for k in eachindex(a[j])]
-                        sums[(1-prev)*length(a)+j] = sums_prev[prev] + log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = previous, names = names, θ=θ)
+                        sums[(1-prev)*length(a)+j] = sums_prev[prev] + log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = vcat(previous,current), names = names, θ=θ)
                     end
                 end
                 prev_seizures = [(previous...,option...) for previous in prev_seizures for option in a]
             end
         end
-        #Finally sum (outside logscale) over all possible paths
+        #Finally sum (outside logscale) over all possible paths, then convert back to log
         return log(sum(exp.(sums)))
     end
 end
@@ -354,50 +354,47 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
         estimate_param = nothing
     end
-    if !isnothing(estimate_param)
-        seizure_model_estimate = typeof(mod).name.wrapper(θ = estimate_param)
-    end
     for i in individuals
         #Get timepoints and corresponding indices for plotting from seizure data
         indices = [index for index in eachindex(data[i].seizure_counts) if data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]]
         intervals = [data[i].seizure_counts[index].time for index in indices]
         pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
         if !isnothing(sols)
-            distribution_true = [distribution(mod, sols[i], interval[1], person=data[i], record_interval=(interval[2]-interval[1]),names=names) for interval in intervals]
-            if any(isnothing.(distribution_true))
+            samples_true = [draw_data_samples(mod, sols[i], person=data[i], interval=interval,names=names) for interval in intervals]
+            if any(isnothing.(samples_true))
                 @warn "Distribution for true parameters is not well-defined"
                 sols = nothing
             end
         end
         if !isnothing(estimate_param)
-            distribution_estimate = [distribution(seizure_model_estimate, sols2[i], interval[1], person=data[i], record_interval = (interval[2]-interval[1]), names=names) for interval in intervals]
-            if any(isnothing.(distribution_estimate))
+            samples_estimate = [draw_data_samples(mod, sols2[i], person=data[i], interval=interval, names=names, θ = estimate_param) for interval in intervals]
+            if any(isnothing.(samples_estimate))
                 @warn "Distribution for estimate parameters is not well-defined"
                 estimate_param = nothing
             end
         end
         #Plot distributions, first day separate so label only once, only on separate sides if not both plotted
         if !isnothing(estimate_param) && !isnothing(sols)
-            violin!(["$(intervals[1])"], Float64.(rand(distribution_true[1],1000)), side = :left, label = "true", colour = :dodgerblue)
-            violin!(["$(intervals[1])"], Float64.(rand(distribution_estimate[1],1000)), side = :right, label = "estimate", colour = :firebrick2)
+            violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), side = :right, label = "estimate", colour = :firebrick2)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(rand(distribution_true[j],1000)), side = :left, label = "", colour = :dodgerblue)
-                    violin!(["$(intervals[j])"], Float64.(rand(distribution_estimate[j],1000)), side = :right, label = "", colour = :firebrick2)
+                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = "", colour = :firebrick2)
                 end
             end
         elseif !isnothing(estimate_param)
-            violin!(["$(intervals[1])"], Float64.(rand(distribution_estimate[1],1000)), label = "estimate", colour = :firebrick2)
+            violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), label = "estimate", colour = :firebrick2)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(rand(distribution_estimate[j],1000)), label = "", colour = :firebrick2)
+                    violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = "", colour = :firebrick2)
                 end
             end
         elseif !isnothing(sols)
-            violin!(["$(intervals[1])"], Float64.(rand(distribution_true[1],1000)), label = "true", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], Float64.(samples_true[1]), label = "true", colour = :dodgerblue)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(rand(distribution_true[j],1000)), label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = "", colour = :dodgerblue)
                 end
             end
         end
@@ -415,4 +412,75 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         end
     end
     return output
+end
+
+function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tuple, names::NamedTuple, θ::ComponentArray = mod.θ, sample_nr::Int = 1000)
+    if mod.timeframe.general_timeframe
+        distribute = distribution(mod, sol, interval[1], person=person, record_interval=(interval[2]-interval[1]),names=names, θ=θ)
+        if isnothing(distribute)
+            return nothing
+        end
+        return rand(distribute,sample_nr)
+    elseif !mod.autocorrelation[1]
+        steps = mod.timeframe.inherent_timeframe
+        distributions = [distribution(mod, sol, j, person = person, names=names, θ=θ) for j in interval[1]:steps:(interval[2]-steps)]
+        if any(isnothing.(distributions))
+            return nothing
+        end
+        #Simulate data for each day, then sum vectors over days
+        simulate = [rand(distribute, sample_nr) for distribute in distributions]
+        return sum(simulate)
+    else
+        steps = mod.timeframe.inherent_timeframe
+        #retrieve relevant previous seizure data (within autocorrelation time)
+        prev_seizures = [seizure for seizure in person.seizure_counts if (interval[1]-mod.autocorrelation[2]) < seizure.time[2] <= interval[1]]
+        if isempty(prev_seizures)
+            #draw and append with no previous, simulate one sample path for each sample_nr
+            seizures = [deepcopy(prev_seizures) for i in 1:sample_nr]
+            for j in interval[1]:steps:(interval[2]-steps)
+                distributions = [distribution(mod, sol, j, person=person, seizures = path, names = names, θ=θ) for path in seizures]
+                if any(isnothing.(distributions))
+                    return nothing
+                end
+                samples = [(time = (j, (j+steps)), count = rand(distribute)) for distribute in distributions]
+                for i in eachindex(seizures)
+                    push!(seizures[i], samples[i])
+                end
+            end
+            #just want to sum over count in each path
+            sums = [sum([seizure.count for seizure in seizures_path]) for seizures_path in seizures]
+            return sums
+        else
+            if !(prev_seizures[1].count isa Bool)
+                #First collect all possible combinations leading to this summarised output
+                per_timeframe = (multiexponents(Int(round((entry.time[2]-entry.time[1])/steps)), entry.count) for entry in prev_seizures)
+            else
+                #Same for boolean input
+                per_timeframe = (entry.count ? filter(any, collect(Iterators.product(fill((true, false),Int(round((entry.time[2]-entry.time[1])/steps)))...))) : (fill(false,Int(round((entry.time[2]-entry.time[1])/steps))),) for entry in prev_seizures)
+            end
+            #sum over products, calculate how many samples per combi, then generate
+            start = prev_seizures[1].time[1]
+            per_combi = Int(ceil(sample_nr/length(Iterators.product(per_timeframe...))))
+            simulate = Vector{Int}()
+            for combi in Iterators.product(per_timeframe...)
+                combi = collect(Iterators.flatten(combi))
+                seizures = [(time = (start+(j-1)*mod.timeframe.inherent_timeframe, start+j*mod.timeframe.inherent_timeframe), count = combi[j]) for j in eachindex(combi)]
+                #now simulate draw for each possible combination in prev_seizures, per_combi samples each
+                seizures = [deepcopy(seizures) for i in 1:per_combi]
+                for j in interval[1]:steps:(interval[2]-steps)
+                    distributions = [distribution(mod, sol, j, person=person, seizures = path, names = names, θ=θ) for path in seizures]
+                    if any(isnothing.(distributions))
+                        return nothing
+                    end
+                    samples = [(time = (j, j+steps), count = rand(distribute)) for distribute in distributions]
+                    #append samples in format of seizure counts 
+                    push!.(seizures,samples)
+                end
+                #sum just over count and only within our interval
+                seizures = [sum([seizure.count for seizure in seizures_path if (interval[1] <= seizure.time[1] && interval[2] >= seizure.time[2])]) for seizures_path in seizures]
+                append!(simulate, seizures)
+            end
+            return simulate
+        end
+    end
 end
