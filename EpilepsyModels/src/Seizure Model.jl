@@ -256,7 +256,7 @@ end
 #models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
 #models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
 #distribution only needs attribute record_interval if have general_timeframe
-function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:1.0:10.0, just_Bool::Bool = false, generate_in_lumps::Bool = true, names::NamedTuple)
+function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:m.timeframe.inherent_timeframe:10.0, just_Bool::Bool = false, generate_in_lumps::Bool = true, names::NamedTuple)
     if m.timeframe.general_timeframe && generate_in_lumps
         if !(just_Bool)
             new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))) for i in 1:(length(timepoints)-1)]
@@ -420,7 +420,12 @@ function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tup
         if isnothing(distribute)
             return nothing
         end
-        return rand(distribute,sample_nr)
+        generated = rand(distribute,sample_nr)
+        if (!isempty(person.seizure_counts) && person.seizure_counts[1].count isa Bool)
+            return [(entry >0) for entry in generated]
+        else
+            return generated
+        end
     elseif !mod.autocorrelation[1]
         steps = mod.timeframe.inherent_timeframe
         distributions = [distribution(mod, sol, j, person = person, names=names, θ=θ) for j in interval[1]:steps:(interval[2]-steps)]
@@ -429,7 +434,12 @@ function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tup
         end
         #Simulate data for each day, then sum vectors over days
         simulate = [rand(distribute, sample_nr) for distribute in distributions]
-        return sum(simulate)
+        sums = sum(simulate)
+        if eltype(distributions[1]) isa Bool || (!isempty(person.seizure_counts) && person.seizure_counts[1].count isa Bool)
+            return [(entry >0) for entry in sums]
+        else
+            return sums
+        end
     else
         steps = mod.timeframe.inherent_timeframe
         #retrieve relevant previous seizure data (within autocorrelation time)
@@ -449,7 +459,11 @@ function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tup
             end
             #just want to sum over count in each path
             sums = [sum([seizure.count for seizure in seizures_path]) for seizures_path in seizures]
-            return sums
+            if eltype(distributions[1]) isa Bool || (!isempty(person.seizure_counts) && person.seizure_counts[1].count isa Bool)
+                return [(entry >0) for entry in sums]
+            else
+                return sums
+            end
         else
             if !(prev_seizures[1].count isa Bool)
                 #First collect all possible combinations leading to this summarised output
@@ -461,10 +475,10 @@ function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tup
             #sum over products, calculate how many samples per combi, then generate
             start = prev_seizures[1].time[1]
             per_combi = Int(ceil(sample_nr/length(Iterators.product(per_timeframe...))))
-            simulate = Vector{Int}()
+            simulate = Vector{Union{Int, Bool}}()
             for combi in Iterators.product(per_timeframe...)
                 combi = collect(Iterators.flatten(combi))
-                seizures = [(time = (start+(j-1)*mod.timeframe.inherent_timeframe, start+j*mod.timeframe.inherent_timeframe), count = combi[j]) for j in eachindex(combi)]
+                seizures = Vector{@NamedTuple{time::Tuple{AbstractFloat, AbstractFloat}, count::Union{Int64, Bool}}}([(time = (start+(j-1)*mod.timeframe.inherent_timeframe, start+j*mod.timeframe.inherent_timeframe), count = combi[j]) for j in eachindex(combi)])
                 #now simulate draw for each possible combination in prev_seizures, per_combi samples each
                 seizures = [deepcopy(seizures) for i in 1:per_combi]
                 for j in interval[1]:steps:(interval[2]-steps)
@@ -480,7 +494,11 @@ function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tup
                 seizures = [sum([seizure.count for seizure in seizures_path if (interval[1] <= seizure.time[1] && interval[2] >= seizure.time[2])]) for seizures_path in seizures]
                 append!(simulate, seizures)
             end
-            return simulate
+            if eltype(distributions[1]) isa Bool || prev_seizures[1].count isa Bool
+                return [(entry >0) for entry in simulate]
+            else
+                return simulate
+            end
         end
     end
 end

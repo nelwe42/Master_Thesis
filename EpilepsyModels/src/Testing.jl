@@ -186,14 +186,28 @@ if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     println("Confidence Intervals: ", CI)
 end
 
-if optimisation_trace && show_trace
+if show_trace
+    println()
     if !(hierarchical_optimisation)
-        println(estimate.raw.original.trace)
+        println(estimate.raw.original)
+        println()
+        if optimisation_trace
+            println(estimate.raw.original.trace)
+        end
     else
-        println("PK trace: ")
-        println(estimate.estimate_PK.original.trace)
-        println("Seizure trace: ")
-        println(estimate.estimate_Seizure.original.trace)
+        println("PK output:")
+        println(estimate.estimate_PK.original)
+        println()
+        println("Seizure output:")
+        println(estimate.estimate_Seizure.original)
+        if optimisation_trace
+            println()
+            println("PK trace: ")
+            println(estimate.estimate_PK.original.trace)
+            println()
+            println("Seizure trace: ")
+            println(estimate.estimate_Seizure.original.trace)
+        end
     end
 end
 
