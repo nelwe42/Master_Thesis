@@ -31,7 +31,7 @@ PK Levetiracetam:
     for simplicity at least at first instead just factor (1 - c3*(kidney disease yes/no))
 PK = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.6, v1 = 29.7, v2 = 2.85, σ=1.0))
 default_dose=500mg, times_per_day = 2
--> later changed kidney_disease to CLCr as substitute of eGFR accepted, if just kidney_disease set to 50
+-> later changed kidney_disease to CLCr as substitute of eGFR accepted, if just kidney_disease set to 50 for yes and 110 for no
 -> CL becomes that form, c3 reset to Pigeolet value c3 = 0.122
 
 discussion of daily dose param, models usually developed in steady state, so inaccurate if dosage was recently switched
@@ -144,7 +144,9 @@ PK Lamotrigine:
 - Paper uses V = v1*(1+v2*(TBW-70)), very annoying when bigger v2 in inference and weight<70, doesnt work great
 -instead use V = v1*TBW, Sources of lamotrigine pharmacokinetic variability: A systematic review of population pharmacokinetic analyses reports
     slope interval from 1.09-3.18, pick middle 2,14
--Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 0.00328, c4 = 0.34, v1 = 76.2, v2 = 0.0181, σ=0.2))
+-Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 110*0.00328, c4 = 0.34, v1 = 76.2, v2 = 0.0181, σ=0.2))
+-Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 110*0.00328, c4 = 0.34, v1 = 2.14, σ=0.2))
+-> clearly need some updates here
 
 for CLCr (estimate for GFR) data generation used gender specific means and SDs given in On the determinants of the creatinine clearance: a population study
 -> given mean for women pretty low?

@@ -100,7 +100,7 @@ function create_ode_system(mod::PKLEV)
     @variables obs_LEV(t)
     #d_LEV is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_LEV) ~ -k_abs * d_LEV,
-            D(s_LEV) ~ (k_abs/(v1*BSA_normalised(weight(t), height(t))^v2)) * d_LEV - (c1*(weight(t)/70)^c2*((CLCr(t)+50*kidney_disease(t))/110)^c3/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
+            D(s_LEV) ~ (k_abs/(v1*BSA_normalised(weight(t), height(t))^v2)) * d_LEV - (c1*(weight(t)/70)^c2*((CLCr(t)+50*kidney_disease(t)+110*(1-kidney_disease(t)))/110)^c3/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV,
             D(S_LEV) ~ s_LEV, 
             obs_LEV ~ Normal(s_LEV, σ)]
     
@@ -112,7 +112,7 @@ end
 #A model for the PK behavior of Levetiracetam, when absorption is not modelled
 @with_kw struct PKLEVNoAbsorption{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
-    cov::T2 = (:weight, :height, :kidney_disease) 
+    cov::T2 = (:weight, :height, :kidney_disease, :CLCr) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:s_LEV_unnormalised], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
 end
@@ -132,13 +132,14 @@ function create_ode_system(mod::PKLEVNoAbsorption)
     @parameters (weight::type_use)(..) [tunable=false] 
     @parameters (height::type_use)(..) [tunable=false] 
     @parameters (kidney_disease::type_use)(..) [tunable=false]
+    @parameters (CLCr::type_use)(..) [tunable=false]
     @variables s_LEV_unnormalised(t) = 0.0 # depot compartment, here unnormalised
     @variables s_LEV(t)  # internal/central compartment
     @variables S_LEV(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
     @variables obs_LEV(t)
     
     eqs = [s_LEV ~ s_LEV_unnormalised/(v1*BSA_normalised(weight(t), height(t))^v2), 
-            D(s_LEV_unnormalised) ~ - (c1*(weight(t)/70)^c2*(1-kidney_disease(t)*c3)/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV_unnormalised,
+            D(s_LEV_unnormalised) ~ - (c1*(weight(t)/70)^c2*((CLCr(t)+50*kidney_disease(t)+110*(1-kidney_disease(t)))/110)^c3/(v1*BSA_normalised(weight(t), height(t))^v2)) * s_LEV_unnormalised,
             D(S_LEV) ~ s_LEV, 
             obs_LEV ~ Normal(s_LEV, σ)]
     
@@ -255,7 +256,7 @@ function create_ode_system(mod::PKLTG)
     @variables obs_LTG(t)
     #d_LTG is not concentration but dose, so rate there not normalised by volume
     eqs = [D(d_LTG) ~ -k_abs * d_LTG,
-            D(s_LTG) ~ (k_abs/(v1*(weight(t)))) * d_LTG - (c1*(weight(t)/70)^c2*(1+c3*((CLCr(t)+50*kidney_disease(t))/110-1))*(1+c4*smoking(t))/(v1*(weight(t)))) * s_LTG,
+            D(s_LTG) ~ (k_abs/(v1*(weight(t)))) * d_LTG - (c1*(weight(t)/70)^c2*(1+c3*((CLCr(t)+50*kidney_disease(t)+110*(1-kidney_disease(t)))/110-1))*(1+c4*smoking(t))/(v1*(weight(t)))) * s_LTG,
             D(S_LTG) ~ s_LTG, 
             obs_LTG ~ Normal(s_LTG, σ)]
     
@@ -321,10 +322,10 @@ function create_ode_system(mod::PKBigFour)
             D(d_VPA) ~ -k_abs_VPA * d_VPA,
             D(d_CBZ) ~ -k_abs_CBZ * d_CBZ,
             D(d_LEV) ~ -k_abs_LEV * d_LEV,
-            D(s_LTG) ~ (k_abs_LTG/(v1_LTG*(weight(t)))) * d_LTG - (c1_LTG*(weight(t)/70)^c2_LTG*(1+c3_LTG*((CLCr(t)+50*kidney_disease(t))/110-1))*(1+c4_LTG*smoking(t))*c_Ind_LTG^(d_CBZ_daily>0)*c_Inh_LTG^(d_VPA_daily>0)/(v1_LTG*(weight(t)))) * s_LTG,
+            D(s_LTG) ~ (k_abs_LTG/(v1_LTG*(weight(t)))) * d_LTG - (c1_LTG*(weight(t)/70)^c2_LTG*(1+c3_LTG*((CLCr(t)+50*kidney_disease(t)+110*(1-kidney_disease(t)))/110-1))*(1+c4_LTG*smoking(t))*c_Ind_LTG^(d_CBZ_daily>0)*c_Inh_LTG^(d_VPA_daily>0)/(v1_LTG*(weight(t)))) * s_LTG,
             D(s_VPA) ~ k_abs_VPA/(v1_VPA*weight(t)) * d_VPA - (c1_VPA*(max(100,d_VPA_daily)/1000)^c2_VPA*c3_VPA^gender(t)*c_Ind_VPA^(d_CBZ_daily>0))/(v1_VPA*weight(t)) * s_VPA,
             D(s_CBZ) ~ k_abs_CBZ/(v1_CBZ*weight(t)) * d_CBZ - (c1_CBZ*(c2_CBZ^(ind_CBZ>=14))+c3_CBZ*log(max(d_CBZ_daily/400, 1/4)))/(v1_CBZ*weight(t)) * s_CBZ,
-            D(s_LEV) ~ (k_abs_LEV/(v1_LEV*BSA_normalised(weight(t), height(t))^v2_LEV)) * d_LEV - (c1_LEV*(weight(t)/70)^c2_LEV*((CLCr(t)+50*kidney_disease(t))/110)^c3_LEV*c_Ind_LEV^(d_CBZ_daily>0)*c_Inh_LEV^(d_VPA_daily>0)/(v1_LEV*BSA_normalised(weight(t), height(t))^v2_LEV)) * s_LEV,
+            D(s_LEV) ~ (k_abs_LEV/(v1_LEV*BSA_normalised(weight(t), height(t))^v2_LEV)) * d_LEV - (c1_LEV*(weight(t)/70)^c2_LEV*((CLCr(t)+50*kidney_disease(t)+110*(1-kidney_disease(t)))/110)^c3_LEV*c_Ind_LEV^(d_CBZ_daily>0)*c_Inh_LEV^(d_VPA_daily>0)/(v1_LEV*BSA_normalised(weight(t), height(t))^v2_LEV)) * s_LEV,
             D(S_LTG) ~ s_LTG, 
             D(S_VPA) ~ s_VPA,
             D(S_CBZ) ~ s_CBZ,

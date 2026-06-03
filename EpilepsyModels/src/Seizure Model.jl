@@ -317,7 +317,7 @@ end
 #Plots fit for person i up to time given solutions from PK model (if they should be plotted)
 #estimate and true distributions plotted in same timeframes as individuals data
 function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
-    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, display_plot::Bool = true)
+    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
     
     output = Plots.Plot[]
     if !isnothing(sols_true)
@@ -360,14 +360,14 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         intervals = [data[i].seizure_counts[index].time for index in indices]
         pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
         if !isnothing(sols)
-            samples_true = [draw_data_samples(mod, sols[i], person=data[i], interval=interval,names=names) for interval in intervals]
+            samples_true = [draw_data_samples(mod, sols[i], person=data[i], interval=interval,names=names, sample_nr=sample_nr) for interval in intervals]
             if any(isnothing.(samples_true))
                 @warn "Distribution for true parameters is not well-defined"
                 sols = nothing
             end
         end
         if !isnothing(estimate_param)
-            samples_estimate = [draw_data_samples(mod, sols2[i], person=data[i], interval=interval, names=names, θ = estimate_param) for interval in intervals]
+            samples_estimate = [draw_data_samples(mod, sols2[i], person=data[i], interval=interval, names=names, θ = estimate_param, sample_nr=sample_nr) for interval in intervals]
             if any(isnothing.(samples_estimate))
                 @warn "Distribution for estimate parameters is not well-defined"
                 estimate_param = nothing

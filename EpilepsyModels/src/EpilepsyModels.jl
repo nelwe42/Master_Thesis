@@ -9,8 +9,12 @@ using FiniteDiff
 using Parameters
 using LinearAlgebra
 using OptimizationOptimJL
+using LogDensityProblems
+using AdvancedHMC
+using AdvancedMH
+using MCMCChains
 
-export optimise, optimise_hierarchical, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
+export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
 BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
 BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, FullModel
 
@@ -554,6 +558,143 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     end
 end
 
+#For LogTargetDensity Interface to use in sampled optimiser
+struct LogTargetDensity{T<:NamedTuple, T2<:AbstractVector} 
+    p::T #for evaluating negloglikelihood
+    lb::T2 #lower bound for checking if point admissable in likelihood
+    ub::T2 #upper bound for checking if point admissable in likelihood
+end
+
+LogDensityProblems.logdensity(p::LogTargetDensity, θ) = (all(p.ub .>= θ .>= p.lb)) ? -get_negloglikelihood_vectorised(θ, p.p) : -Inf 
+LogDensityProblems.dimension(p::LogTargetDensity) = length(p.lb)
+LogDensityProblems.capabilities(::LogTargetDensity) = LogDensityProblems.LogDensityOrder{0}()
+
+function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+    objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
+    sampler = nothing, ODE_options = (AutoTsit5(Rosenbrock23()),))
+    
+    names = get_keys_PK(m.pk_model)
+    #create ODE problem for each person in data
+    sys = create_ode_system(m.pk_model)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    #create initial guess
+    θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
+    #get indices for setting θ
+    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
+    #for keys in logscale transform to logscale in θ_0
+    partial_transform_to_logscale!(θ_0, logscale = logscale)
+    
+    axes_θ = getaxes(θ_0)
+    labels_θ = labels(θ_0)
+    θ_0_vec = collect(θ_0)
+    d = length(θ_0_vec)
+    #Set a default sampler for the given dimension
+    if isnothing(sampler)
+        sampler = RWMH(MvNormal(zeros(d), I))
+    end
+
+    #set bounds if required, handle if both individual and absolute bounds
+    if !isnothing(lower_upper)
+        lb, ub = lower_upper
+        if length(ub) != d || length(lb) != d
+            error("Upper and lower bounds must match parameter dimension $d")
+        end
+        if !isnothing(bound_abs)
+            ub .=  min.(ub, bound_abs)
+            if any(ub .< -bound_abs)
+                error("Upper bounds too low to fulfill absolute bounds")
+            end
+            lb .=  max.(lb, -bound_abs)
+            if any(lb .> bound_abs)
+                error("Lower bounds too high to fulfill absolute bounds")
+            end
+        end
+        #Check if bounds are valid
+        if any(ub .< lb)
+            error("Upper bounds strictly smaller than lower ones")
+        end
+    else
+        if !isnothing(bound_abs)
+            ub = ComponentArray([bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+            lb = ComponentArray([-bound_abs for i in eachindex(θ_0)], getaxes(θ_0))
+        else
+            ub = nothing
+            lb = nothing
+        end
+    end
+    #Ensure initial guess satifies bounds
+    if !isnothing(lb)
+        θ_0 .= clamp.(θ_0, lb, ub)
+    end
+
+    #Do everything vectorised, not sure if samplers can handle ComponentArrays
+    n_starts = max(multistart, 1)
+    thread_num = max(max_threads, 1)
+    internal_threads = Int(floor(thread_num/min(n_starts, thread_num)))
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    
+    #Change everything to vectors
+    ub = collect(ub)
+    lb = collect(lb)
+    θ_0 = θ_0_vec
+
+    #Define Model with LogDensityProblems interface
+    model = LogTargetDensity(p, lb, ub)
+
+    #Assemble multistarts
+    lower = zeros(Float64, d)
+    upper = zeros(Float64, d)
+    if !isnothing(multistart_bounds)
+        if typeof(multistart_bounds) <: AbstractFloat
+            lower .= Float64(-multistart_bounds)
+            upper .= Float64(multistart_bounds)
+        else
+            lower_raw, upper_raw = multistart_bounds
+            if length(lower_raw) != d || length(upper_raw) != d
+                error("multistart_bounds must match parameter dimension $d")
+            end
+            lower .= Float64.(lower_raw)
+            upper .= Float64.(upper_raw)
+        end
+    elseif !isnothing(bound_abs)
+        #don't use lb and ub here because those will often be infinite in some entries
+        lower .= -Float64(bound_abs)
+        upper .= Float64(bound_abs)
+    else
+        #Fallback finite box around initial point in unconstrained mode.
+        lower .= Float64.(θ_0_vec) .- 2.0
+        upper .= Float64.(θ_0_vec) .+ 2.0
+    end
+
+    #ensure generated starts will satisfy bounds
+    if !isnothing(lb)
+        lower .= max.(lower, lb)
+        upper .= min.(upper, ub)
+    end
+
+    if any(.!isfinite.(lower)) || any(.!isfinite.(upper)) || any(upper .<= lower)
+        error("Invalid multistart bounds: require finite values and upper > lower component-wise")
+    end
+
+    starts = Matrix{Float64}(undef, n_starts, d)
+    row_idx = 1
+    if multistart_include_initial
+        starts[row_idx, :] .= Float64.(θ_0_vec)
+        row_idx += 1
+    end
+    n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
+    if n_lhs > 0
+        rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
+        starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
+    end
+
+    starts_list = [vec(starts[i, :]) for i in 1:n_starts]
+
+    #Figure out how to transform back from logscale, figure out how to pass start and do multiple chains
+    chains = sample(model, sampler, per_chain; param_names=labels_θ, initial_params = θ_0_vec, chain_type=Chains)
+    return chains
+end
+
 #finite_not_forward allows to switch to finite_diff hessian instead of ForwardDiff, often faster but less accurate
 function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, sandwich::Bool = true, ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
@@ -716,7 +857,7 @@ end
 
 function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
     individuals::AbstractVector = [1], endpoint::Union{AbstractFloat, Nothing} = nothing, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, 
-    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
 
     output = Plots.Plot[]
     if isnothing(endpoint)
@@ -745,7 +886,7 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
     else 
         estimate_seizure = estimate_param.Seizure
     end
-    seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, names = mod.pk_model.keys, individuals = individuals, time = time_seizures, display_plot = display_plot)
+    seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
     append!(output, seizure_output)
     return output
 end

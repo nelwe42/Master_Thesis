@@ -18,6 +18,7 @@ using Random
 using Distributions
 using BenchmarkTools
 using ModelingToolkit
+using MCMCChains
 
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
@@ -54,16 +55,16 @@ Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev
 
 Maxiters_optimiser = 200
 #Max_Time = 5*60.0 #
-Max_Time = 10.0*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
+Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
-#logscale = ("σ",)
+logscale = ("σ",)
 #logscale = ("σ","v1")
-logscale = ("σ", "k_abs", "c1", "v1", "a")
+#logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
@@ -152,6 +153,7 @@ end
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(length(pk_model.keys.S)), person_gen, dose_gen)
 println("PK start: ", test_mod.pk_model.θ)
+#sampled_chains = optimise_sampled(test_mod, data, per_chain=500, logscale=logscale, bound_abs = bound_abs, lower_upper = lower_upper_bounds)
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
