@@ -114,13 +114,15 @@ else
 end
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
-#dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
+dose_gen = BasicDoses(default_dose=10.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
-data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+#data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+modifications = ((1, Normal(-1.5, 0)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
+data = generate_data_modified(mod, Population_size, Obs_Duration, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
 

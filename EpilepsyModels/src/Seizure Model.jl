@@ -336,21 +336,21 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
     if isnothing(sols_true)
         sols = nothing
     else
-        sols = sols_true[individuals]
+        sols = sols_true
     end
-    if !isnothing(sols) && any(.!(SciMLBase.successful_retcode.(sols)))
+    if !isnothing(sols) && any(.!(SciMLBase.successful_retcode.(sols[individuals])))
         @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
         sols = nothing
     end
     if isnothing(sols_estimated)
         sols2 = nothing
     else
-        sols2 = sols_estimated[individuals]
+        sols2 = sols_estimated
     end
     if !isnothing(estimate_param) && isnothing(sols2)
         error("Estimate solutions are missing")
     end
-    if !isnothing(sols2) && any(.!(SciMLBase.successful_retcode.(sols2)))
+    if !isnothing(sols2) && any(.!(SciMLBase.successful_retcode.(sols2[individuals])))
         @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
         estimate_param = nothing
     end

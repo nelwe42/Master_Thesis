@@ -14,7 +14,7 @@ using AdvancedHMC
 using AdvancedMH
 using MCMCChains
 
-export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
+export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, generate_data_modified, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
 BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
 BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, FullModel
 
@@ -806,7 +806,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -823,7 +823,7 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:1.0:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -853,6 +853,29 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
         summarise_seizures!(m.seizure_model, person, timepoints = timepoints_seizure, just_Bool= just_Bool)
     end
     return population
+end
+
+#generate with a parameter modified with randomly drawn addition for specified indices and distributions, effects constant per person
+#is automatically updating, if no update_reg is passed then no updates
+#expects modifications as tuple of 2-tuples (index, distribution to add)
+function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Distribution}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+    data = Vector{Person}()
+    for i in 1:n
+        modifiers = [(mod[1],rand(mod[2])) for mod in modifications]
+        new_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
+        for mod in modifiers
+            new_θ[mod[1]] += mod[2]
+        end
+        new_model = deepcopy(m) #create model with modified θ here
+        new_model.pk_model.θ .= new_θ.PK
+        new_model.seizure_model.θ .= new_θ.Seizure
+        #generate 1 person population with these parameters
+        person = generate_data_updating(new_model, 1, time, update_reg = update_reg, timepoints_PK = timepoints_PK, timepoints_seizure = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, wo_treatment = wo_treatment, ODE_options = ODE_options)
+        push!(data, person[1])
+        #write modifiers to person
+        append!(person[1].random_effects, modifiers)
+    end
+    return Tuple(data)
 end
 
 function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
