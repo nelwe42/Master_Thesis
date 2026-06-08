@@ -166,7 +166,7 @@ end
 #when doses already assigned next doses start only on following day not same one
 #when a drug not contained in names is picked, the attribute assign_not_supported decides if assigned anyway
 #doses drawn according to specified distribution, multiple of min_dose via binomial with given values
-function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d = keys(m.default_doses),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
+function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d = keys(m.dose_distr),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
     if isempty(person.dosing)
         last_dosetime = -1
     else
@@ -198,6 +198,119 @@ function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d
         info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs))
     else
         info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs) if (drugs[i] in names.d))
+    end
+    #append for each dose time and drug taken
+    next_doses = [(t = i+1 + j/d.times, dose = d.dose, state = d.drug) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in info for j in 0:(d.times-1)]
+    append!(person.dosing,next_doses)
+end
+
+#assign doses of big four based on gender, previous seizures
+@with_kw struct BigFourDoses{T<:NamedTuple, T3<:Tuple, T4<:Tuple, T5<:AbstractFloat, T6<:Int} <: DoseGenerator 
+    dose_distr::T = (d_VPA = (min = 150.0, avg_num = 5.0, max_num = 14), d_LEV = (min = 100.0, avg_num = 10.0, max_num = 30), 
+                d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
+    order_male::T3 = (:d_VPA, :d_LTG, :d_LEV, :d_CBZ)
+    order_female::T4 = (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)
+    prob_second::T5 = 0.2 #roughly 80% receive monotherapy, note that since have that probability multiple times actually higher
+    times_per_day_first::T6 = 2
+    times_per_day_second::T6 = 2
+    assign_not_supported::Bool = true #controls if assign_dose! assigns drugs not given in names
+end
+
+#assign drugs based on order and previous seizures, if seizures not controlled either increase dose, switch drug or assign second
+function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = keys(m.dose_distr),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
+    if isempty(person.dosing)
+        last_dosetime = -1
+    else
+        last_dosetime = floor(person.dosing[end].t)
+    end
+    #for first wo_treatment time no treatment, don't need to add zero callbacks to dosing
+    no_dose = min(wo_treatment,timeframe)
+    last_dosetime += no_dose
+    #pick first drug
+    if isempty(person.dosing)
+        #if no doses so far assign first recommended with average dose
+        if person.covariates.gender > 0
+            drug_one = m.order_female[1]
+        else
+            drug_one = m.order_male[1]
+        end
+        info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first),)
+    else
+        last_iter = max(0,person.dosing[end].t -timeframe) #get start of last dose assignment iteration
+        #get current dose regiment
+        daily_doses = [dose for dose in person.dosing if floor(person.dosing[end].t) <= dose.t < (floor(person.dosing[end].t)+1)]
+        current_drugs = Set(dose.state for dose in daily_doses)
+        current_summarised = Tuple((drug = drug, daily = [dose.dose for dose in daily_doses if dose.state == drug]) for drug in current_drugs)
+        current = Tuple((drug = entry.drug, dose = entry.daily[end], times = length(entry.daily)) for entry in current_summarised) 
+        if !(sum([seizure.count for seizure in person.seizure_counts if seizure.time[2]>last_iter]) >0)
+            #seizures controlled in last iteration, keep regiment
+            info = current
+        else
+            #need new regiment, pick between switching drug, increasing dose, adding second
+            #If increase possible, do that first
+            if any(Tuple((m.dose_distr[drug.drug].min*m.dose_distr[drug.drug].max_num > drug.dose) for drug in current))
+                #now draw random increase of dose
+                if (m.dose_distr[current[1].drug].min*m.dose_distr[current[1].drug].max_num > current[1].dose)
+                    #increase dose of first drug
+                    current_multiple = Int(round(current[1].dose/m.dose_distr[current[1].drug].min))
+                    #add binomial random variable, sum cannot exceed max_num, average increase of one
+                    new_multiple = current_multiple + rand(Binomial(m.dose_distr[current[1].drug].max_num-current_multiple, 1/(m.dose_distr[current[1].drug].max_num-current_multiple)))
+                    if length(current) > 1
+                        info = ((drug = current[1].drug, dose = new_multiple*m.dose_distr[current[1].drug].min, times = current[1].times), current[2])
+                    else 
+                        info = ((drug = current[1].drug, dose = new_multiple*m.dose_distr[current[1].drug].min, times = current[1].times),)
+                    end
+                else
+                    #increase dose of second drug
+                    current_multiple = Int(round(current[2].dose/m.dose_distr[current[2].drug].min))
+                    #add binomial random variable, sum cannot exceed max_num, average increase of one
+                    new_multiple = current_multiple + rand(Binomial(m.dose_distr[current[2].drug].max_num-current_multiple, 1/(m.dose_distr[current[2].drug].max_num-current_multiple)))
+                    info = (current[1], (drug = current[2].drug, dose = new_multiple*m.dose_distr[current[2].drug].min, times = current[2].times))
+                end
+            #check next if second possible and assign with certain probability
+            elseif (length(current) < 2) && (rand(Bernoulli(m.prob_second)))
+                #assign a second drug additionally
+                if person.covariates.gender > 0
+                    drug_two = m.order_female[1]
+                    if drug_two == current[1].drug && length(m.order_female)>1
+                        drug_two = m.order_female[2]
+                    end
+                else
+                    drug_two = m.order_male[1]
+                    if drug_two == current[1].drug && length(m.order_male)>1
+                        drug_two = m.order_male[2]
+                    end
+                end
+                info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
+            #Check if can still switch to untried drug
+            elseif any(Tuple(if (person.covariates.gender > 0)(getindex(m.order_female, drug) < length(m.order_female)) else (getindex(m.order_male, drug) < length(m.order_male)) end for drug in current))
+                #switch one to next drug in the order
+                if (person.covariates.gender > 0 && getindex(m.order_female, current[1].drug) < length(m.order_female)) || (!(person.covariates.gender > 0) && getindex(m.order_male, current[1].drug) < length(m.order_male))
+                    #assign new first drug
+                    if person.covariates.gender > 0
+                        drug_one = m.order_female[getindex(m.order_female, current[1].drug)+1]
+                    else
+                        drug_one = m.order_male[getindex(m.order_male, current[1].drug)+1]
+                    end
+                    if length(current) > 1
+                        info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first), current[2])
+                    else
+                        info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first),)
+                    end
+                else
+                    #assign new second drug
+                    if person.covariates.gender > 0
+                        drug_two = m.order_female[getindex(m.order_female, current[2].drug)+1]
+                    else
+                        drug_two = m.order_male[getindex(m.order_male, current[2].drug)+1]
+                    end
+                    info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
+                end
+            else
+                #if all tests have failed keep dose schedule anyway
+                info = current
+            end
+        end
     end
     #append for each dose time and drug taken
     next_doses = [(t = i+1 + j/d.times, dose = d.dose, state = d.drug) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in info for j in 0:(d.times-1)]

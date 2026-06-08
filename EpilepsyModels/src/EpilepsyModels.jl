@@ -15,7 +15,7 @@ using AdvancedMH
 using MCMCChains
 
 export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, generate_data_modified, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
-BasicDoses, PolyDosesRandom, PolyDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
+BasicDoses, PolyDosesRandom, PolyDoses, BigFourDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
 BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, FullModel
 
 include("Person Generator.jl")
@@ -831,7 +831,11 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     for person in population
-        passed_time = min(wo_treatment, time)
+        if wo_treatment > 0
+            passed_time = min(wo_treatment, time)
+        else
+            passed_time = min(update_reg, time)
+        end
         #here generate for min(wo_treatment,time)
         assign_dose!(m.dose_gen, person, names=names, timeframe = passed_time, wo_treatment = wo_treatment)
         current_timepoints_PK = [t for t in timepoints_PK if 0.0 <= t < passed_time] #filter timepoints in this interval

@@ -483,6 +483,9 @@ function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoi
     prob = create_problem(mod, sys, person=person, endpoint=endpoint)
     if !isnothing(start)
         new_tspan = (start[1], endpoint)
+        if endpoint < start[1]
+            error("Given endpoint for ODE is smaller than specified start")
+        end
         new_u0 = start[2]
         prob = remake(prob, tspan=new_tspan, u0=new_u0)
     end
