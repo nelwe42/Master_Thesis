@@ -211,6 +211,7 @@ end
     order_male::T3 = (:d_VPA, :d_LTG, :d_LEV, :d_CBZ)
     order_female::T4 = (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)
     prob_second::T5 = 0.2 #roughly 80% receive monotherapy, note that since have that probability multiple times actually higher
+    prob_reassignment::T5 = 0.3 #probability to get new assigment instead of dose increase, e.g. because of adverse effects
     times_per_day_first::T6 = 2
     times_per_day_second::T6 = 2
     assign_not_supported::Bool = true #controls if assign_dose! assigns drugs not given in names
@@ -247,8 +248,9 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
             info = current
         else
             #need new regiment, pick between switching drug, increasing dose, adding second
+            new_assignment = rand(Bernoulli(m.prob_reassignment))
             #If increase possible, do that first
-            if any(Tuple((m.dose_distr[drug.drug].min*m.dose_distr[drug.drug].max_num > drug.dose) for drug in current))
+            if !(new_assignment) && any(Tuple((m.dose_distr[drug.drug].min*m.dose_distr[drug.drug].max_num > drug.dose) for drug in current))
                 #now draw random increase of dose
                 if (m.dose_distr[current[1].drug].min*m.dose_distr[current[1].drug].max_num > current[1].dose)
                     #increase dose of first drug
@@ -268,7 +270,7 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                     info = (current[1], (drug = current[2].drug, dose = new_multiple*m.dose_distr[current[2].drug].min, times = current[2].times))
                 end
             #check next if second possible and assign with certain probability
-            elseif (length(current) < 2) && (rand(Bernoulli(m.prob_second)))
+            elseif !(new_assignment) && (length(current) < 2) && (rand(Bernoulli(m.prob_second)))
                 #assign a second drug additionally
                 if person.covariates.gender > 0
                     drug_two = m.order_female[1]
@@ -283,14 +285,14 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                 end
                 info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
             #Check if can still switch to untried drug
-            elseif any(Tuple(if (person.covariates.gender > 0)(getindex(m.order_female, drug) < length(m.order_female)) else (getindex(m.order_male, drug) < length(m.order_male)) end for drug in current))
+            elseif any(Tuple(if person.covariates.gender>0 (findfirst([(entry == drug.drug) for entry in m.order_female]) < length(m.order_female)) else (findfirst([(entry == drug.drug) for entry in m.order_male]) < length(m.order_male)) end for drug in current))
                 #switch one to next drug in the order
-                if (person.covariates.gender > 0 && getindex(m.order_female, current[1].drug) < length(m.order_female)) || (!(person.covariates.gender > 0) && getindex(m.order_male, current[1].drug) < length(m.order_male))
+                if (person.covariates.gender > 0 && findfirst([(entry == current[1].drug) for entry in m.order_female]) < length(m.order_female)) || (!(person.covariates.gender > 0) && findfirst([(entry == current[1].drug) for entry in m.order_male]) < length(m.order_male))
                     #assign new first drug
                     if person.covariates.gender > 0
-                        drug_one = m.order_female[getindex(m.order_female, current[1].drug)+1]
+                        drug_one = m.order_female[findfirst([(entry == current[1].drug) for entry in m.order_female])+1]
                     else
-                        drug_one = m.order_male[getindex(m.order_male, current[1].drug)+1]
+                        drug_one = m.order_male[findfirst([(entry == current[1].drug) for entry in m.order_male])+1]
                     end
                     if length(current) > 1
                         info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first), current[2])
@@ -300,9 +302,9 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                 else
                     #assign new second drug
                     if person.covariates.gender > 0
-                        drug_two = m.order_female[getindex(m.order_female, current[2].drug)+1]
+                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
                     else
-                        drug_two = m.order_male[getindex(m.order_male, current[2].drug)+1]
+                        drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
                     end
                     info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
                 end
