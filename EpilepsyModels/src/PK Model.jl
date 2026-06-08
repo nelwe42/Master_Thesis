@@ -569,7 +569,7 @@ end
 #4)Functions for visualisation
 
 #functions for plotting fit, with or without true or estimated parameters given, solutions given
-function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, sols_modified::Union{AbstractVector, Nothing} = nothing,
     individuals::AbstractVector = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true)
     if !isnothing(sols_true)
         endpoint = sols_true[1].t[end]
@@ -595,6 +595,10 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
         @warn "Unsuccessful ODE solve in estimated parameters, true parameters will be ignored for plotting"
         sols_estimated = nothing
     end
+    if !isnothing(sols_modified) && any(.!(SciMLBase.successful_retcode.(sols_modified)))
+        @warn "Unsuccessful ODE solve in true parameters modified with random effects, modified parameters will be ignored for plotting"
+        sols_modified = nothing
+    end
     sols = sols_true
     sols2 = sols_estimated
     #Plot PK behavior (for each drug)
@@ -607,6 +611,9 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
             #true plot if param specified
             if !isnothing(sols)
                 plot!(sols[i], idxs = s, label="Concentration $(s)", tspan = time)
+            end
+            if !isnothing(sols_modified)
+                plot!(sols_modified[i], idxs = s, label="Concentration $(s) with random effects", linecolor = :green, tspan = time)
             end
             #add scattered measurements
             x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
@@ -632,6 +639,12 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
             plot!(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue, tspan = time)
             for i in 2:Population_size
                 plot!(sols[i], idxs = s, label = "", linecolor = :blue, tspan = time)
+            end
+        end
+        if !isnothing(sols_modified)
+            plot!(sols_modified[1], idxs = s, label="Concentration $(s) with random effects", linecolor = :green, tspan = time)
+            for i in 2:Population_size
+                plot!(sols_modified[i], idxs = s, label = "", linecolor = :green, tspan = time)
             end
         end
         for i in 1:Population_size
@@ -671,14 +684,28 @@ function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentAr
     end
     if !isnothing(true_param)
         sols = [solve_PK(mod, true_param, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+        if length(data)>0 && !isempty(data[1].random_effects)
+            person_param = [deepcopy(true_param) for person in data]
+            for i in eachindex(data)
+                for mod in data[i].random_effects
+                    if mod[1] <= length(true_param)
+                        person_param[i][mod[1]] += mod[2]
+                    end
+                end
+            end
+            sols_mod = [solve_PK(mod, person_param[i], data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+        else
+            sols_mod = nothing
+        end
     else
         sols = nothing
+        sols_mod = nothing
     end
     if !isnothing(estimate_param)
         sols2 = [solve_PK(mod, estimate_param, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
     else 
         sols2 = nothing
     end
-    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, time = time, display_plot = display_plot)
+    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, individuals = individuals, time = time, display_plot = display_plot)
     return output
 end

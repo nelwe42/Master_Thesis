@@ -316,7 +316,9 @@ end
 
 #Plots fit for person i up to time given solutions from PK model (if they should be plotted)
 #estimate and true distributions plotted in same timeframes as individuals data
+#If solutions modified with random effects are passed get additional plots modified and estimate (violin can only plot 2 at once)
 function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+    sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
     names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
     
     output = Plots.Plot[]
@@ -354,6 +356,29 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
         estimate_param = nothing
     end
+    true_param = mod.θ
+    if !isnothing(sols_modified) && any(.!(SciMLBase.successful_retcode.(sols_modified[individuals])))
+        @warn "Unsuccessful ODE solve in true parameters modified with random effects, modified parameters will be ignored for plotting"
+        sols_modified = nothing
+    end
+    if !isnothing(sols_modified) && isnothing(length_PK)
+        @warn "Modified Solutions are passed but length of PK parameters are missing, modified parameters will be ignored for plotting"
+        sols_modified = nothing
+    end
+    if !isnothing(sols_modified)
+        if length(data)>0 && !isempty(data[1].random_effects)
+            person_param = [deepcopy(true_param) for person in data]
+            for i in eachindex(data)
+                for mod in data[i].random_effects
+                    if mod[1] > length_PK
+                        person_param[i][mod[1]-length_PK] += mod[2]
+                    end
+                end
+            end
+        else
+            sols_modified = nothing
+        end
+    end
     for i in individuals
         #Get timepoints and corresponding indices for plotting from seizure data
         indices = [index for index in eachindex(data[i].seizure_counts) if data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]]
@@ -364,6 +389,13 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
             if any(isnothing.(samples_true))
                 @warn "Distribution for true parameters is not well-defined"
                 sols = nothing
+            end
+        end
+        if !isnothing(sols_modified)
+            samples_mod = [draw_data_samples(mod, sols_modified[i], person=data[i], interval=interval,names=names, θ = person_param[i], sample_nr=sample_nr) for interval in intervals]
+            if any(isnothing.(samples_mod))
+                @warn "Distribution for true parameters modified with random effects is not well-defined"
+                sols_modified = nothing
             end
         end
         if !isnothing(estimate_param)
@@ -384,17 +416,46 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
                 end
             end
         elseif !isnothing(estimate_param)
-            violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), label = "estimate", colour = :firebrick2)
-            for j in eachindex(intervals)
-                if j>1
-                    violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = "", colour = :firebrick2)
+            if !isnothing(sols_modified)
+                violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :left, label = "modified", colour = :green)
+                violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), side = :right, label = "estimate", colour = :firebrick2)
+                for j in eachindex(intervals)
+                    if j>1
+                        violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :left, label = "", colour = :green)
+                        violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = "", colour = :firebrick2)
+                    end
+                end
+            else
+                violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), label = "estimate", colour = :firebrick2)
+                for j in eachindex(intervals)
+                    if j>1
+                        violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = "", colour = :firebrick2)
+                    end
                 end
             end
         elseif !isnothing(sols)
-            violin!(["$(intervals[1])"], Float64.(samples_true[1]), label = "true", colour = :dodgerblue)
+            if !isnothing(sols_modified)
+                violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = :dodgerblue)
+                violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :right, label = "modified", colour = :green)
+                for j in eachindex(intervals)
+                    if j>1
+                        violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = :dodgerblue)
+                        violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :right, label = "", colour = :green)
+                    end
+                end
+            else
+                violin!(["$(intervals[1])"], Float64.(samples_true[1]), label = "true", colour = :dodgerblue)
+                for j in eachindex(intervals)
+                    if j>1
+                        violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = "", colour = :dodgerblue)
+                    end
+                end
+            end
+        elseif !isnothing(sols_modified)
+            violin!(["$(intervals[1])"], Float64.(samples_mod[1]), label = "modified", colour = :green)
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], Float64.(samples_mod[j]), label = "", colour = :green)
                 end
             end
         end
@@ -409,6 +470,29 @@ function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{Componen
         append!(output, [pl2])
         if display_plot
             display(pl2)
+        end
+        #if all three solutions are passed, do extra plot for that
+        if !isnothing(sols_modified) && !isnothing(sols) && !isnothing(estimate_param)
+            pl3 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
+            violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = :dodgerblue)
+            violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :right, label = "modified", colour = :green)
+            for j in eachindex(intervals)
+                if j>1
+                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = :dodgerblue)
+                    violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :right, label = "", colour = :green)
+                end
+            end
+            #Add where data is
+            boxplot!(["$(intervals[1])"], [Float64(data[i].seizure_counts[indices[1]].count)], label = "Data values", colour = :grey, linewidth = 3)
+            for j in eachindex(intervals)
+                if j>1
+                    boxplot!(["$(intervals[j])"], [Float64(data[i].seizure_counts[indices[j]].count)], label = "", colour = :grey, linewidth = 3)
+                end
+            end
+            if display_plot
+                display(pl3)
+            end
+            push!(output, pl3)
         end
     end
     return output

@@ -123,8 +123,8 @@ Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 #data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
-#data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+#data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
 
@@ -219,7 +219,7 @@ end
 
 if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #Plot fit for specified individuals
-    individuals = [1,2,3,4,5]
+    individuals = [1]
     time_seizures = (0,10)
     time_pk = (0.0, Obs_Duration)
     plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options)

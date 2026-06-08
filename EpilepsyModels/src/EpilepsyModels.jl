@@ -897,8 +897,20 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
     end
     if !isnothing(true_param)
         sols = [solve_PK(mod.pk_model, true_param.PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+        if length(data)>0 && !isempty(data[1].random_effects)
+            person_param = [deepcopy(true_param) for person in data]
+            for i in eachindex(data)
+                for mod in data[i].random_effects
+                    person_param[i][mod[1]] += mod[2]
+                end
+            end
+            sols_mod = [solve_PK(mod.pk_model, person_param[i].PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
+        else
+            sols_mod = nothing
+        end
     else
         sols = nothing
+        sols_mod = nothing
     end
     if !isnothing(estimate_param)
         sols2 = [solve_PK(mod.pk_model, estimate_param.PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
@@ -906,14 +918,14 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
         sols2 = nothing
     end
 
-    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, individuals = individuals, time = time_pk, display_plot = display_plot)
+    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, individuals = individuals, time = time_pk, display_plot = display_plot)
     append!(output, pk_output)
     if isnothing(estimate_param)
         estimate_seizure = nothing
     else 
         estimate_seizure = estimate_param.Seizure
     end
-    seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
+    seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
     append!(output, seizure_output)
     return output
 end
