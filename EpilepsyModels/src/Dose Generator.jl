@@ -212,6 +212,8 @@ end
     order_female::T4 = (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)
     prob_second::T5 = 0.2 #roughly 80% receive monotherapy, note that since have that probability multiple times actually higher
     prob_reassignment::T5 = 0.3 #probability to get new assigment instead of dose increase, e.g. because of adverse effects
+    try_second_before_reassignment::Bool = true #when reassignment from prob reassignment is true, do prob_second first before reassigning to get more polytherapy in dataset
+    start_second_in_min::Bool = true #start second drug in min instead of avg
     times_per_day_first::T6 = 2
     times_per_day_second::T6 = 2
     assign_not_supported::Bool = true #controls if assign_dose! assigns drugs not given in names
@@ -240,7 +242,7 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
         last_iter = max(0,person.dosing[end].t -timeframe) #get start of last dose assignment iteration
         #get current dose regiment
         daily_doses = [dose for dose in person.dosing if floor(person.dosing[end].t) <= dose.t < (floor(person.dosing[end].t)+1)]
-        current_drugs = Set(dose.state for dose in daily_doses)
+        current_drugs = unique([dose.state for dose in daily_doses])
         current_summarised = Tuple((drug = drug, daily = [dose.dose for dose in daily_doses if dose.state == drug]) for drug in current_drugs)
         current = Tuple((drug = entry.drug, dose = entry.daily[end], times = length(entry.daily)) for entry in current_summarised) 
         if !(sum([seizure.count for seizure in person.seizure_counts if seizure.time[2]>last_iter]) >0)
@@ -270,7 +272,7 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                     info = (current[1], (drug = current[2].drug, dose = new_multiple*m.dose_distr[current[2].drug].min, times = current[2].times))
                 end
             #check next if second possible and assign with certain probability
-            elseif !(new_assignment) && (length(current) < 2) && (rand(Bernoulli(m.prob_second)))
+            elseif (!(new_assignment) || m.try_second_before_reassignment) && (length(current) < 2) && (rand(Bernoulli(m.prob_second)))
                 #assign a second drug additionally
                 if person.covariates.gender > 0
                     drug_two = m.order_female[1]
@@ -283,7 +285,11 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                         drug_two = m.order_male[2]
                     end
                 end
-                info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
+                if m.start_second_in_min
+                    info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min, times = m.times_per_day_second))
+                else
+                    info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
+                end
             #Check if can still switch to untried drug
             elseif any(Tuple(if person.covariates.gender>0 (findfirst([(entry == drug.drug) for entry in m.order_female]) < length(m.order_female)) else (findfirst([(entry == drug.drug) for entry in m.order_male]) < length(m.order_male)) end for drug in current))
                 #switch one to next drug in the order
@@ -291,8 +297,80 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                     #assign new first drug
                     if person.covariates.gender > 0
                         drug_one = m.order_female[findfirst([(entry == current[1].drug) for entry in m.order_female])+1]
+                        #dont assign same drug twice
+                        if length(current)>1 && drug_one == current[2].drug
+                            if findfirst([(entry == current[1].drug) for entry in m.order_female]) < length(m.order_female)-1
+                                drug_one = m.order_female[findfirst([(entry == current[1].drug) for entry in m.order_female])+2]
+                            else
+                                #reassign drug 2 if possible
+                                if length(current)>1 && (person.covariates.gender > 0 && findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)) || (!(person.covariates.gender > 0) && findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male))
+                                    if person.covariates.gender > 0
+                                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
+                                        #make sure not to assign same drug twice
+                                        if drug_two == current[1].drug
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)-1
+                                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+2]
+                                            else
+                                                #update failed
+                                                info = current
+                                            end
+                                        end
+                                    else
+                                        drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
+                                        #make sure not to assign same drug twice
+                                        if drug_two == current[1].drug
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male)-1
+                                                drug_one = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+2]
+                                            else
+                                                #update failed
+                                                info = current
+                                            end
+                                        end
+                                    end
+                                    info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
+                                else
+                                    info = current
+                                end
+                            end
+                        end
                     else
                         drug_one = m.order_male[findfirst([(entry == current[1].drug) for entry in m.order_male])+1]
+                        #dont assign same drug twice
+                        if length(current)>1 && drug_one == current[2].drug
+                            if findfirst([(entry == current[1].drug) for entry in m.order_male]) < length(m.order_male)-1
+                                drug_one = m.order_male[findfirst([(entry == current[1].drug) for entry in m.order_male])+2]
+                            else
+                                #reassign drug 2 if possible
+                                if length(current)>1 && (person.covariates.gender > 0 && findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)) || (!(person.covariates.gender > 0) && findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male))
+                                    if person.covariates.gender > 0
+                                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
+                                        #make sure not to assign same drug twice
+                                        if drug_two == current[1].drug
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)-1
+                                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+2]
+                                            else
+                                                #update failed
+                                                info = current
+                                            end
+                                        end
+                                    else
+                                        drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
+                                        #make sure not to assign same drug twice
+                                        if drug_two == current[1].drug
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male)-1
+                                                drug_one = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+2]
+                                            else
+                                                #update failed
+                                                info = current
+                                            end
+                                        end
+                                    end
+                                    info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
+                                else
+                                    info = current
+                                end
+                            end
+                        end
                     end
                     if length(current) > 1
                         info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first), current[2])
@@ -303,8 +381,26 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                     #assign new second drug
                     if person.covariates.gender > 0
                         drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
+                        #make sure not to assign same drug twice
+                        if drug_two == current[1].drug
+                            if findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)-1
+                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+2]
+                            else
+                                #update failed
+                                info = current
+                            end
+                        end
                     else
                         drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
+                        #make sure not to assign same drug twice
+                        if drug_two == current[1].drug
+                            if findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male)-1
+                                drug_one = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+2]
+                            else
+                                #update failed
+                                info = current
+                            end
+                        end
                     end
                     info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
                 end

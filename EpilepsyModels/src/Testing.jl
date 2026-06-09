@@ -57,7 +57,7 @@ Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev
 Maxiters_optimiser = 200
 #Max_Time = 5*60.0 #
 Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 10 #5 #10 #20
+Population_size = 5 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -98,12 +98,12 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
@@ -118,14 +118,14 @@ person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
-dose_gen = BigFourDoses()
+dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+#dose_gen = BigFourDoses()
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
-#data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+#data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
-#data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+#data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
 

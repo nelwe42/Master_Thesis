@@ -10,6 +10,7 @@ using Parameters
 using LinearAlgebra
 using OptimizationOptimJL
 using LogDensityProblems
+using LogDensityProblemsAD
 using AdvancedHMC
 using AdvancedMH
 using MCMCChains
@@ -640,6 +641,7 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
 
     #Define Model with LogDensityProblems interface
     model = LogTargetDensity(p, lb, ub)
+    model = AdvancedHMC.LogDensityModel(LogDensityProblemsAD.ADgradient(AutoForwardDiff(), model))
 
     #Assemble multistarts
     lower = zeros(Float64, d)
@@ -806,78 +808,87 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
     population = generate_population(m.population_gen, n)
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
-    for person in population
-        assign_dose!(m.dose_gen, person, names = names, timeframe = time, wo_treatment = wo_treatment)
-        sol = generate_measurements!(m.pk_model, sys, person, timepoints = timepoints_PK, endpoint = time, options = ODE_options)
-        generate_seizures!(m.seizure_model, sol, person, timepoints = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
-        summarise_seizures!(m.seizure_model, person, timepoints = timepoints_seizure, just_Bool= just_Bool)
+    people_per_thread = Int(ceil(n/max_threads))
+    Threads.@threads for j in 1:min(n, max_threads)
+        for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
+            assign_dose!(m.dose_gen, population[i], names = names, timeframe = time, wo_treatment = wo_treatment)
+            sol = generate_measurements!(m.pk_model, sys, population[i], timepoints = timepoints_PK, endpoint = time, options = ODE_options)
+            generate_seizures!(m.seizure_model, sol, population[i], timepoints = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+            summarise_seizures!(m.seizure_model, population[i], timepoints = timepoints_seizure, just_Bool= just_Bool)
+        end
     end
     return population
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
-    population = generate_population(m.population_gen, n)
+    data = generate_population(m.population_gen, n)
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
-    for person in population
-        if wo_treatment > 0
-            passed_time = min(wo_treatment, time)
-        else
-            passed_time = min(update_reg, time)
+    people_per_thread = Int(ceil(n/max_threads))
+    Threads.@threads for j in 1:min(n, max_threads)
+        for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
+            if wo_treatment > 0
+                passed_time = min(wo_treatment, time)
+            else
+                passed_time = min(update_reg, time)
+            end
+            #here generate for min(wo_treatment,time)
+            assign_dose!(m.dose_gen, data[i], names=names, timeframe = passed_time, wo_treatment = wo_treatment)
+            current_timepoints_PK = [t for t in timepoints_PK if 0.0 <= t < passed_time] #filter timepoints in this interval
+            sol = generate_measurements!(m.pk_model, sys, data[i], timepoints = current_timepoints_PK, endpoint = passed_time, options = ODE_options)
+            current_timepoints_seizure = [t for t in timepoints_seizure if 0.0 <= t < passed_time]
+            generate_seizures!(m.seizure_model, sol, data[i], timepoints=current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+            while passed_time < time
+                sol_prev = sol
+                increment = min(time, passed_time + update_reg) - passed_time
+                passed_time += increment
+                current_timepoints_PK = [t for t in timepoints_PK if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
+                current_timepoints_seizure = [timepoints_seizure[i] for i in eachindex(timepoints_seizure) 
+                                                    if ((passed_time-increment)<= timepoints_seizure[i] < passed_time || (passed_time-increment)<= timepoints_seizure[min(i+1, length(timepoints_seizure))] <= passed_time)] #capture interval overlap
+                start_solution = min(passed_time-increment, current_timepoints_seizure[1])
+                assign_dose!(m.dose_gen, data[i], names=names, timeframe = increment)
+                sol = generate_measurements!(m.pk_model, sys, data[i], timepoints = current_timepoints_PK, endpoint = passed_time, start = (start_solution, sol_prev(start_solution)), options = ODE_options)
+                generate_seizures!(m.seizure_model, sol, data[i], timepoints = current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+            end
+            summarise_seizures!(m.seizure_model, data[i], timepoints = timepoints_seizure, just_Bool= just_Bool)
         end
-        #here generate for min(wo_treatment,time)
-        assign_dose!(m.dose_gen, person, names=names, timeframe = passed_time, wo_treatment = wo_treatment)
-        current_timepoints_PK = [t for t in timepoints_PK if 0.0 <= t < passed_time] #filter timepoints in this interval
-        sol = generate_measurements!(m.pk_model, sys, person, timepoints = current_timepoints_PK, endpoint = passed_time, options = ODE_options)
-        current_timepoints_seizure = [t for t in timepoints_seizure if 0.0 <= t < passed_time]
-        generate_seizures!(m.seizure_model, sol, person, timepoints=current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
-        while passed_time < time
-            sol_prev = sol
-            increment = min(time, passed_time + update_reg) - passed_time
-            passed_time += increment
-            current_timepoints_PK = [t for t in timepoints_PK if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
-            current_timepoints_seizure = [timepoints_seizure[i] for i in eachindex(timepoints_seizure) 
-                                                if ((passed_time-increment)<= timepoints_seizure[i] < passed_time || (passed_time-increment)<= timepoints_seizure[min(i+1, length(timepoints_seizure))] <= passed_time)] #capture interval overlap
-            start_solution = min(passed_time-increment, current_timepoints_seizure[1])
-            assign_dose!(m.dose_gen, person, names=names, timeframe = increment)
-            sol = generate_measurements!(m.pk_model, sys, person, timepoints = current_timepoints_PK, endpoint = passed_time, start = (start_solution, sol_prev(start_solution)), options = ODE_options)
-            generate_seizures!(m.seizure_model, sol, person, timepoints = current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
-        end
-        summarise_seizures!(m.seizure_model, person, timepoints = timepoints_seizure, just_Bool= just_Bool)
     end
-    return population
+    return data
 end
 
 #generate with a parameter modified with randomly drawn addition for specified indices and distributions, effects constant per person
 #is automatically updating, if no update_reg is passed then no updates
 #expects modifications as tuple of 2-tuples (index, distribution to add)
-function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Distribution}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
-    data = Vector{Person}()
-    for i in 1:n
-        modifiers = [(mod[1],rand(mod[2])) for mod in modifications]
-        new_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
-        for mod in modifiers
-            new_θ[mod[1]] += mod[2]
+function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Distribution}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+    data = Vector{Person}(undef, n)
+    people_per_thread = Int(ceil(n/max_threads))
+    Threads.@threads for j in 1:min(n, max_threads)
+        for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
+            modifiers = [(mod[1],rand(mod[2])) for mod in modifications]
+            new_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
+            for mod in modifiers
+                new_θ[mod[1]] += mod[2]
+            end
+            new_model = deepcopy(m) #create model with modified θ here
+            new_model.pk_model.θ .= new_θ.PK
+            new_model.seizure_model.θ .= new_θ.Seizure
+            #generate 1 person population with these parameters
+            person = generate_data_updating(new_model, 1, time, update_reg = update_reg, timepoints_PK = timepoints_PK, timepoints_seizure = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, wo_treatment = wo_treatment, ODE_options = ODE_options)
+            data[i] = person[1]
+            #write modifiers to person
+            append!(person[1].random_effects, modifiers)
         end
-        new_model = deepcopy(m) #create model with modified θ here
-        new_model.pk_model.θ .= new_θ.PK
-        new_model.seizure_model.θ .= new_θ.Seizure
-        #generate 1 person population with these parameters
-        person = generate_data_updating(new_model, 1, time, update_reg = update_reg, timepoints_PK = timepoints_PK, timepoints_seizure = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, wo_treatment = wo_treatment, ODE_options = ODE_options)
-        push!(data, person[1])
-        #write modifiers to person
-        append!(person[1].random_effects, modifiers)
     end
     return Tuple(data)
 end
