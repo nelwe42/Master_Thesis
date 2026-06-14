@@ -694,6 +694,11 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
 
     #Figure out how to transform back from logscale, figure out how to pass start and do multiple chains
     chains = sample(model, sampler, per_chain; param_names=labels_θ, initial_params = θ_0_vec, chain_type=Chains)
+    
+    #Test how merging chains works for multithreading with starts>max_threads
+    n = 3
+    chains = [deepcopy(chains) for i in 1:n]
+    chains = cat(chains...; dims = 3)
     return chains
 end
 

@@ -210,7 +210,7 @@ end
                 d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
     order_male::T3 = (:d_VPA, :d_LTG, :d_LEV, :d_CBZ)
     order_female::T4 = (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)
-    prob_second::T5 = 0.2 #roughly 80% receive monotherapy, note that since have that probability multiple times actually higher
+    prob_second::T5 = 0.34 #roughly 66% receive monotherapy, note that since have that probability multiple times actually higher
     prob_reassignment::T5 = 0.3 #probability to get new assigment instead of dose increase, e.g. because of adverse effects
     try_second_before_reassignment::Bool = true #when reassignment from prob reassignment is true, do prob_second first before reassigning to get more polytherapy in dataset
     start_second_in_min::Bool = true #start second drug in min instead of avg

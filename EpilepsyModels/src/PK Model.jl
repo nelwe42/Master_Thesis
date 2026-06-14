@@ -10,6 +10,7 @@ using Accessors
 using StaticArrays
 using DataInterpolations
 using DiffEqCallbacks
+using SymbolicUtils
 
 #Overtype of PK Models that will go into full model
 abstract type PKModel end
@@ -406,6 +407,26 @@ function get_keys_PK(mod::PKModel)
     return mod.keys
 end
 
+function get_covariate_type(typ)
+    if typ <: SymbolicUtils.FnType
+        return get_fntype(typ)
+    else
+        return typ
+    end
+end
+
+function get_fntype(t::Type{SymbolicUtils.FnType{X, Y, Z}}) where {X,Y,Z} 
+    return Z
+end
+
+function make_type(x, t::Type)
+    if x isa t
+        return x
+    else 
+        return t(x)
+    end
+end
+
 #Problem creation with covariates and callbacks
 function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat = 10.0)
     
@@ -428,13 +449,20 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
     names = get_keys_PK(mod)
     callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
-    #interpolate covariates constant
-    covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
+    #get type info for covariates
+    param_info = [(name = info.name, type = get_covariate_type(info.type)) for info in ModelingToolkit.dump_parameters(ode_system) if info.name in covariates]
+
+    #interpolate covariates from given data or try typecasting, if unsuccessful throw error
+    try
+        covariate_interpolation = Dict((isa(covariates[info.name],Number) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name], covariates[info.name]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
+        # Create ODE problem with callbacks
+        problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     
-    # Create ODE problem with callbacks
-    problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
-    
-    return problem
+        return problem
+    catch e
+        println(e)
+        error("Passed type of covariate is not supported")
+    end
 end
 
 #same function for ode_system already given, given a person instead of dosing and covariates
@@ -457,13 +485,19 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
     names = get_keys_PK(mod)
     callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
-    #interpolate covariates constant
-    covariate_interpolation = Dict((name => ConstantInterpolation([value, value], [0.0, endpoint])) for (name, value) in pairs(covariates))
-
-    # Create ODE problem with callbacks
-    problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
+    #get type info for covariates
+    param_info = [(name = info.name, type = get_covariate_type(info.type)) for info in ModelingToolkit.dump_parameters(ode_system) if info.name in mod.cov]
+    #interpolate covariates from given data or try typecasting, if unsuccessful throw error
+    try
+        covariate_interpolation = Dict((isa(covariates[info.name],Number) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name], covariates[info.name]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
+        #Create ODE problem with callbacks
+        problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     
-    return problem
+        return problem
+    catch e
+        println(e)
+        error("Passed type of covariate is not supported")
+    end
 end
 
 #solve ODE without system given

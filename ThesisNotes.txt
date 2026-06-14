@@ -162,7 +162,7 @@ not the same as summing over data generated daily (cost of more flexibility in r
 
 PK Big Four:
 -largely the same as four combined and with interaction terms
--CL LEV: *1.22 if coadministered with CBZ (/PHT/PB/PD) Toublanc et al. (2008), *0.812 for VPA Pigeolet et al. (2007)
+-CL LEV: *1.22 if coadministered with CBZ (/PHT/PB/PD) Toublanc et al. (2008), *0.812 for VPA , *1.09 for CBZ Pigeolet et al. (2007)
 -CL CBZ: only includes coadministration with PHT, not considered here
 -CL VPA: *1.22 if coadministered with CBZ, multipliers for PB, PHT, CLB not of interest here
 -CL LTG: *(1-0.579) for VPA or sertraline, *(1+0.546) for CBZ, PHT, PB
