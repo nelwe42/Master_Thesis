@@ -875,15 +875,25 @@ end
 #generate with a parameter modified with randomly drawn addition for specified indices and distributions, effects constant per person
 #is automatically updating, if no update_reg is passed then no updates
 #expects modifications as tuple of 2-tuples (index, distribution to add)
-function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Distribution}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+    #Check modification if functions have correct return type
+    if any([(mod[2] isa Function && !(mod[2](1.0) isa Union{Number, Distribution})) for mod in modifications])
+        error("Modification function has unsupported return type")
+    end
+    if !allunique(Tuple(mod[1] for mod in modifications)) 
+        error("Two modifications passed for same parameter index")
+    end 
+    current_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
+    modification_unfunctioned = (mod[2] isa Function ? (mod[1], mod[2](current_θ[mod[1]])) : mod for mod in modifications)
+    modifiers = Tuple(mod[2] isa Number ? (mod[1], Dirac(mod[2])) : mod for mod in modification_unfunctioned)
     data = Vector{Person}(undef, n)
     people_per_thread = Int(ceil(n/max_threads))
     Threads.@threads for j in 1:min(n, max_threads)
         for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
-            modifiers = [(mod[1],rand(mod[2])) for mod in modifications]
+            modifiers_person = [(mod[1],rand(mod[2])) for mod in modifiers]
             new_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
-            for mod in modifiers
-                new_θ[mod[1]] += mod[2]
+            for mod in modifiers_person
+                new_θ[mod[1]] = mod[2]
             end
             new_model = deepcopy(m) #create model with modified θ here
             new_model.pk_model.θ .= new_θ.PK
@@ -892,7 +902,7 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
             person = generate_data_updating(new_model, 1, time, update_reg = update_reg, timepoints_PK = timepoints_PK, timepoints_seizure = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, wo_treatment = wo_treatment, ODE_options = ODE_options)
             data[i] = person[1]
             #write modifiers to person
-            append!(person[1].random_effects, modifiers)
+            append!(person[1].random_effects, modifiers_person)
         end
     end
     return Tuple(data)

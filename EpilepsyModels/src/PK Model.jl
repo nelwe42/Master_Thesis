@@ -450,12 +450,11 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
     callback_set = create_dosing_callbacks(dosing, ode_system, names = names, set_daily_doses = mod.set_daily_doses)
 
     #get type info for covariates
-    param_info = [(name = info.name, type = get_covariate_type(info.type)) for info in ModelingToolkit.dump_parameters(ode_system) if info.name in covariates]
-
+    param_info = [(name = info.name, type = get_covariate_type(info.type)) for info in ModelingToolkit.dump_parameters(ode_system) if info.name in mod.cov]
     #interpolate covariates from given data or try typecasting, if unsuccessful throw error
     try
         covariate_interpolation = Dict((isa(covariates[info.name],Number) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name], covariates[info.name]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
-        # Create ODE problem with callbacks
+        #Create ODE problem with callbacks
         problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     
         return problem
