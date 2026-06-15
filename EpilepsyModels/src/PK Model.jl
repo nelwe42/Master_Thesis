@@ -423,7 +423,7 @@ function make_type(x, t::Type)
     if x isa t
         return x
     else 
-        return t(x)
+        return t(x...)
     end
 end
 

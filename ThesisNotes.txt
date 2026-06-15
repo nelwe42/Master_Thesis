@@ -169,3 +169,11 @@ PK Big Four:
 
 -implicitly assume in likelihood for autocorrelation only depend on if and not on count previously if only bool is given
 -otherwise cannot be calculated
+
+SeizureVPA:
+-Based on Determination of the Optimal Concentration of Valproic Acid in Patients with Epilepsy: A Population Pharmacokinetic Pharmacodynamic Analysis
+-just says 50% reduction in interval at least 5 times the size of normal interval between seizures
+-logit bernoulli does not generalise, joint distribution would be minimum over bernoulli variables, product over probabilities
+-minimum already an assumption since 50% reduction need not be fulfilled for all subsets to be true overall
+-take 5 days as natural timeframe for now
+-logit expression from paper page 6, (6)

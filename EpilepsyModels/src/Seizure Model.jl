@@ -97,6 +97,38 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     #day 0 ist interval (0,1], day named after first number
     return distribution
 end
+ 
+@with_kw struct SeizureVPA{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
+    θ::T=ComponentArray((a = 0.5, a2 = 0.1, b1 = 0.0, b2 = 0.0)) 
+    cov::T2 = () #no covariates required
+    timeframe = (general_timeframe = false, inherent_timeframe = 5.0)
+    autocorrelation = (false, 0.0)
+end
+
+#bernoulli distribution for having no seizures in the next days on VPA
+function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+    #Logit(Pr) = a + a1* (age/10) - a2^CBZ - (b1 - b2^partial seizures)*predicted trough concentration
+    #for a2 and b2 consider taking max of effect with a/b1
+    #do check if s_VPA in names before adding trough concentration
+    #get comedication, trough times from person.dosing, then do sol(trough_time -eps(eltype(Theta)), idxs=:s_VPA)
+    comed_CBZ = !isempty([dose for dose in person.dosing if (n ≤ dose.t < n+m.timeframe.inherent_timeframe) && dose.state == :d_CBZ])
+    logit = m.a + m.a1*(person.covariates.age/10) - m.a2^comed_CBZ
+    if !isfinite(logit)
+        return nothing
+    end
+    if :s_VPA in names.s
+        trough_times = Tuple(dose.t-eps(eltype(θ)) for dose in person.dosing if (n ≤ dose.t < n+m.timeframe.inherent_timeframe) && dose.state == :d_VPA)
+        average_trough_concentration = sum([sol(t, idxs=:s_VPA) for t in trough_times])/length(trough_times)
+        logit -= (m.b1 - m.b2^person.covariates.seizure_type)*average_trough_concentration
+    end
+    #Transform from representation with logit to with probability
+    p = exp(logit)/(1+exp(logit))
+    if !(zero(p) ≤ p ≤ one(p))
+        return nothing
+    end
+    distribution = Bernoulli(p)
+    return distribution
+end
 
 #2) Implement Seizure Probabilities, Likelihoods and Data Generators for discrete, nonrandom
 
