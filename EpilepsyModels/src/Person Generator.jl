@@ -35,12 +35,14 @@ function generate_population(m::PersonGeneratorLEV, n::Int = 10)
 end
 
 #Under construction, should create covariates for all big 4 drugs LEV, CBZ, VPA, LTG
-@with_kw struct BigFourPersonGenerator{T<:AbstractFloat} <: PersonGenerator 
+@with_kw struct BigFourPersonGenerator{T<:AbstractFloat, T2<:Distribution} <: PersonGenerator 
     #probability of previous CBZ therapy and kidney disease can be adjusted 
     prob_kidney_disease::T = 0.1
     prob_prev_CBZ::T = 0.0
     prob_smoking::T = 0.189 #ratio of smokers Germany 2021 according to Mikrozensus, ignoring differences in sex, age, Bundesland
     creatinine_distr = ((101, 30.5/1.96), (86.9, 25.8/1.96)) #info on creatinine distr for each gender
+    prob_focal::T = 0.6 #probability of having focal seizures
+    age_distr::T2 = MixtureModel([Binomial(90, 15.0/90), Binomial(90, 65/90)], Categorical(0.35, 0.65))
 end
 
 function generate_population(m::BigFourPersonGenerator, n::Int = 10)
@@ -57,6 +59,8 @@ function generate_population(m::BigFourPersonGenerator, n::Int = 10)
                                 CLCr = rand(Normal(m.creatinine_distr[genders[i]+1]...)),
                                 prev_CBZ = Float64(rand(Bernoulli(m.prob_prev_CBZ))), 
                                 smoking = Float64(rand(Bernoulli(m.prob_smoking))), 
+                                seizure_type = Float64(rand(Bernoulli(m.prob_focal))),
+                                age = rand(m.age_distr),
                                 gender = genders[i])) for i in 1:n)
     return population
 end

@@ -42,6 +42,12 @@ function SeizureBasic(N::Int64)
     return obj
 end
 
+#Outer Constructor to make default for drugs in pk model
+function SeizureBasic(m::PKModel)
+    obj = SeizureBasic(length(m.keys.S))
+    return obj
+end
+
 #basic distribution function for record_interval in days starting at n, requires sol from chosen PK model
 function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+record_interval, idxs = names.S)-sol(n,idxs = names.S)))
@@ -68,6 +74,12 @@ end
 #Outer Constructor to make default for N drugs
 function SeizureNegativeBinomial(N::Int64)
     obj = SeizureNegativeBinomial(θ = ComponentArray((a = 2.0, o = 0.01, prev = 0.0, b = SA[0 for i in 1:N])))
+    return obj
+end
+
+#Outer Constructor to make default for drugs in pk model
+function SeizureNegativeBinomial(m::PKModel)
+    obj = SeizureNegativeBinomial(length(m.keys.S))
     return obj
 end
 
@@ -98,28 +110,45 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     return distribution
 end
  
-@with_kw struct SeizureVPA{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
-    θ::T=ComponentArray((a = 0.5, a2 = 0.1, b1 = 0.0, b2 = 0.0)) 
-    cov::T2 = () #no covariates required
+@with_kw struct SeizureVPA{T<:ComponentArray, T2<:Tuple, T3<:Symbol} <: SeizureModelNonrandom
+    θ::T=ComponentArray((a = 0.5, a1 = 0.1, a2 = 0.0, b1 = 10.0, b2 = 0.0)) 
+    cov::T2 = (:age, :seizure_type) 
     timeframe = (general_timeframe = false, inherent_timeframe = 5.0)
     autocorrelation = (false, 0.0)
+    target_drug::T3 = :s_VPA
+end
+
+#Outer Constructor, sets to default and checks if VPA part of model
+function SeizureVPA(m::PKModel, target::Symbol = :s_VPA)
+    if !(target in m.keys.s)
+        @warn "Passing PK Model to VPA seizure model that does not support $(target)"
+    end
+    return SeizureVPA(target_drug = target)
 end
 
 #bernoulli distribution for having no seizures in the next days on VPA
 function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
-    #Logit(Pr) = a + a1* (age/10) - a2^CBZ - (b1 - b2^partial seizures)*predicted trough concentration
+    #Logit(Pr) = a + a1*(age/10) - a2^CBZ - (b1 - b2^partial seizures)*predicted trough concentration
     #for a2 and b2 consider taking max of effect with a/b1
-    #do check if s_VPA in names before adding trough concentration
-    #get comedication, trough times from person.dosing, then do sol(trough_time -eps(eltype(Theta)), idxs=:s_VPA)
+    if person.covariates.age isa Number
+        age = person.covariates.age
+    else
+        #Assume is a function and call it
+        age = person.covariates.age(n)
+    end
     comed_CBZ = !isempty([dose for dose in person.dosing if (n ≤ dose.t < n+m.timeframe.inherent_timeframe) && dose.state == :d_CBZ])
-    logit = m.a + m.a1*(person.covariates.age/10) - m.a2^comed_CBZ
+    logit = m.θ.a + m.θ.a1*(age/10) - m.θ.a2^comed_CBZ
     if !isfinite(logit)
         return nothing
     end
-    if :s_VPA in names.s
+    if m.target_drug in names.s
         trough_times = Tuple(dose.t-eps(eltype(θ)) for dose in person.dosing if (n ≤ dose.t < n+m.timeframe.inherent_timeframe) && dose.state == :d_VPA)
-        average_trough_concentration = sum([sol(t, idxs=:s_VPA) for t in trough_times])/length(trough_times)
-        logit -= (m.b1 - m.b2^person.covariates.seizure_type)*average_trough_concentration
+        if isempty(trough_times)
+            average_trough_concentration = 0.0
+        else
+            average_trough_concentration = sum([sol(t, idxs=m.target_drug) for t in trough_times])/length(trough_times)
+        end
+        logit -= (m.θ.b1 - m.θ.b2^person.covariates.seizure_type)*average_trough_concentration
     end
     #Transform from representation with logit to with probability
     p = exp(logit)/(1+exp(logit))
@@ -289,6 +318,9 @@ end
 #models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
 #distribution only needs attribute record_interval if have general_timeframe
 function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:m.timeframe.inherent_timeframe:10.0, just_Bool::Bool = false, generate_in_lumps::Bool = true, names::NamedTuple)
+    if isempty(timepoints)
+        return
+    end
     if m.timeframe.general_timeframe && generate_in_lumps
         if !(just_Bool)
             new_seizures = [(time = (timepoints[i], timepoints[i+1]), count = rand(distribution(m, sol, timepoints[i], record_interval = timepoints[i+1]-timepoints[i], person = person, names=names))) for i in 1:(length(timepoints)-1)]
@@ -316,6 +348,8 @@ function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timep
     if !(m.autocorrelation[1])
         #generate all directly
         new_seizures = [(time = (j, j+steps), count = rand(distribution(m, sol, j, person = person, names=names))) for j in timepoints[1]:steps:(endpoint-steps)]
+        #Check if looking at Bool model
+        just_Bool = just_Bool || (!isempty(new_seizures) && (new_seizures[1].count isa Bool))
         #summarise seizures now and append
         if !(just_Bool)
             summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in new_seizures if (timepoints[i] ≤ seizure.time[1] && seizure.time[2] ≤ timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
@@ -335,6 +369,8 @@ function summarise_seizures!(m::SeizureModelNonrandom, person::Person; timepoint
     if !m.autocorrelation[1]
         return
     end
+    #Check if looking at Bool model
+    just_Bool = just_Bool || (!isempty(person.seizure_counts) && (person.seizure_counts[1].count isa Bool))
     if !(just_Bool)
         summarised = [(time = (timepoints[i], timepoints[i+1]), count = sum([seizure.count for seizure in person.seizure_counts if (timepoints[i] ≤ seizure.time[1] && seizure.time[2] ≤ timepoints[i+1])])) for i in 1:(length(timepoints)-1)]
     else

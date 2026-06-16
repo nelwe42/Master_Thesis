@@ -17,7 +17,7 @@ using MCMCChains
 
 export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, generate_data_modified, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit,
 BasicDoses, PolyDosesRandom, PolyDoses, BigFourDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
-BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, FullModel
+BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, SeizureVPA, FullModel
 
 include("Person Generator.jl")
 include("PK Model.jl")

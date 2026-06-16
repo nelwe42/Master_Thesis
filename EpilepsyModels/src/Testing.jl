@@ -23,14 +23,14 @@ using MCMCChains
 #This will redirect output to txt file, not including error messages/warnings
 #path = "."
 path = "/home/s6newell_hpc"
-open(joinpath(path,"output.txt"), "w") do io
-open(joinpath(path,"errors.txt"), "w") do io_err
-redirect_stdout(io) do
-redirect_stderr(io_err) do
+#open(joinpath(path,"output.txt"), "w") do io
+#open(joinpath(path,"errors.txt"), "w") do io_err
+#redirect_stdout(io) do
+#redirect_stderr(io_err) do
 
 println("Included")
 
-try
+#try
 
 #set seed
 Random.seed!(42)
@@ -53,20 +53,22 @@ base_rate = 4.0
 Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, base_rate/25, base_rate/20, base_rate/120]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
+Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
 
 Maxiters_optimiser = 200
-#Max_Time = 5*60.0 #
-Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 20 #10 #20
+Max_Time = 5*60.0 #
+#Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
+Population_size = 5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 30.0 #40.0
+Obs_Duration = wo_treatment + 20.0 #30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
+#TODO Change this back later
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
-#logscale = ("σ",)
+logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
+#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 println("logscale = ", logscale)
@@ -88,7 +90,7 @@ Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ
 Multistart_bounds = 20.0 #nothing
 fail_hard = false
 
-run_hessian = true
+run_hessian = false
 sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = true
@@ -101,9 +103,9 @@ show_trace = true
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
@@ -113,6 +115,7 @@ if (typeof(pk_model).name.wrapper in [PKBigFour])
 else
     seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
 end
+#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -156,7 +159,7 @@ if isnothing(lower_bounds)
 end
 
 #create test mod of same types as true ones
-test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(length(pk_model.keys.S)), person_gen, dose_gen)
+test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(pk_model), person_gen, dose_gen)
 println("PK start: ", test_mod.pk_model.θ)
 #sampled_chains = optimise_sampled(test_mod, data, per_chain=500, logscale=logscale, bound_abs = bound_abs, lower_upper = lower_upper_bounds)
 if hierarchical_optimisation
@@ -186,6 +189,7 @@ for i in eachindex(errors_abs)
 end
 println("Relative errors: ", errors_rel)
 println("Absolute errors: ", errors_abs)
+
 #Testing out hessian confidence intervals if flag is set
 if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
     CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, finite_not_forward=finite_diff_hessian, sandwich = sandwich, ODE_options = ODE_options)
@@ -276,11 +280,11 @@ end
 
 println("Done")
 
-catch e
-   @warn e
-end
+#catch e
+#   @warn e
+#end
 
-end
-end
-end
-end
+#end
+#end
+#end
+#end

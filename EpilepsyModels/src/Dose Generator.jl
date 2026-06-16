@@ -219,6 +219,10 @@ end
     assign_not_supported::Bool = true #controls if assign_dose! assigns drugs not given in names
 end
 
+#Generalised male: (:d_VPA, :d_LEV, :d_LTG)
+#Generalised female: (:d_LEV, :d_LTG, :d_VPA)
+#Focal male/female: (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)
+
 #assign drugs based on order and previous seizures, if seizures not controlled either increase dose, switch drug or assign second
 function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = keys(m.dose_distr),), timeframe::AbstractFloat = 10.0, wo_treatment::AbstractFloat = 0.0)
     if isempty(person.dosing)
