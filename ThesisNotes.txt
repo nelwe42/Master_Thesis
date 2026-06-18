@@ -195,6 +195,8 @@ Drug appropriate dosing effect on starts:
 
 -overshooting returns for: CBZ, VPA, LEV more logscale
 
+Note somewhere for seizuremult, negative binomial a in logscale doesnt really make sense
+
 SeizureMult: same as basic just now exp, multiplicative treatment effect
 -> no longer general timeframe since while Poisson generalises, sum of exponential doesnt
 -> no more problems with b being too large for doses

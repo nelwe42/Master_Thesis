@@ -36,11 +36,12 @@ abstract type PKModelRandom <: PKModel end
 #1)Specific model instances with their create problems
 
 #A specific model instance, here very basic
-@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple, T3<: Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKBasic{T<:ComponentArray, T2<:Tuple, T3<: Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_el = 1.0, k_abs = 1.0, σ=0.5)) 
     cov::T2 = () #no covariates required
     set_daily_doses::T3 = () #no information about daily doses required
     keys::T4 = (d = SA[:d], s = SA[:s], S = SA[:S], obs = SA[(:obs, :s)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_el = 0.1, k_abs = 0.1, σ=0.0)), ub = ComponentArray((k_el = 100.0, k_abs = 100.0, σ=20.0)))
 end
 
 function create_ode_system(mod::PKBasic)
@@ -72,11 +73,12 @@ function create_ode_system(mod::PKBasic)
 end
 
 #A model for the PK behavior of Levetiracetam
-@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKLEV{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 72.0, c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :height, :kidney_disease, :CLCr) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:d_LEV], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_abs = 2*24.0, c1 = 2*24.0, c2 = 0.0, c3 = 0.0, v1 = 10.0, v2 = 0.0, σ=0.0)), ub = ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 5.0, c3 = 5.0, v1 = 200.0, v2 = 10.0, σ=20.0)))
 end
 
 function create_ode_system(mod::PKLEV) 
@@ -111,11 +113,12 @@ function create_ode_system(mod::PKLEV)
 end
 
 #A model for the PK behavior of Levetiracetam, when absorption is not modelled
-@with_kw struct PKLEVNoAbsorption{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKLEVNoAbsorption{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :height, :kidney_disease, :CLCr) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:s_LEV_unnormalised], s = SA[:s_LEV], S = SA[:S_LEV], obs = SA[(:obs_LEV, :s_LEV)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((c1 = 2*24.0, c2 = 0.0, c3 = 0.0, v1 = 10.0, v2 = 0.0, σ=0.0)), ub = ComponentArray((c1 = 100.0, c2 = 5.0, c3 = 5.0, v1 = 200.0, v2 = 10.0, σ=20.0)))
 end
 
 function create_ode_system(mod::PKLEVNoAbsorption) 
@@ -150,12 +153,13 @@ function create_ode_system(mod::PKLEVNoAbsorption)
 end
 
 #A model for the PK behavior of Carbamazepine
-@with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKCBZ{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 36.0, c1 = 72.0, c2 = 1.0, c3 = 0.0, v1 = 1.0, σ = 0.1)) 
     cov::T2 = (:prev_CBZ, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_CBZ_daily, drug_var = :d_CBZ, autoinduction = true, ind_param = :ind_CBZ),) 
     #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter
     keys::T4 = (d = SA[:d_CBZ], s = SA[:s_CBZ], S = SA[:S_CBZ], obs = SA[(:obs_CBZ, :s_CBZ)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_abs = 5.0, c1 = 24.0, c2 = 0.0, c3 = 0.0, v1 = 0.5, σ = 0.0)), ub = ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 10.0, c3 = 100.0, v1 = 10.0, σ = 20.0)))
 end
 
 function create_ode_system(mod::PKCBZ) 
@@ -190,12 +194,13 @@ function create_ode_system(mod::PKCBZ)
 end
 
 #A model for the PK behavior of Valproate
-@with_kw struct PKVPA{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKVPA{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 72.0, c1 = 7.5, c2 = 0.1, c3 = 1.0, v1 = 0.5, σ = 0.1)) 
     cov::T2 = (:gender, :weight) 
     set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none),) 
     #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter (not present here, just for sake of completeness)
     keys::T4 = (d = SA[:d_VPA], s = SA[:s_VPA], S = SA[:S_VPA], obs = SA[(:obs_VPA, :s_VPA)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_abs = 20.0, c1 = 5.0, c2 = 0.0, c3 = 0.1, v1 = 0.1, σ = 0.0)), ub = ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 2.0, c3 = 2.0, v1 = 2.0, σ = 20.0)))
 end
 
 function create_ode_system(mod::PKVPA) 
@@ -229,11 +234,12 @@ function create_ode_system(mod::PKVPA)
 end
 
 #A model for the PK behavior of Lamotrigine
-@with_kw struct PKLTG{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKLTG{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 72.0, c1 = 72.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ=0.5)) 
     cov::T2 = (:weight, :kidney_disease, :CLCr, :smoking) 
     set_daily_doses::T3 = ()
     keys::T4 = (d = SA[:d_LTG], s = SA[:s_LTG], S = SA[:S_LTG], obs = SA[(:obs_LTG, :s_LTG)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_abs = 10.0, c1 = 10.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 0.1, σ=0.0)), ub = ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 2.0, c3 = 2.0, c4 = 2.0, v1 = 10.0, σ=20.0)) )
 end
 
 function create_ode_system(mod::PKLTG) 
@@ -267,7 +273,7 @@ function create_ode_system(mod::PKLTG)
 end
 
 #A model for the PK behavior of all 4 above drugs at once
-@with_kw struct PKBigFour{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple} <: PKModelNonrandom
+@with_kw struct PKBigFour{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs_LTG = 72.0, c1_LTG = 72.0, c2_LTG = 0.0, c3_LTG = 0.0, c4_LTG = 0.0, c_Inh_LTG = 1.0, c_Ind_LTG = 1.0, v1_LTG = 1.0, σ_LTG=0.5,
                         k_abs_VPA = 72.0, c1_VPA = 7.5, c2_VPA = 0.1, c3_VPA = 1.0, c_Ind_VPA = 1.0, v1_VPA = 0.5, σ_VPA = 0.1,
                         k_abs_CBZ = 36.0, c1_CBZ = 72.0, c2_CBZ = 1.0, c3_CBZ = 0.0, v1_CBZ = 1.0, σ_CBZ = 0.1,
@@ -275,6 +281,15 @@ end
     cov::T2 = (:weight, :height, :kidney_disease, :CLCr, :smoking, :prev_CBZ, :gender) 
     set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none), (drug_param = :d_CBZ_daily, drug_var = :d_CBZ, autoinduction = true, ind_param = :ind_CBZ))
     keys::T4 = (d = SA[:d_LTG, :d_LEV, :d_CBZ, :d_VPA], s = SA[:s_LTG, :s_LEV, :s_CBZ, :s_VPA], S = SA[:S_LTG, :S_LEV, :S_CBZ, :S_VPA], obs = SA[(:obs_LTG, :s_LTG), (:obs_LEV, :s_LEV), (:obs_CBZ, :s_CBZ), (:obs_VPA, :s_VPA)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_abs_LTG = 10.0, c1_LTG = 10.0, c2_LTG = 0.0, c3_LTG = 0.0, c4_LTG = 0.0, c_Inh_LTG = 0.1, c_Ind_LTG = 0.1, v1_LTG = 0.5, σ_LTG=0.0,
+                        k_abs_VPA = 20.0, c1_VPA = 5.0, c2_VPA = 0.0, c3_VPA = 0.1, c_Ind_VPA = 0.1, v1_VPA = 0.1, σ_VPA = 0.0,
+                        k_abs_CBZ = 5.0, c1_CBZ = 24.0, c2_CBZ = 0.0, c3_CBZ = 0.0, v1_CBZ = 0.5, σ_CBZ = 0.0,
+                        k_abs_LEV = 48.0, c1_LEV = 48.0, c2_LEV = 0.0, c3_LEV = 0.0, c_Inh_LEV = 0.1, c_Ind_LEV = 0.1, v1_LEV = 10.0, v2_LEV = 0.0, σ_LEV=0.0)) 
+                ,ub = ComponentArray((k_abs_LTG = 100.0, c1_LTG = 100.0, c2_LTG = 2.0, c3_LTG = 2.0, c4_LTG = 2.0, c_Inh_LTG = 2.0, c_Ind_LTG = 2.0, v1_LTG = 10.0, σ_LTG=20.0,
+                        k_abs_VPA = 100.0, c1_VPA = 100.0, c2_VPA = 2.0, c3_VPA = 2.0, c_Ind_VPA = 2.0, v1_VPA = 2.0, σ_VPA = 20.0,
+                        k_abs_CBZ = 100.0, c1_CBZ = 100.0, c2_CBZ = 10.0, c3_CBZ = 100.0, v1_CBZ = 10.0, σ_CBZ = 20.0,
+                        k_abs_LEV = 100.0, c1_LEV = 100.0, c2_LEV = 5.0, c3_LEV = 5.0, c_Inh_LEV = 2.0, c_Ind_LEV = 2.0, v1_LEV = 200.0, v2_LEV = 10.0, σ_LEV=20.0)) 
+                    )
 end
 
 #CL LEV: *1.22 if coadministered with CBZ (/PHT/PB/PD) Toublanc et al. (2008), *0.812 for VPA Pigeolet et al. (2007)

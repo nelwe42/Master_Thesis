@@ -1323,3 +1323,191 @@ Absolute errors: (PK = (k_abs_LTG = 10.862328172140153, c1_LTG = 11.788332091841
     f(x) calls:    9421
     ∇f(x) calls:   1091
 -> looks good, plots also look good, cbz absorption a bit overestimated
+
+Test overshooting with drug_appropriate_dosing:
+-> run with 5 people, 20 days, 5min maxtime for solver (not that it listens to that)
+
+LEV+Basic, little log: 
+Estimate: (PK = (k_abs = 73.35488771418763, c1 = 88.0430574748723, c2 = 0.30349698060016056, c3 = 0.27707804581026035, v1 = 27.973688697107622, v2 = 3.225888557972434, σ = 0.5399092004048304), Seizure = (a = 3.4489217751598775, b = [0.1307008750741179]))
+Retcode: Failure
+Objective: 131.41931202073005
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 108.44279073086692
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.16]))
+-> looks good
+
+LEV+Basic, more log:
+Estimate: (PK = (k_abs = 748.250411684072, c1 = 100.2823998809445, c2 = 0.3731710545905931, c3 = -0.0012644875002315592, v1 = 27.202841954460357, v2 = 4.059088922339935, σ = 0.31344085989332143), Seizure = (a = 2.749715788616893, b = [0.08821753972427837]))
+Retcode: Failure
+Objective: 127.71053941915673
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 108.44279073086531
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 4.0, b = [0.16]))
+-> overshoots a bit?, plotted actually also looks good
+
+LEV+Mult, little log:
+Estimate: (PK = (k_abs = 71.72069493010832, c1 = 87.24919461759487, c2 = 0.3266512766104958, c3 = 0.27608558861893673, v1 = 27.69831628223799, v2 = 3.38779286902436, σ = 0.40366162157851526), Seizure = (a = 1.4109955657807873, b = [0.15925036656103134]))
+Retcode: Failure
+Objective: 41.271621222570396
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 21.3809639133988
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> looks good
+
+LEV+Mult, more log:
+Estimate: (PK = (k_abs = 46.57232506740441, c1 = 95.79816087939557, c2 = 0.2683071428981928, c3 = 0.17996165496270766, v1 = 29.877865830279273, v2 = 3.13234156857325, σ = 0.3686243161992166), Seizure = (a = 0.6008176821085054, b = [0.15826509373153752]))
+Retcode: Failure
+Objective: 31.9364511694176
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 21.38096391678428
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> k_abs a bit low, but otherwise looks good
+
+CBZ+Basic, little log:
+Estimate: (PK = (k_abs = 36.058098613078414, c1 = 72.0152615648186, c2 = 1.9590052504904891, c3 = 0.8988779726504956, v1 = 0.4614852532735867, σ = 0.26354962509586766), Seizure = (a = 2.208957758239646, b = [-0.587329242981721]))
+Retcode: Failure
+Objective: 3438.7733308060924
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 156.70355625238403
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))
+-> not good fit, but ran out of time, run for longer
+
+CBZ+Basic, more log:
+Estimate: (PK = (k_abs = 808487.8453555763, c1 = 9.856711966890506e141, c2 = 195.83813185246962, c3 = 7.541533198325324, v1 = 0.06145293481594491, σ = 0.999999999861897), Seizure = (a = 2.090000008655611, b = [2.160297279905279]))
+Retcode: Failure
+Objective: 1622.8207070116273
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 156.70355625238403
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))
+-> overshoots again
+
+CBZ+Mult, little log:
+Estimate: (PK = (k_abs = 36.0094943183248, c1 = 72.05764380656476, c2 = 2.9018910723328784, c3 = 0.08528745756530265, v1 = 0.8724586959802578, σ = 0.10099732759168388), Seizure = (a = 0.6977952686972986, b = [0.046840980777386625]))
+Retcode: Failure
+Objective: 42689.57406072201
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 81.02933096440793
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> c1 too high, bad fit, might clear up still with more time, not sure
+
+CBZ+Mult, more log:
+Estimate: (PK = (k_abs = 0.0012216622479439014, c1 = 2.4833444281886586e-26, c2 = 166.6838988940266, c3 = 9.024948738770563, v1 = 4.0634618751669413e52, σ = 0.9999999997423458), Seizure = (a = 8.542928844848458e-26, b = [20.78123939303898]))
+Retcode: Success
+Objective: 2775.3095959435395
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 81.02933096440782
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> overshoots again
+
+LTG+Basic, little log:
+Estimate: (PK = (k_abs = 196.48468595358426, c1 = 50.43339298692233, c2 = 0.8912009453710593, c3 = 0.5624397940644222, c4 = 124.73232678327759, v1 = 2.0715788262251276, σ = 0.2070590205676782), Seizure = (a = 3.9740300777903483, b = [0.48975239541520066]))
+Retcode: Failure
+Objective: 177.64037294936526
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 179.76294321836008
+True θ: (PK = (k_abs = 47.04, c1 = 57.599999999999994, c2 = 0.938, c3 = 0.3608, c4 = 0.34, v1 = 2.14, σ = 0.2), Seizure = (a = 4.0, b = [0.5714285714285714]))
+-> looks good
+
+LTG+Basic, more log:
+Estimate: (PK = (k_abs = 70.5708792370323, c1 = 50.530570153290704, c2 = 0.8953295333710202, c3 = 0.5673875874430734, c4 = -0.046524760727613745, v1 = 2.0745324946699406, σ = 0.20649387388396667), Seizure = (a = 3.9828134468386986, b = [0.49195099594079716]))
+Retcode: Failure
+Objective: 177.6510311284655
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 179.76294321836028
+True θ: (PK = (k_abs = 47.04, c1 = 57.599999999999994, c2 = 0.938, c3 = 0.3608, c4 = 0.34, v1 = 2.14, σ = 0.2), Seizure = (a = 4.0, b = [0.5714285714285714]))
+-> looks good
+
+VPA+Mult, less log:
+
+VPA+Mult, more log:
+Estimate: (PK = (k_abs = 79.57367714231827, c1 = 1.2224856528040873, c2 = -0.7958005561403021, c3 = 9.015954826339632, v1 = 2.852434184937897, σ = 0.10199629385079836), Seizure = (a = 1.335685237275624, b = [0.8697539268098375]))
+Retcode: Failure
+Objective: 1.9888203352124216e6
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 3.7903997405859804
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> not great fit, terrible likelihood, overshooting again
+
+VPA+Mult more logscale with bounds introduced:
+Bounds:
+optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray((a = 0.0, b = SA[-0.0001])))
+EpilepsyModels.partial_transform_to_logscale!(optim_lower_bounds, logscale = logscale)
+optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray((a = 20.0, b = SA[1.0])))
+EpilepsyModels.partial_transform_to_logscale!(optim_upper_bounds, logscale = logscale)
+
+After transformation
+Bounds: ((PK = (k_abs = 2.995732273553991, c1 = 1.6094379124341003, c2 = 0.0, c3 = 0.1, v1 = -2.3025850929940455, σ = -36.04365338911715), Seizure = (a = -36.04365338911715, b = [-0.0001])), (PK = (k_abs = 4.605170185988092, c1 = 4.605170185988092, c2 = 2.0, c3 = 2.0, v1 = 0.6931471805599453, σ = 0.0), Seizure = (a = 2.995732273553991, b = [1.0])))
+
+PK start: (k_abs = 72.0, c1 = 7.5, c2 = 0.1, c3 = 1.0, v1 = 0.5, σ = 0.1)
+
+Estimate: (PK = (k_abs = 45.096064686896085, c1 = 13.836016955901746, c2 = 0.5331035028056484, c3 = 0.8767130399094314, v1 = 0.27896279168236426, σ = 0.18084820610019756), Seizure = (a = 6.521815254935356e-8, b = [0.5277481788889234]))
+Retcode: Failure
+Objective: -8.731563786291533
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: -6.564253500626082
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+
+Accidentally ran it twice:
+Estimate: (PK = (k_abs = 34.978346940012585, c1 = 13.912157747485411, c2 = 0.5333330852748345, c3 = 0.8764752086591474, v1 = 0.279185638970382, σ = 0.22105489996051864), Seizure = (a = 6.653735142409028e-8, b = [0.5040388936905659]))
+Retcode: Success
+Objective: -2.7075765192161176
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 2.9652337492118415
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> with bounds it works now!, fairly restrictive bounds for mult though, need to see how behaves for Basic
+
+Ran same bounds with Basic Seizure now:
+Estimate: (PK = (k_abs = 92.39599578126325, c1 = 13.776497127583239, c2 = 0.5223954659704818, c3 = 0.8742484917313922, v1 = 0.2769249381596519, σ = 0.2385340430535428), Seizure = (a = 3.9350642937874896, b = [0.03104289503853954]))
+Retcode: Failure
+Objective: 145.01349327158732
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 150.9786871483673
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 4.0, b = [0.03333333333333333]))
+-> still looks very good
+
+Tried SeizureMult with less restrictive bounds:
+(lb = ComponentArray((a = -Inf, b = SA[-0.001])), ub = ComponentArray((a = log(20.0), b = SA[25.0])))
+Estimate: (PK = (k_abs = 41.256757168535685, c1 = 13.827711331390708, c2 = 0.5353809177658495, c3 = 0.8795240217172182, v1 = 0.27859602344290807, σ = 0.456350022038305), Seizure = (a = 1.5055908703896597e-11, b = [8.22775953389459]))
+Retcode: Failure
+Objective: 12.615124479193234
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 3.7903997405859804
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> get Nan gradient when b gets too big/ a too small, PK fit is good though
+
+Now try CBZ with bounds assigned, for PK from model, for Seizure stay the same:
+First Basic:
+Estimate: (PK = (k_abs = 12.822157538578951, c1 = 46.45341478488191, c2 = 1.7197886172336316, c3 = 33.05762443213931, v1 = 2.219948630798972, σ = 0.17289586497355383), Seizure = (a = 4.071328049275189, b = [0.20437743990770812]))
+Retcode: Success
+Objective: 154.81764662238908
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 156.70355625238403
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 4.0, b = [0.2]))
+-> looks very good
+
+Then Mult:
+Estimate: (PK = (k_abs = 75.97336535411876, c1 = 44.58668001695867, c2 = 1.7731351716524704, c3 = 31.432140490183713, v1 = 2.329562987338955, σ = 0.18109902792660923), Seizure = (a = 0.8710188260806092, b = [0.14557019345825226]))
+Retcode: Failure
+Objective: 69.35065983776332
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 81.02933096440782
+True θ: (PK = (k_abs = 10.8, c1 = 47.04, c2 = 1.73, c3 = 32.64, v1 = 2.1866666666666665, σ = 0.2), Seizure = (a = 1.3862943611198906, b = [0.2]))
+-> ran out of time, k_abs too high but visual fit good
+
+Next run tests with SeizureVPA, no bounds on SeizureModel first:
+Estimate: (PK = (k_abs = 47.69956265449927, c1 = 13.838814096089111, c2 = 0.527356441333121, c3 = 0.8756487424704684, v1 = 0.2797540255267798, σ = 0.03392041834991731), Seizure = (a = Inf, a1 = -3.0173509009319176e16, a2 = -3.0173509009319176e16, b1 = -3.017350900931917e16, b2 = -3.0173509009319176e16))
+Retcode: Failure
+Objective: 337.12488666352135
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: -6.041268947995697
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
+-> PK fit still great, seizure not so much, don't have a single true in our data so unsurprising
+
+Tried BigFourDoses and data generated updating:
+Estimate: (PK = (k_abs = 45.39339356945292, c1 = 11.33984034132672, c2 = 1.021717341828302, c3 = 0.8530431081258353, v1 = 0.281472680918027, σ = 0.06346836500246297), Seizure = (a = Inf, a1 = -238.12981098245137, a2 = -238.2298109824514, b1 = -228.2298109824514, b2 = -238.2298109824514))
+Retcode: Failure
+Objective: 557.5623294309414
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: -0.1928393408382565
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
+-> PK fit still reasonable, for seizure didn't help, too little data maybe, all my violins are just lines

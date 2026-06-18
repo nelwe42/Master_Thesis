@@ -403,6 +403,8 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
             lb = nothing
         end
     end
+    #TODO here check if use_model_bounds is true, if models one or both have that property construct bounds
+    #account for lb, ub is nothing, check dimension and bound consistency, basically do all we do above
     #Ensure initial guess satifies bounds
     if !isnothing(lb)
         θ_0 .= clamp.(θ_0, lb, ub)
@@ -443,6 +445,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
             lower .= Float64.(lower_raw)
             upper .= Float64.(upper_raw)
         end
+    #TODO here insert check for has property bounds and use those instead
     elseif !isnothing(bound_abs)
         #don't use lb and ub here because those will often be infinite in some entries
         lower .= -Float64(bound_abs)

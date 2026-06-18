@@ -28,11 +28,12 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
 
 #1)Specific model instances with their intensities
 
-@with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
+@with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple, T3<:NamedTuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = 2.0, b = SA[0.0])) #a base rate, b coefficient of drug 
     cov::T2 = () #no covariates required
     timeframe = (general_timeframe = true, inherent_timeframe = 1.0)
     autocorrelation = (false, 0.0)
+    bounds::T3 = (lb = ComponentArray((a = 0.0, b = SA[-0.0001])), ub = ComponentArray((a = 20.0, b = SA[1.0])))
 end
 
 #Outer Constructor to make default for N drugs
@@ -64,11 +65,12 @@ function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Pers
     return distribution
 end
 
-@with_kw struct SeizureMult{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
+@with_kw struct SeizureMult{T<:ComponentArray, T2<:Tuple, T3<:NamedTuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = log(2.0), b = SA[0.0])) #a base rate, b coefficient of drug 
     cov::T2 = () #no covariates required
     timeframe = (general_timeframe = false, inherent_timeframe = 1.0)
     autocorrelation = (false, 0.0)
+    bounds::T3 = (lb = ComponentArray((a = -Inf, b = SA[-0.001])), ub = ComponentArray((a = log(20.0), b = SA[25.0])))
 end
 
 #Outer Constructor to make default for N drugs

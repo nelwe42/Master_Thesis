@@ -63,11 +63,11 @@ wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #TODO Change this back later
-Seizure_timepoints = 0.0:1.0:Obs_Duration
+Seizure_timepoints = 0.0:5.0:Obs_Duration
 no_counts_seizure = false
 logscale = ("σ",)
 #logscale = ("σ","v1")
-#logscale = ("σ", "k_abs", "c1", "v1", "a")
+logscale = ("σ", "k_abs", "c1", "v1", "a")
 #logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
@@ -87,7 +87,7 @@ bound_abs = nothing #100.0
 optim_lower_bounds = nothing
 optim_upper_bounds = nothing
 Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
-Multistart_bounds = 20.0 #nothing
+Multistart_bounds = 25.0 #nothing
 fail_hard = false
 
 run_hessian = false
@@ -100,10 +100,10 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
@@ -126,9 +126,20 @@ else
         end
     end
 end
-seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+#seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
+seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+
+#TODO Delete this later
+optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray([-Inf for a in seizure_model.θ], getaxes(seizure_model.θ)))
+#optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray((a = 0.0, b = SA[-0.0001])))
+#optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray((a = -Inf, b = SA[-0.001])))
+EpilepsyModels.partial_transform_to_logscale!(optim_lower_bounds, logscale = logscale)
+optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray([Inf for a in seizure_model.θ], getaxes(seizure_model.θ)))
+#optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray((a = 20.0, b = SA[1.0])))
+#optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray((a = log(20.0), b = SA[25.0])))
+EpilepsyModels.partial_transform_to_logscale!(optim_upper_bounds, logscale = logscale)
+
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
@@ -137,7 +148,7 @@ person_gen = BigFourPersonGenerator()
 dose_gen = BigFourDoses()
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
-#data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
 #data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
@@ -169,6 +180,8 @@ lower_upper_bounds = (lower_bounds, upper_bounds)
 if isnothing(lower_bounds)
     lower_upper_bounds = nothing
 end
+
+println("Bounds: ", lower_upper_bounds)
 
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(pk_model), person_gen, dose_gen)
