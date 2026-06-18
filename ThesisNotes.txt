@@ -173,10 +173,11 @@ PK Big Four:
 SeizureVPA:
 -Based on Determination of the Optimal Concentration of Valproic Acid in Patients with Epilepsy: A Population Pharmacokinetic Pharmacodynamic Analysis
 -just says 50% reduction in interval at least 5 times the size of normal interval between seizures
--logit bernoulli does not generalise, joint distribution would be minimum over bernoulli variables, product over probabilities
+-logit bernoulli does not generalise, joint distribution would be maximum over bernoulli variables, 1 - product over 1- probabilities
 -minimum already an assumption since 50% reduction need not be fulfilled for all subsets to be true overall
 -take 5 days as natural timeframe for now
 -logit expression from paper page 6, (6)
+    -> this one for all ages, also one for only 18+, used this to include more covariates
 -multiple of true timeframe, though arbitrarily chosen anyway now harder to interpret, technically still true
 that if we have 50% reduction overall it might just be reduced in one subinterval, but then must have extreme reduction there
 -different way of using impact of OK, unclear which trough concentration to use if varies, here use average
@@ -185,3 +186,15 @@ that if we have 50% reduction overall it might just be reduced in one subinterva
 New covariates:
 -focal epilepsy assumed to be indep of others, roughly 60% of case
 -age distribution vaguely based on Epilepsy at different ages—Etiologies in a Norwegian population
+
+Drug appropriate dosing effect on starts:
+-for LEV observed NaN gradient in true values, seizure treatment effect too large wrt exposure under these doses
+    -> works if reset true values appropriately, in reality of course difficult
+-LTG continues to work with and without logscale
+-CBZ looks fine with little logscale
+
+-overshooting returns for: CBZ, VPA, LEV more logscale
+
+SeizureMult: same as basic just now exp, multiplicative treatment effect
+-> no longer general timeframe since while Poisson generalises, sum of exponential doesnt
+-> no more problems with b being too large for doses

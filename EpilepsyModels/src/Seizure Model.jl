@@ -64,6 +64,48 @@ function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Pers
     return distribution
 end
 
+@with_kw struct SeizureMult{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
+    θ::T=ComponentArray((a = log(2.0), b = SA[0.0])) #a base rate, b coefficient of drug 
+    cov::T2 = () #no covariates required
+    timeframe = (general_timeframe = false, inherent_timeframe = 1.0)
+    autocorrelation = (false, 0.0)
+end
+
+#Outer Constructor to make default for N drugs
+function SeizureMult(N::Int64)
+    B = [0.0 for i in 1:N]
+    obj = SeizureMult(θ = ComponentArray((a = log(2.0), b = SA[B...])))
+    return obj
+end
+
+#Outer Constructor to make default for drugs in pk model
+function SeizureMult(m::PKModel; base_rate::AbstractFloat = 2.0, default_treat_eff::AbstractFloat = 0.0)
+    if base_rate < 0
+        error("Base rate of seizures is negative")
+    end
+    N = length(m.keys.S)
+    B = [default_treat_eff for i in 1:N]
+    obj = SeizureMult(θ = ComponentArray((a = log(base_rate), b = SA[B...])))
+    return obj
+end
+
+#basic distribution function for timeframe in days starting at n, requires sol from chosen PK model
+function distribution(m::SeizureMult, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
+    if any(x -> !isfinite(x), (sol(n+m.timeframe.inherent_timeframe, idxs = names.S)-sol(n,idxs = names.S)))
+        return nothing
+    end
+    intensity = θ.a
+    intensity -= θ.b'*(sol(n+m.timeframe.inherent_timeframe, idxs = names.S)-sol(n,idxs = names.S))
+    intensity = exp(intensity)
+    if !isfinite(intensity)
+        return nothing
+    end
+    distribution = Poisson(intensity)
+    #on day n natural number beginning with 0 are exposed to drug from time n to n+1
+    #day 0 ist interval (0,1], day named after first number
+    return distribution
+end
+
 @with_kw struct SeizureNegativeBinomial{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = log(2.0), o = 0.01, prev = 0.0, b = SA[0.0])) #a base rate, prev impact of previous day, o overdispersion, b coefficient of drug 
     cov::T2 = (:seizure_prev_day,) #depends on if seizure occured on previous day

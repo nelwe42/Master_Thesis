@@ -208,8 +208,8 @@ end
 @with_kw struct BigFourDoses{T<:NamedTuple, T3<:Tuple, T4<:Tuple, T5<:AbstractFloat, T6<:Int} <: DoseGenerator 
     dose_distr::T = (d_VPA = (min = 150.0, avg_num = 5.0, max_num = 14), d_LEV = (min = 100.0, avg_num = 10.0, max_num = 30), 
                 d_LTG = (min = 25.0, avg_num = 4.0, max_num = 24), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
-    order_male::T3 = (:d_VPA, :d_LTG, :d_LEV, :d_CBZ)
-    order_female::T4 = (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)
+    order_male::T3 = ((:d_VPA, :d_LEV, :d_LTG), (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)) #orders 1 for generalised, orders 2 for focal
+    order_female::T4 = ((:d_LEV, :d_LTG, :d_VPA), (:d_LTG, :d_LEV, :d_CBZ, :d_VPA)) #orders 1 for generalised, orders 2 for focal
     prob_second::T5 = 0.34 #roughly 66% receive monotherapy, note that since have that probability multiple times actually higher
     prob_reassignment::T5 = 0.3 #probability to get new assigment instead of dose increase, e.g. because of adverse effects
     try_second_before_reassignment::Bool = true #when reassignment from prob reassignment is true, do prob_second first before reassigning to get more polytherapy in dataset
@@ -233,13 +233,14 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
     #for first wo_treatment time no treatment, don't need to add zero callbacks to dosing
     no_dose = min(wo_treatment,timeframe)
     last_dosetime += no_dose
+    seizure_type = person.covariates.seizure_type
     #pick first drug
     if isempty(person.dosing)
         #if no doses so far assign first recommended with average dose
         if person.covariates.gender > 0
-            drug_one = m.order_female[1]
+            drug_one = m.order_female[seizure_type+1][1]
         else
-            drug_one = m.order_male[1]
+            drug_one = m.order_male[seizure_type+1][1]
         end
         info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first),)
     else
@@ -279,14 +280,14 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
             elseif (!(new_assignment) || m.try_second_before_reassignment) && (length(current) < 2) && (rand(Bernoulli(m.prob_second)))
                 #assign a second drug additionally
                 if person.covariates.gender > 0
-                    drug_two = m.order_female[1]
-                    if drug_two == current[1].drug && length(m.order_female)>1
-                        drug_two = m.order_female[2]
+                    drug_two = m.order_female[seizure_type+1][1]
+                    if drug_two == current[1].drug && length(m.order_female[seizure_type+1])>1
+                        drug_two = m.order_female[seizure_type+1][2]
                     end
                 else
-                    drug_two = m.order_male[1]
-                    if drug_two == current[1].drug && length(m.order_male)>1
-                        drug_two = m.order_male[2]
+                    drug_two = m.order_male[seizure_type+1][1]
+                    if drug_two == current[1].drug && length(m.order_male[seizure_type+1])>1
+                        drug_two = m.order_male[seizure_type+1][2]
                     end
                 end
                 if m.start_second_in_min
@@ -295,36 +296,36 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                     info = (current[1], (drug = drug_two, dose = m.dose_distr[drug_two].min*m.dose_distr[drug_two].avg_num, times = m.times_per_day_second))
                 end
             #Check if can still switch to untried drug
-            elseif any(Tuple(if person.covariates.gender>0 (findfirst([(entry == drug.drug) for entry in m.order_female]) < length(m.order_female)) else (findfirst([(entry == drug.drug) for entry in m.order_male]) < length(m.order_male)) end for drug in current))
+            elseif any(Tuple(if person.covariates.gender>0 (findfirst([(entry == drug.drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])) else (findfirst([(entry == drug.drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1])) end for drug in current))
                 #switch one to next drug in the order
-                if (person.covariates.gender > 0 && findfirst([(entry == current[1].drug) for entry in m.order_female]) < length(m.order_female)) || (!(person.covariates.gender > 0) && findfirst([(entry == current[1].drug) for entry in m.order_male]) < length(m.order_male))
+                if (person.covariates.gender > 0 && findfirst([(entry == current[1].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])) || (!(person.covariates.gender > 0) && findfirst([(entry == current[1].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1]))
                     #assign new first drug
                     if person.covariates.gender > 0
-                        drug_one = m.order_female[findfirst([(entry == current[1].drug) for entry in m.order_female])+1]
+                        drug_one = m.order_female[seizure_type+1][findfirst([(entry == current[1].drug) for entry in m.order_female[seizure_type+1]])+1]
                         #dont assign same drug twice
                         if length(current)>1 && drug_one == current[2].drug
-                            if findfirst([(entry == current[1].drug) for entry in m.order_female]) < length(m.order_female)-1
-                                drug_one = m.order_female[findfirst([(entry == current[1].drug) for entry in m.order_female])+2]
+                            if findfirst([(entry == current[1].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])-1
+                                drug_one = m.order_female[seizure_type+1][findfirst([(entry == current[1].drug) for entry in m.order_female[seizure_type+1]])+2]
                             else
                                 #reassign drug 2 if possible
-                                if length(current)>1 && (person.covariates.gender > 0 && findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)) || (!(person.covariates.gender > 0) && findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male))
+                                if length(current)>1 && (person.covariates.gender > 0 && findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])) || (!(person.covariates.gender > 0) && findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1]))
                                     if person.covariates.gender > 0
-                                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
+                                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]])+1]
                                         #make sure not to assign same drug twice
                                         if drug_two == current[1].drug
-                                            if findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)-1
-                                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+2]
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])-1
+                                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]])+2]
                                             else
                                                 #update failed
                                                 info = current
                                             end
                                         end
                                     else
-                                        drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
+                                        drug_two = m.order_male[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]])+1]
                                         #make sure not to assign same drug twice
                                         if drug_two == current[1].drug
-                                            if findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male)-1
-                                                drug_one = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+2]
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1])-1
+                                                drug_one = m.order_male[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]])+2]
                                             else
                                                 #update failed
                                                 info = current
@@ -338,31 +339,31 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                             end
                         end
                     else
-                        drug_one = m.order_male[findfirst([(entry == current[1].drug) for entry in m.order_male])+1]
+                        drug_one = m.order_male[seizure_type+1][findfirst([(entry == current[1].drug) for entry in m.order_male[seizure_type+1]])+1]
                         #dont assign same drug twice
                         if length(current)>1 && drug_one == current[2].drug
-                            if findfirst([(entry == current[1].drug) for entry in m.order_male]) < length(m.order_male)-1
-                                drug_one = m.order_male[findfirst([(entry == current[1].drug) for entry in m.order_male])+2]
+                            if findfirst([(entry == current[1].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1])-1
+                                drug_one = m.order_male[seizure_type+1][findfirst([(entry == current[1].drug) for entry in m.order_male[seizure_type+1]])+2]
                             else
                                 #reassign drug 2 if possible
-                                if length(current)>1 && (person.covariates.gender > 0 && findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)) || (!(person.covariates.gender > 0) && findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male))
+                                if length(current)>1 && (person.covariates.gender > 0 && findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])) || (!(person.covariates.gender > 0) && findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1]))
                                     if person.covariates.gender > 0
-                                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
+                                        drug_two = m.order_female[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]])+1]
                                         #make sure not to assign same drug twice
                                         if drug_two == current[1].drug
-                                            if findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)-1
-                                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+2]
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])-1
+                                                drug_one = m.order_female[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]])+2]
                                             else
                                                 #update failed
                                                 info = current
                                             end
                                         end
                                     else
-                                        drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
+                                        drug_two = m.order_male[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]])+1]
                                         #make sure not to assign same drug twice
                                         if drug_two == current[1].drug
-                                            if findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male)-1
-                                                drug_one = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+2]
+                                            if findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1])-1
+                                                drug_one = m.order_male[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]])+2]
                                             else
                                                 #update failed
                                                 info = current
@@ -384,22 +385,22 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
                 else
                     #assign new second drug
                     if person.covariates.gender > 0
-                        drug_two = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+1]
+                        drug_two = m.order_female[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]])+1]
                         #make sure not to assign same drug twice
                         if drug_two == current[1].drug
-                            if findfirst([(entry == current[2].drug) for entry in m.order_female]) < length(m.order_female)-1
-                                drug_one = m.order_female[findfirst([(entry == current[2].drug) for entry in m.order_female])+2]
+                            if findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]]) < length(m.order_female[seizure_type+1])-1
+                                drug_one = m.order_female[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_female[seizure_type+1]])+2]
                             else
                                 #update failed
                                 info = current
                             end
                         end
                     else
-                        drug_two = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+1]
+                        drug_two = m.order_male[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]])+1]
                         #make sure not to assign same drug twice
                         if drug_two == current[1].drug
-                            if findfirst([(entry == current[2].drug) for entry in m.order_male]) < length(m.order_male)-1
-                                drug_one = m.order_male[findfirst([(entry == current[2].drug) for entry in m.order_male])+2]
+                            if findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]]) < length(m.order_male[seizure_type+1])-1
+                                drug_one = m.order_male[seizure_type+1][findfirst([(entry == current[2].drug) for entry in m.order_male[seizure_type+1]])+2]
                             else
                                 #update failed
                                 info = current
