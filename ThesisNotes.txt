@@ -182,6 +182,7 @@ SeizureVPA:
 that if we have 50% reduction overall it might just be reduced in one subinterval, but then must have extreme reduction there
 -different way of using impact of OK, unclear which trough concentration to use if varies, here use average
 -very little impact of other medications
+-> based on impact of trough concentration logit is modelling inverse of probability of 50% reduction, unclear in paper
 
 New covariates:
 -focal epilepsy assumed to be indep of others, roughly 60% of case

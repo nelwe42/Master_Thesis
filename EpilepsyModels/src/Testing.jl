@@ -143,7 +143,7 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
 #data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+#data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
 

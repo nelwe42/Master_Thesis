@@ -195,7 +195,8 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
         logit -= (m.θ.b1 - m.θ.b2^person.covariates.seizure_type)*average_trough_concentration
     end
     #Transform from representation with logit to with probability
-    p = exp(logit)/(1+exp(logit))
+    #Going by impact of VPA are modelling the prob of not seeing reduction in logit
+    p = 1 - exp(logit)/(1+exp(logit))
     if !(zero(p) ≤ p ≤ one(p))
         return nothing
     end
