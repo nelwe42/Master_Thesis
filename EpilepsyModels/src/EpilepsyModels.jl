@@ -354,7 +354,7 @@ end
 
 function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
-    solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -403,8 +403,45 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
             lb = nothing
         end
     end
-    #TODO here check if use_model_bounds is true, if models one or both have that property construct bounds
-    #account for lb, ub is nothing, check dimension and bound consistency, basically do all we do above
+    #Check if want to use model bounds and if they are defined
+    if use_model_bounds
+        if hasproperty(m.pk_model, :bounds) || hasproperty(m.seizure_model, :bounds)
+            if !hasproperty(m.pk_model, :bounds)
+                lb_model = ComponentArray(PK = ComponentArray([-Inf for e in m.pk_model.θ], getaxes(m.pk_model.θ)), Seizure = m.seizure_model.bounds.lb)
+                ub_model = ComponentArray(PK = ComponentArray([Inf for e in m.pk_model.θ], getaxes(m.pk_model.θ)), Seizure = m.seizure_model.bounds.ub)
+            elseif !hasproperty(m.seizure_model, :bounds)
+                lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = ComponentArray([-Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
+                ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = ComponentArray([Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
+            else
+                lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = m.pk_model.bounds.lb)
+                ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = m.pk_model.bounds.ub)
+            end
+            #transform bounds to logscale where necessary
+            partial_transform_to_logscale!(lb_model, logscale = logscale)
+            partial_transform_to_logscale!(ub_model, logscale = logscale)
+            #Check internal consistency and with lb, ub if defined
+            if length(ub_model) != d || length(lb_model) != d
+                error("Upper and lower model bounds must match parameter dimension $d")
+            end
+            if any(ub_model .< lb_model)
+                error("Upper Model bounds strictly smaller than lower ones")
+            end
+            if !isnothing(lb)
+                ub .=  min.(ub, ub_model)
+                lb .=  max.(lb, lb_model)
+                if any(lb .> ub)
+                    error("Model and manual bounds cannot be satisfied at the same time")
+                end
+            else
+                lb = lb_model
+                ub = ub_model
+            end
+        else
+            lb_model = nothing
+            ub_model = nothing
+        end
+    end
+
     #Ensure initial guess satifies bounds
     if !isnothing(lb)
         θ_0 .= clamp.(θ_0, lb, ub)
@@ -445,11 +482,10 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
             lower .= Float64.(lower_raw)
             upper .= Float64.(upper_raw)
         end
-    #TODO here insert check for has property bounds and use those instead
-    elseif !isnothing(bound_abs)
-        #don't use lb and ub here because those will often be infinite in some entries
-        lower .= -Float64(bound_abs)
-        upper .= Float64(bound_abs)
+    #check if lb, ub are defined and finite, try those instead
+    elseif !isnothing(lb) && all(isfinite.(lb)) && all(isfinite.(ub))
+        lower = lb
+        upper = ub
     else
         #Fallback finite box around initial point in unconstrained mode.
         lower .= Float64.(θ_0_vec) .- 2.0
@@ -466,6 +502,13 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
         error("Invalid multistart bounds: require finite values and upper > lower component-wise")
     end
 
+    if !isnothing(prefilter)
+        if prefilter <= n_starts
+            error("Amount of starts for prefiltering must be strictly greater than multistarts")
+        else
+            n_starts = prefilter
+        end
+    end
     starts = Matrix{Float64}(undef, n_starts, d)
     row_idx = 1
     if multistart_include_initial
@@ -473,6 +516,29 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
         row_idx += 1
     end
     n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
+
+    #Check if passed starts work
+    if !isnothing(custom_starts) && !isempty(custom_starts)
+        if any([length(start) != d for start in custom_starts])
+            error("Passed custom starts do not match parameter dimension")
+        end
+        if length(custom_starts) > max(multistart,1) - (multistart_include_initial ? 1 : 0)
+            error("Too many starts passed for multistart")
+        else
+            n_lhs -= length(custom_starts)
+        end
+        if !(custom_starts[1] isa ComponentArray)
+            custom_starts = [ComponentArray(start, axes_θ) for start in custom_starts]
+        end
+        #Transform starts to logscale
+        partial_transform_to_logscale!.(custom_starts, logscale = logscale)
+        for i in eachindex(custom_starts)
+            #ensure starts satisfy bounds
+            starts[row_idx+i-1, :] .= clamp.(custom_starts[i], lb, ub)
+        end
+        row_idx += length(custom_starts)
+    end
+
     if n_lhs > 0
         rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
         starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
@@ -481,6 +547,26 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
         starts_list = [vec(starts[i, :]) for i in 1:n_starts]
     else
         starts_list = [ComponentArray(vec(starts[i, :]), p.axes_θ) for i in 1:n_starts]
+    end
+    #If prefiltering sort starts by likelihood value
+    if !isnothing(prefilter)
+        if n_lhs < n_starts
+            starts_keep = starts_list[1:(n_starts - n_lhs)]
+            starts_list = starts_list[(n_starts - n_lhs + 1):end]
+        else 
+            starts_keep = nothing
+        end
+        if vectorised 
+            sort!(starts_list, by=(x -> get_negloglikelihood_vectorised(x, p)))
+        else
+            sort!(starts_list, by=(x -> get_negloglikelihood(x, p)))
+        end
+        #ensure keep initial and custom starts if wanted
+        if !isnothing(starts_keep)
+            starts_list = [starts_keep; starts_list[1:(max(1,multistart)-length(starts_keep))]]
+        else
+            starts_list = starts_list[1:max(1,multistart)]
+        end
     end
 
     best_raw_any = nothing

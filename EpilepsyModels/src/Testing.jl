@@ -80,14 +80,16 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
 max_threads_simul = 5
-Multistart_nstarts = 1
+Multistart_nstarts = 5
+prefilter = 10
 Multistart_seed = 42
 Multistart_include_initial = true
+custom_starts = nothing
 bound_abs = nothing #100.0
 optim_lower_bounds = nothing
 optim_upper_bounds = nothing
 Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
-Multistart_bounds = 25.0 #nothing
+Multistart_bounds = nothing #25.0
 fail_hard = false
 
 run_hessian = false
@@ -130,16 +132,6 @@ end
 seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 
-#TODO Delete this later
-optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray([-Inf for a in seizure_model.θ], getaxes(seizure_model.θ)))
-#optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray((a = 0.0, b = SA[-0.0001])))
-#optim_lower_bounds = ComponentArray(PK = pk_model.bounds.lb, Seizure = ComponentArray((a = -Inf, b = SA[-0.001])))
-EpilepsyModels.partial_transform_to_logscale!(optim_lower_bounds, logscale = logscale)
-optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray([Inf for a in seizure_model.θ], getaxes(seizure_model.θ)))
-#optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray((a = 20.0, b = SA[1.0])))
-#optim_upper_bounds = ComponentArray(PK = pk_model.bounds.ub, Seizure = ComponentArray((a = log(20.0), b = SA[25.0])))
-EpilepsyModels.partial_transform_to_logscale!(optim_upper_bounds, logscale = logscale)
-
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
@@ -181,14 +173,8 @@ if isnothing(lower_bounds)
     lower_upper_bounds = nothing
 end
 
-println("Bounds: ", lower_upper_bounds)
-
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(pk_model), person_gen, dose_gen)
-#test_mod.pk_model.θ.k_abs = 2*24.0
-#test_mod.pk_model.θ .= Input_θ.PK
-#test_mod.seizure_model.θ .= Input_θ.Seizure
-#test_mod.pk_model.θ.c3 = 0.7
 println("PK start: ", test_mod.pk_model.θ)
 #sampled_chains = optimise_sampled(test_mod, data, per_chain=500, logscale=logscale, bound_abs = bound_abs, lower_upper = lower_upper_bounds)
 if hierarchical_optimisation
@@ -201,7 +187,7 @@ else
     #Multistart optimisation
     estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
-        multistart = Multistart_nstarts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
+        multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
     println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 end
