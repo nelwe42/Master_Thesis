@@ -193,11 +193,11 @@ function assign_dose!(m::PolyDosesRandom, person::Person; names::NamedTuple = (d
     info_doses = values(NamedTuple{drugs}(m.dose_distr))
     doses = Tuple(d.min*(1+rand(Binomial(d.max_num-1, (d.avg_num-1)/(d.max_num-1)))) for d in info_doses)
     times = (m.times_per_day_first, m.times_per_day_second)
-    #check if picked drugs are supported or else is assign_not_supported is set to true
+    #check if picked drugs are supported or else is assign_not_supported is set to true, divide picked daily dose onto dose times
     if m.assign_not_supported
-        info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs))
+        info = Tuple((drug = drugs[i], dose = doses[i]/times[i], times = times[i]) for i in eachindex(drugs))
     else
-        info = Tuple((drug = drugs[i], dose = doses[i], times = times[i]) for i in eachindex(drugs) if (drugs[i] in names.d))
+        info = Tuple((drug = drugs[i], dose = doses[i]/times[i], times = times[i]) for i in eachindex(drugs) if (drugs[i] in names.d))
     end
     #append for each dose time and drug taken
     next_doses = [(t = i+1 + j/d.times, dose = d.dose, state = d.drug) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in info for j in 0:(d.times-1)]
@@ -242,14 +242,14 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
         else
             drug_one = m.order_male[seizure_type+1][1]
         end
-        info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num, times = m.times_per_day_first),)
+        info = ((drug = drug_one, dose = m.dose_distr[drug_one].min*m.dose_distr[drug_one].avg_num/m.times_per_day_first, times = m.times_per_day_first),)
     else
         last_iter = max(0,person.dosing[end].t -timeframe) #get start of last dose assignment iteration
         #get current dose regiment
         daily_doses = [dose for dose in person.dosing if floor(person.dosing[end].t) <= dose.t < (floor(person.dosing[end].t)+1)]
         current_drugs = unique([dose.state for dose in daily_doses])
         current_summarised = Tuple((drug = drug, daily = [dose.dose for dose in daily_doses if dose.state == drug]) for drug in current_drugs)
-        current = Tuple((drug = entry.drug, dose = entry.daily[end], times = length(entry.daily)) for entry in current_summarised) 
+        current = Tuple((drug = entry.drug, dose = sum(entry.daily), times = length(entry.daily)) for entry in current_summarised) 
         if !(sum([seizure.count for seizure in person.seizure_counts if seizure.time[2]>last_iter]) >0)
             #seizures controlled in last iteration, keep regiment
             info = current
@@ -415,6 +415,8 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
             end
         end
     end
+    #distribute dose in info onto times
+    info = Tuple((drug = entry.drug, dose = entry.dose/entry.times, times = entry.times) for entry in info)
     #append for each dose time and drug taken
     next_doses = [(t = i+1 + j/d.times, dose = d.dose, state = d.drug) for i in last_dosetime:(last_dosetime+timeframe-(no_dose+1)) for d in info for j in 0:(d.times-1)]
     append!(person.dosing,next_doses)

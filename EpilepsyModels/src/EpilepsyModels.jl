@@ -354,7 +354,8 @@ end
 
 function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
-    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (),
+    solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -413,8 +414,8 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
                 lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = ComponentArray([-Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
                 ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = ComponentArray([Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
             else
-                lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = m.pk_model.bounds.lb)
-                ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = m.pk_model.bounds.ub)
+                lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = m.seizure_model.bounds.lb)
+                ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = m.seizure_model.bounds.ub)
             end
             #transform bounds to logscale where necessary
             partial_transform_to_logscale!(lb_model, logscale = logscale)
@@ -542,6 +543,18 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     if n_lhs > 0
         rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
         starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
+        #for generated starts set noise params at indices to passed in function call
+        for entry in noise_params
+            if !(1 <= entry[1] <= d)
+                if !isnothing(lb) && (lb[entry[1]] > entry[2] || ub[entry[1]] < entry[2])
+                    error("Passed noise parameter value is outside of bounds")
+                else
+                    starts[row_idx:end, entry[1]] .= entry[2]
+                end
+            else
+                error("Noise parameter index outside of parameter vector")
+            end
+        end
     end
     if vectorised
         starts_list = [vec(starts[i, :]) for i in 1:n_starts]
@@ -568,6 +581,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
             starts_list = starts_list[1:max(1,multistart)]
         end
     end
+    n_starts = max(1,multistart)
 
     best_raw_any = nothing
     best_start_any = 1
@@ -648,20 +662,27 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     end
 end
 
+#prior that is log of default value 1
+function default_log_prior(x)
+    return 0
+end
+
 #For LogTargetDensity Interface to use in sampled optimiser
-struct LogTargetDensity{T<:NamedTuple, T2<:AbstractVector} 
+struct LogTargetDensity{T<:NamedTuple, T2<:AbstractVector, T3<:Function} 
     p::T #for evaluating negloglikelihood
     lb::T2 #lower bound for checking if point admissable in likelihood
     ub::T2 #upper bound for checking if point admissable in likelihood
+    prior::T3 #log prior function
 end
 
-LogDensityProblems.logdensity(p::LogTargetDensity, θ) = (all(p.ub .>= θ .>= p.lb)) ? -get_negloglikelihood_vectorised(θ, p.p) : -Inf 
+LogDensityProblems.logdensity(p::LogTargetDensity, θ) = (all(p.ub .>= θ .>= p.lb)) ? (-get_negloglikelihood_vectorised(θ, p.p) + p.prior(θ)) : -Inf 
 LogDensityProblems.dimension(p::LogTargetDensity) = length(p.lb)
 LogDensityProblems.capabilities(::LogTargetDensity) = LogDensityProblems.LogDensityOrder{0}()
 
-function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, nadapts::Int64 = 0, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
-    sampler = nothing, sampling_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (),
+    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
@@ -671,8 +692,9 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #get indices for setting θ
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_0.PK)]
-    #for keys in logscale transform to logscale in θ_0
-    partial_transform_to_logscale!(θ_0, logscale = logscale)
+    #ensure nadapts and per_chain are valid
+    per_chain = max(1,per_chain)
+    nadapts = max(0, nadapts)
     
     axes_θ = getaxes(θ_0)
     labels_θ = labels(θ_0)
@@ -712,6 +734,42 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
             lb = nothing
         end
     end
+    #Check if want to use model bounds and if they are defined
+    if use_model_bounds
+        if hasproperty(m.pk_model, :bounds) || hasproperty(m.seizure_model, :bounds)
+            if !hasproperty(m.pk_model, :bounds)
+                lb_model = ComponentArray(PK = ComponentArray([-Inf for e in m.pk_model.θ], getaxes(m.pk_model.θ)), Seizure = m.seizure_model.bounds.lb)
+                ub_model = ComponentArray(PK = ComponentArray([Inf for e in m.pk_model.θ], getaxes(m.pk_model.θ)), Seizure = m.seizure_model.bounds.ub)
+            elseif !hasproperty(m.seizure_model, :bounds)
+                lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = ComponentArray([-Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
+                ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = ComponentArray([Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
+            else
+                lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = m.seizure_model.bounds.lb)
+                ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = m.seizure_model.bounds.ub)
+            end
+            #Check internal consistency and with lb, ub if defined
+            if length(ub_model) != d || length(lb_model) != d
+                error("Upper and lower model bounds must match parameter dimension $d")
+            end
+            if any(ub_model .< lb_model)
+                error("Upper Model bounds strictly smaller than lower ones")
+            end
+            if !isnothing(lb)
+                ub .=  min.(ub, ub_model)
+                lb .=  max.(lb, lb_model)
+                if any(lb .> ub)
+                    error("Model and manual bounds cannot be satisfied at the same time")
+                end
+            else
+                lb = lb_model
+                ub = ub_model
+            end
+        else
+            lb_model = nothing
+            ub_model = nothing
+        end
+    end
+
     #Ensure initial guess satifies bounds
     if !isnothing(lb)
         θ_0 .= clamp.(θ_0, lb, ub)
@@ -721,7 +779,7 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
     n_starts = max(multistart, 1)
     thread_num = max(max_threads, 1)
     internal_threads = Int(floor(thread_num/min(n_starts, thread_num)))
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    p = (m = m, data = data, logscale = (), options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     
     #Change everything to vectors
     ub = collect(ub)
@@ -729,7 +787,13 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
     θ_0 = θ_0_vec
 
     #Define Model with LogDensityProblems interface
-    model = LogTargetDensity(p, lb, ub)
+    if isnothing(prior)
+        model = LogTargetDensity(p, lb, ub, default_log_prior)
+    elseif prior isa Function
+        model = LogTargetDensity(p, lb, ub, (log ∘ prior))
+    else
+        model = LogTargetDensity(p, lb, ub, x -> logpdf(prior,x))
+    end
     model = AdvancedHMC.LogDensityModel(LogDensityProblemsAD.ADgradient(AutoForwardDiff(), model))
 
     #Assemble multistarts
@@ -747,10 +811,10 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
             lower .= Float64.(lower_raw)
             upper .= Float64.(upper_raw)
         end
-    elseif !isnothing(bound_abs)
-        #don't use lb and ub here because those will often be infinite in some entries
-        lower .= -Float64(bound_abs)
-        upper .= Float64(bound_abs)
+    #check if lb, ub are defined and finite, try those instead
+    elseif !isnothing(lb) && all(isfinite.(lb)) && all(isfinite.(ub))
+        lower = lb
+        upper = ub
     else
         #Fallback finite box around initial point in unconstrained mode.
         lower .= Float64.(θ_0_vec) .- 2.0
@@ -762,11 +826,17 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
         lower .= max.(lower, lb)
         upper .= min.(upper, ub)
     end
-
     if any(.!isfinite.(lower)) || any(.!isfinite.(upper)) || any(upper .<= lower)
         error("Invalid multistart bounds: require finite values and upper > lower component-wise")
     end
 
+    if !isnothing(prefilter)
+        if prefilter <= n_starts
+            error("Amount of starts for prefiltering must be strictly greater than multistarts")
+        else
+            n_starts = prefilter
+        end
+    end
     starts = Matrix{Float64}(undef, n_starts, d)
     row_idx = 1
     if multistart_include_initial
@@ -774,21 +844,75 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, lo
         row_idx += 1
     end
     n_lhs = n_starts - (multistart_include_initial ? 1 : 0)
+
+    #Check if passed starts work
+    if !isnothing(custom_starts) && !isempty(custom_starts)
+        if any([length(start) != d for start in custom_starts])
+            error("Passed custom starts do not match parameter dimension")
+        end
+        if length(custom_starts) > max(multistart,1) - (multistart_include_initial ? 1 : 0)
+            error("Too many starts passed for multistart")
+        else
+            n_lhs -= length(custom_starts)
+        end
+        if !(custom_starts[1] isa ComponentArray)
+            custom_starts = [ComponentArray(start, axes_θ) for start in custom_starts]
+        end
+        for i in eachindex(custom_starts)
+            #ensure starts satisfy bounds
+            starts[row_idx+i-1, :] .= clamp.(custom_starts[i], lb, ub)
+        end
+        row_idx += length(custom_starts)
+    end
+
     if n_lhs > 0
         rng = isnothing(multistart_seed) ? Random.default_rng() : Random.MersenneTwister(multistart_seed)
         starts[row_idx:end, :] .= latin_hypercube_samples(n_lhs, lower, upper; rng = rng)
+        #for generated starts set noise params at indices to passed in function call
+        for entry in noise_params
+            if !(1 <= entry[1] <= d)
+                if !isnothing(lb) && (lb[entry[1]] > entry[2] || ub[entry[1]] < entry[2])
+                    error("Passed noise parameter value is outside of bounds")
+                else
+                    starts[row_idx:end, entry[1]] .= entry[2]
+                end
+            else
+                error("Noise parameter index outside of parameter vector")
+            end
+        end
     end
 
     starts_list = [vec(starts[i, :]) for i in 1:n_starts]
 
-    #Figure out how to transform back from logscale, figure out how to pass start and do multiple chains
-    chains = sample(model, sampler, per_chain; param_names=labels_θ, initial_params = θ_0_vec, chain_type=Chains, sampling_options...)
-    
-    #Test how merging chains works for multithreading with starts>max_threads
-    n = 3
-    chains = [deepcopy(chains) for i in 1:n]
-    chains = cat(chains...; dims = 3)
-    return chains
+    #If prefiltering sort starts by likelihood value
+    if !isnothing(prefilter)
+        if n_lhs < n_starts
+            starts_keep = starts_list[1:(n_starts - n_lhs)]
+            starts_list = starts_list[(n_starts - n_lhs + 1):end]
+        else 
+            starts_keep = nothing
+        end
+        sort!(starts_list, by=(x -> get_negloglikelihood_vectorised(x, p)))
+        #ensure keep initial and custom starts if wanted
+        if !isnothing(starts_keep)
+            starts_list = [starts_keep; starts_list[1:(max(1,multistart)-length(starts_keep))]]
+        else
+            starts_list = starts_list[1:max(1,multistart)]
+        end
+    end
+    n_starts = max(1,multistart)
+
+    #Start threads, divide n_starts onto maximal thread number
+    starts_per_thread = Int(ceil(n_starts/thread_num))
+    chains = Array{Chains}(undef, min(n_starts, thread_num))
+    Threads.@threads for j in 1:min(n_starts, thread_num)
+        starts_thread = [starts_list[i] for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)]
+        chains[j] = sample(model, sampler, MCMCThreads(), per_chain+nadapts, length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
+    end
+    #Collect all chains into one object
+    Chain = cat(chains...; dims = 3)
+
+    return Chain
 end
 
 #finite_not_forward allows to switch to finite_diff hessian instead of ForwardDiff, often faster but less accurate

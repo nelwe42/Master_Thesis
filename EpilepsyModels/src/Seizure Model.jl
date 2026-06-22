@@ -33,7 +33,7 @@ abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
     cov::T2 = () #no covariates required
     timeframe = (general_timeframe = true, inherent_timeframe = 1.0)
     autocorrelation = (false, 0.0)
-    bounds::T3 = (lb = ComponentArray((a = 0.0, b = SA[-0.0001])), ub = ComponentArray((a = 20.0, b = SA[1.0])))
+    bounds::T3 = (lb = ComponentArray((a = 0.0, b = SA[[-0.0001 for i in eachindex(θ.b)]...])), ub = ComponentArray((a = 20.0, b = SA[[1.0 for i in eachindex(θ.b)]...])))
 end
 
 #Outer Constructor to make default for N drugs
@@ -70,7 +70,7 @@ end
     cov::T2 = () #no covariates required
     timeframe = (general_timeframe = false, inherent_timeframe = 1.0)
     autocorrelation = (false, 0.0)
-    bounds::T3 = (lb = ComponentArray((a = -Inf, b = SA[-0.001])), ub = ComponentArray((a = log(20.0), b = SA[25.0])))
+    bounds::T3 = (lb = ComponentArray((a = -Inf, b = SA[[-0.001 for i in eachindex(θ.b)]...])), ub = ComponentArray((a = log(20.0), b = SA[[25.0 for i in eachindex(θ.b)]...])))
 end
 
 #Outer Constructor to make default for N drugs

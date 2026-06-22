@@ -53,9 +53,11 @@ Input_θ_SeizureBasic_one = ComponentArray((a = base_rate, b = SA[0.2]))
 Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, base_rate/25, base_rate/20, base_rate/120]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
-Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
+Input_θ_SeizureVPA = ComponentArray((a = -1.8, a1 = 1.0, a2 = 1.8, b1 = 4.2, b2 = 2.4))
 
 Maxiters_optimiser = 200
+Samples_per_chain = 2000
+Adaptation_steps = 1000
 Max_Time = 5*60.0 #
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 5 #20 #10 #20
@@ -74,6 +76,8 @@ logscale = ("σ", "k_abs", "c1", "v1", "a")
 println("logscale = ", logscale)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
+sampler = nothing #NUTS(0.8)
+sampling_options = (verbose = false, progress = false) #limits output
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 #ODE_options = (Rosenbrock23(),)
 
@@ -88,7 +92,7 @@ custom_starts = nothing
 bound_abs = nothing #100.0
 optim_lower_bounds = nothing
 optim_upper_bounds = nothing
-Variance_bound = log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
+Variance_bound = nothing #log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = nothing #25.0
 fail_hard = false
 
@@ -129,7 +133,7 @@ else
     end
 end
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 
 person_gen = BigFourPersonGenerator()
@@ -176,7 +180,7 @@ end
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(pk_model), person_gen, dose_gen)
 println("PK start: ", test_mod.pk_model.θ)
-#sampled_chains = optimise_sampled(test_mod, data, per_chain=500, logscale=logscale, bound_abs = bound_abs, lower_upper = lower_upper_bounds)
+#sampled_chains = optimise_sampled(test_mod, data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, sampler = sampler, sampling_options = sampling_options) 
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
@@ -292,6 +296,44 @@ end
 #For adding custom xticks (as vertical lines) to plot
 #plot!([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)], seriestype="vline", xticks = ([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)],["log(1.0*24)","log(1.5*24)", "log(2.0*24)", "log(3.0*24)"]), linecolor = "grey", label="")
 #plot!(xticks = ([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)],["log(1.0*24)","log(1.5*24)", "log(2.0*24)", "log(3.0*24)"]))
+
+plot_vpa = false
+if plot_vpa
+age = 30
+θ = Input_θ_SeizureVPA
+function get_p(average_trough_concentration::AbstractFloat; comed_CBZ::Bool, seizure_type::Bool)
+    logit = θ.a + θ.a1*(age/10) - θ.a2^comed_CBZ
+    logit -= (θ.b1 - θ.b2^seizure_type)*average_trough_concentration
+    p = 1-exp(logit)/(1+exp(logit))
+    return p
+end
+
+x = [i for i in 0.0:0.01:150.0]
+a1 = [get_p(a, comed_CBZ = false, seizure_type = false) for a in x]
+a2 = [get_p(a, comed_CBZ = false, seizure_type = true) for a in x]
+a3 = [get_p(a, comed_CBZ = true, seizure_type = false) for a in x]
+a4 = [get_p(a, comed_CBZ = true, seizure_type = true) for a in x]
+
+#Single plot
+linewidth = 1.5
+pl = plot(xlabel = "VPA trough concentration (mg/l)", ylabel = "50% Seizure reduction probability", title="VPA treatment impact on $(age)-year-olds")
+plot!(x, a1, label = "Generalised Seizures and no CBZ comedication", linewidth = linewidth)
+plot!(x, a2, label = "Partial Seizures and no CBZ comedication", linewidth = linewidth)
+plot!(x, a3, label = "Generalised Seizures and CBZ comedication", linewidth = linewidth)
+plot!(x, a4, label = "Partial Seizures and CBZ comedication", linewidth = linewidth)
+plot!(legend=:outerbottom, legendcolumns=1)
+display(pl)
+
+#Combined plot
+pl1 = plot(x, a1, label = "Generalised Seizures and no CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
+pl2 = plot(x, a2, label = "Partial Seizures and no CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
+pl3 = plot(x, a3, label = "Generalised Seizures and CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
+pl4 = plot(x, a4, label = "Partial Seizures and CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
+#combine to grid plot
+combined_plot = plot(pl1, pl2, pl3, pl4, layout=(2, 2), title="50% Seizure reduction probability for 30 year-old on VPA")
+display(combined_plot)
+end
+
 
 println("Done")
 
