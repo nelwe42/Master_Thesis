@@ -187,6 +187,8 @@ that if we have 50% reduction overall it might just be reduced in one subinterva
 -> based on impact of trough concentration logit is modelling inverse of probability of 50% reduction, unclear in paper
 -> also based on paper, both figure 1 and reported values in table 4 are not using predicted trough concentration in mg/l, might be mmol/l or something?
     -> cant really find a common factor between the reports here?
+-> switch back to original a and b1 values without zero exponents, use conversion into mmmol for trough concentration, then get something looking vaguely right
+    -> lose a lot of connection to cited model but still get functional model
 
 New covariates:
 -focal epilepsy assumed to be indep of others, roughly 60% of case

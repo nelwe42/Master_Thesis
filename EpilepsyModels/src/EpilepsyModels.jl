@@ -772,7 +772,7 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
 
     #Ensure initial guess satifies bounds
     if !isnothing(lb)
-        θ_0 .= clamp.(θ_0, lb, ub)
+        θ_0_vec .= clamp.(θ_0_vec, lb, ub)
     end
 
     #Do everything vectorised, not sure if samplers can handle ComponentArrays
@@ -907,12 +907,18 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     chains = Array{Chains}(undef, min(n_starts, thread_num))
     Threads.@threads for j in 1:min(n_starts, thread_num)
         starts_thread = [starts_list[i] for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)]
-        chains[j] = sample(model, sampler, MCMCThreads(), per_chain+nadapts, length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
+        chains[j] = sample(model, sampler, MCMCThreads(), (per_chain+nadapts), length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
     end
     #Collect all chains into one object
     Chain = cat(chains...; dims = 3)
 
-    return Chain
+    means = ComponentArray([mean(Chain, label) for label in labels_θ], axes_θ)
+    eval = get_negloglikelihood(means, p)
+    estimate = (u = means, objective = eval, raw = Chain, multistart_nstarts = n_starts)
+    println("Estimate: ", estimate.u)
+    println("Objective: ", estimate.objective)
+
+    return estimate
 end
 
 #finite_not_forward allows to switch to finite_diff hessian instead of ForwardDiff, often faster but less accurate

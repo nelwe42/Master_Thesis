@@ -53,7 +53,7 @@ Input_θ_SeizureBasic_one = ComponentArray((a = base_rate, b = SA[0.2]))
 Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, base_rate/25, base_rate/20, base_rate/120]))
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
-Input_θ_SeizureVPA = ComponentArray((a = -1.8, a1 = 1.0, a2 = 1.8, b1 = 4.2, b2 = 2.4))
+Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
 
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
@@ -101,6 +101,7 @@ sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = true
 hierarchical_optimisation = false
+sampling = true
 plotting = false
 optimisation_trace = true
 show_trace = true
@@ -180,13 +181,15 @@ end
 #create test mod of same types as true ones
 test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(pk_model), person_gen, dose_gen)
 println("PK start: ", test_mod.pk_model.θ)
-#sampled_chains = optimise_sampled(test_mod, data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, sampler = sampler, sampling_options = sampling_options) 
 if hierarchical_optimisation
     #Hierarchical optimisation
     estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
                         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
                         solver_optim = solver_optim, ODE_options = ODE_options)
     println("True Objective Value: ", get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
+elseif sampling
+    estimate = optimise_sampled(test_mod, data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, sampler = sampler, sampling_options = sampling_options) 
+    println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 else
     #Multistart optimisation
     estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
@@ -210,7 +213,7 @@ println("Relative errors: ", errors_rel)
 println("Absolute errors: ", errors_abs)
 
 #Testing out hessian confidence intervals if flag is set
-if run_hessian && SciMLBase.successful_retcode(estimate.retcode)
+if run_hessian && (!sampling && SciMLBase.successful_retcode(estimate.retcode))
     CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, finite_not_forward=finite_diff_hessian, sandwich = sandwich, ODE_options = ODE_options)
     #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
     println("Confidence Intervals: ", CI)
@@ -218,13 +221,12 @@ end
 
 if show_trace
     println()
-    if !(hierarchical_optimisation)
-        println(estimate.raw.original)
-        println()
-        if optimisation_trace
-            println(estimate.raw.original.trace)
+    if sampling
+        tracing = plot(estimate.raw)
+        if plotting
+            display(tracing)
         end
-    else
+    elseif hierarchical_optimisation
         println("PK output:")
         println(estimate.estimate_PK.original)
         println()
@@ -237,6 +239,12 @@ if show_trace
             println()
             println("Seizure trace: ")
             println(estimate.estimate_Seizure.original.trace)
+        end
+    else
+        println(estimate.raw.original)
+        println()
+        if optimisation_trace
+            println(estimate.raw.original.trace)
         end
     end
 end
@@ -303,7 +311,7 @@ age = 30
 θ = Input_θ_SeizureVPA
 function get_p(average_trough_concentration::AbstractFloat; comed_CBZ::Bool, seizure_type::Bool)
     logit = θ.a + θ.a1*(age/10) - θ.a2^comed_CBZ
-    logit -= (θ.b1 - θ.b2^seizure_type)*average_trough_concentration
+    logit -= (θ.b1 - θ.b2^seizure_type)*average_trough_concentration*0.00693
     p = 1-exp(logit)/(1+exp(logit))
     return p
 end

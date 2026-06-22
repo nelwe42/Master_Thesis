@@ -192,7 +192,7 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
         else
             average_trough_concentration = sum([sol(t, idxs=m.target_drug) for t in trough_times])/length(trough_times)
         end
-        logit -= (m.θ.b1 - m.θ.b2^person.covariates.seizure_type)*average_trough_concentration
+        logit -= (m.θ.b1 - m.θ.b2^person.covariates.seizure_type)*average_trough_concentration*0.00693
     end
     #Transform from representation with logit to with probability
     #Going by impact of VPA are modelling the prob of not seeing reduction in logit
