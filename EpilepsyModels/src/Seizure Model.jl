@@ -154,11 +154,12 @@ function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person:
     return distribution
 end
  
-@with_kw struct SeizureVPA{T<:ComponentArray, T2<:Tuple, T3<:Symbol} <: SeizureModelNonrandom
+@with_kw struct SeizureVPA{T<:ComponentArray, T2<:Tuple, T3<:Symbol, T4<:NamedTuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = 0.5, a1 = 0.1, a2 = 0.0, b1 = 10.0, b2 = 0.0)) 
     cov::T2 = (:age, :seizure_type) 
     timeframe = (general_timeframe = false, inherent_timeframe = 5.0)
     autocorrelation = (false, 0.0)
+    bounds::T4 = (lb = ComponentArray((a = 0.0, a1 = -10.0, a2 = -10.0, b1 = 0.0, b2 = -10.0)) , ub = ComponentArray((a = 100.0, a1 = 10.0, a2 = 10.0, b1 = 100.0, b2 = 10.0)) )
     target_drug::T3 = :s_VPA
 end
 

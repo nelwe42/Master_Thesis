@@ -1511,3 +1511,13 @@ Multistart best start: 1 Number of Starts: 1
 True Objective Value: -0.1928393408382565
 True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
 -> PK fit still reasonable, for seizure didn't help, too little data maybe, all my violins are just lines
+
+SeizureVPA:
+30 days, Seizure every 5 days, 5 people, BigFourDoses with just VPA, makes CBZ impossible obviously, ran out of 5min time limit
+-> logscale just sigma, for a in logscale that escalates towards Inf
+Estimate: (PK = (k_abs = 59.865864145920405, c1 = 33.32551251956537, c2 = 1.433691247242573, c3 = 0.8779817418978674, v1 = 0.2788571822591068, σ = 0.18636081734973783), Seizure = (a = 1.2498461530359473, a1 = -0.7293309092463085, a2 = 1.4014924040959178, b1 = 11.527577290074433, b2 = 1.7414688101002707))
+Retcode: Failure
+Objective: 70.74452731894179
+Multistart best start: 2 Number of Starts: 5
+True Objective Value: -4.936429947224925
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))

@@ -2,7 +2,6 @@ using Pkg
 
 #Pkg.instantiate()
 println("Starting")
-#Pkg.develop(path = ".//EpilepsyModels")
 include("EpilepsyModels.jl")
 
 using .EpilepsyModels
@@ -22,14 +21,11 @@ using MCMCChains
 using AdvancedHMC
 
 #This will redirect output to txt file, not including error messages/warnings
-#path = "."
 path = "/home/s6newell_hpc"
 open(joinpath(path,"output.txt"), "w") do io
 open(joinpath(path,"errors.txt"), "w") do io_err
 redirect_stdout(io) do
 redirect_stderr(io_err) do
-
-println("Included")
 
 try
 
@@ -85,7 +81,10 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
+run_count = 10
 max_threads_simul = 21
+max_threads_runs = min(run_count, max_threads_simul)
+max_threads_simul = max(floor(max_threads_simul/run_count),1)
 Multistart_nstarts = 2
 prefilter = 10
 Multistart_seed = 42
@@ -154,11 +153,12 @@ if seizure_model isa SeizureVPA
 end
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
-data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+
+#Set data generating function
+data(x) = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
-#data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-#data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-println("Generated")
+data_modified(x) = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data_updating(x) = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 
 
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
@@ -187,39 +187,25 @@ if isnothing(lower_bounds)
     lower_upper_bounds = nothing
 end
 
-#create test mod of same types as true ones
-test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name.wrapper(pk_model), person_gen, dose_gen)
-println("PK start: ", test_mod.pk_model.θ)
+#Specify estimator function
 if hierarchical_optimisation
     #Hierarchical optimisation
-    estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
+    estimate(new_mod, data) = optimise_hierarchical(new_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
                         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
                         solver_optim = solver_optim, ODE_options = ODE_options)
-    println("True Objective Value: ", get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
+    eval(data) = get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 elseif sampling
-    estimate = optimise_sampled(test_mod, data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, sampler = sampler, sampling_options = sampling_options) 
-    println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
+    estimate(new_mod, data) = optimise_sampled(deepcopy(test_mod), data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, sampler = sampler, sampling_options = sampling_options) 
+    eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 else
-    #Multistart optimisation
-    estimate = optimise(test_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+    estimate(new_mod, data) = optimise(new_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
         multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
-    println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
+    eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 end
-#True values for comparison
-println("True θ: ", Input_θ)
-#Show relative error
-errors_rel = deepcopy(Input_θ)
-errors_abs = deepcopy(Input_θ)
-for i in eachindex(errors_rel)
-    errors_rel[i] = abs(estimate.u[i] - Input_θ[i])/abs(Input_θ[i])
-end
-for i in eachindex(errors_abs)
-    errors_abs[i] = abs(estimate.u[i] - Input_θ[i])
-end
-println("Relative errors: ", errors_rel)
-println("Absolute errors: ", errors_abs)
+
+
 
 #Testing out hessian confidence intervals if flag is set
 if run_hessian && (!sampling && SciMLBase.successful_retcode(estimate.retcode))
@@ -257,100 +243,6 @@ if show_trace
         end
     end
 end
-
-if plotting && SciMLBase.successful_retcode(estimate.retcode)
-    #Plot fit for specified individuals
-    individuals = [1]
-    time_seizures = (0,30)
-    time_pk = (0.0, Obs_Duration)
-    plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options)
-end
-
-plot_change = false
-#Plotting change for k_abs/other param specified through index
-if plot_change
-indices_interest = [8] #[1,2,3,4,5,6,8,9]#[3,4,5] 
-for j in indices_interest
-#for multi in 1:10
-    #point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
-    #point[2], name_point = Input_θ[2], "Default_Start_true_c1"
-    #point[j] = multi #24*0.5*multi
-    #name_point = "Default_Start_with_$(labels(point)[j])=$(point[j])"
-    #point[2] = 3*24.0
-    #name_point = "Default_Start_with_c1=72.0"
-    point, name_point = Input_θ, :True_Values
-    #point, name_point = estimate.u, :Estimate
-    #point, name_point = ComponentArray(PK = test_mod.pk_model.θ, Seizure = test_mod.seizure_model.θ), :Set_Default_Start
-    #index of parameter to consider, name
-    #index, index_name = 1, :k_abs
-    #index, index_name = 2, :c1
-    index, index_name = j, "$(labels(point)[j])"
-    #index, index_name = 5, "v1"
-    θ_use = deepcopy(point)
-    names = mod.pk_model.keys
-    sys = EpilepsyModels.create_ode_system(mod.pk_model)
-    problems = Tuple(EpilepsyModels.create_problem(mod.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
-    indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ_use.PK)]
-    EpilepsyModels.partial_transform_to_logscale!(θ_use, logscale = logscale)
-    p = (m = mod, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
-    function negloglikeli(x::AbstractFloat)
-        θ_vary = copy(θ_use)
-        θ_vary[index] = x
-        return EpilepsyModels.get_negloglikelihood(θ_vary, p)
-    end
-    plot_for = [1.5, 5] #plotting range in untransformed space
-    if String(index_name) in logscale
-        plot_for .= log.(plot_for)
-    end
-    x = range(plot_for[1], plot_for[2], length=100)
-    y = negloglikeli.(x)
-    pl = plot(x, y, title="$(name_point) \n logscale = $(logscale)", xlabel="$(index_name)", ylabel="Negloglikelihood", label = "$(typeof(pk_model).name.wrapper)")
-    display(pl)
-#end
-end
-end
-
-#For adding custom xticks (as vertical lines) to plot
-#plot!([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)], seriestype="vline", xticks = ([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)],["log(1.0*24)","log(1.5*24)", "log(2.0*24)", "log(3.0*24)"]), linecolor = "grey", label="")
-#plot!(xticks = ([log(24.0), log(1.5*24.0), log(2*24.0), log(3*24.0)],["log(1.0*24)","log(1.5*24)", "log(2.0*24)", "log(3.0*24)"]))
-
-plot_vpa = false
-if plot_vpa
-age = 30
-θ = Input_θ_SeizureVPA
-function get_p(average_trough_concentration::AbstractFloat; comed_CBZ::Bool, seizure_type::Bool)
-    logit = θ.a + θ.a1*(age/10) - θ.a2^comed_CBZ
-    logit -= (θ.b1 - θ.b2^seizure_type)*average_trough_concentration*0.00693
-    p = 1-exp(logit)/(1+exp(logit))
-    return p
-end
-
-x = [i for i in 0.0:0.01:150.0]
-a1 = [get_p(a, comed_CBZ = false, seizure_type = false) for a in x]
-a2 = [get_p(a, comed_CBZ = false, seizure_type = true) for a in x]
-a3 = [get_p(a, comed_CBZ = true, seizure_type = false) for a in x]
-a4 = [get_p(a, comed_CBZ = true, seizure_type = true) for a in x]
-
-#Single plot
-linewidth = 1.5
-pl = plot(xlabel = "VPA trough concentration (mg/l)", ylabel = "50% Seizure reduction probability", title="VPA treatment impact on $(age)-year-olds")
-plot!(x, a1, label = "Generalised Seizures and no CBZ comedication", linewidth = linewidth)
-plot!(x, a2, label = "Partial Seizures and no CBZ comedication", linewidth = linewidth)
-plot!(x, a3, label = "Generalised Seizures and CBZ comedication", linewidth = linewidth)
-plot!(x, a4, label = "Partial Seizures and CBZ comedication", linewidth = linewidth)
-plot!(legend=:outerbottom, legendcolumns=1)
-display(pl)
-
-#Combined plot
-pl1 = plot(x, a1, label = "Generalised Seizures and no CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
-pl2 = plot(x, a2, label = "Partial Seizures and no CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
-pl3 = plot(x, a3, label = "Generalised Seizures and CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
-pl4 = plot(x, a4, label = "Partial Seizures and CBZ comedication", xlabel = "VPA trough concentration", ylabel = "50% Seizure reduction probability")
-#combine to grid plot
-combined_plot = plot(pl1, pl2, pl3, pl4, layout=(2, 2), title="50% Seizure reduction probability for 30 year-old on VPA")
-display(combined_plot)
-end
-
 
 println("Done")
 

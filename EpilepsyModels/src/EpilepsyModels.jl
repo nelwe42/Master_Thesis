@@ -1176,3 +1176,52 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
 end
 
 end # module EpilepsyModels
+
+function multi_data_run(mod::FullModel, data::Function, estimate::Function, eval::Function; run_count::Int=50, max_threads_runs::Int=1)
+    #sample seeds of specified number
+    seeds = rand(Int64, run_count)
+    #create object to store results
+    estimates = Vector{NamedTuple}(undef, run_count)
+    abs_errors = Vector{ComponentArray}(undef, run_count)
+    rel_errors = Vector{ComponentArray}(undef, run_count)
+    mean_squared_errors = Vector{Real}(undef, run_count)
+    rel_squared_errors =  Vector{Real}(undef, run_count)
+    times = Vector{Real}(undef, run_count)
+    obj_diffs = Vector{Real}(undef, run_count)
+    Input_θ = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ)
+    runs_per_thread = Int(ceil(run_count/max_threads_runs))
+    Threads.@threads for j in 1:min(run_count, max_threads_runs)
+        for i in ((j-1)*runs_per_thread+1):min(j*runs_per_thread, n)
+            Random.seed!(seeds[i])
+            #create data
+            data = data(1)
+            #run optimisation
+            test_mod = FullModel(typeof(mod.pk_model).name.wrapper(), typeof(mod.seizure_model).name.wrapper(pk_model), deepcopy(mod.person_gen), deepcopy(mod.dose_gen))
+            estimate = estimate(test_mod, data)
+            #Start setting our objects
+            estimates[i] = estimate
+            #Calculate errors
+            errors_rel = deepcopy(Input_θ)
+            errors_abs = deepcopy(Input_θ)
+            for i in eachindex(errors_rel)
+                errors_rel[i] = abs(estimate.u[i] - Input_θ[i])/abs(Input_θ[i])
+            end
+            for i in eachindex(errors_abs)
+                errors_abs[i] = abs(estimate.u[i] - Input_θ[i])
+            end
+            abs_errors[i] = errors_abs
+            rel_errors[i] = errors_rel
+            #For objective check if are estimating Hierarchical
+            if hasproperty(estimate, :estimate_PK)
+                #handle Hierarchical
+                obj_diffs[i] = (PK = (estimate.objective.PK - eval(data).PK), Seizure = estimate.objective.Seizure - eval(data).Seizure)
+            else
+                obj_diffs[i] = estimate.objective - eval(data)
+            end
+        end
+    end
+    #take all the arguments passed and multithread over data gen and inference
+    #at the end print all estimates and originals, errors, times required, difference of objective functions?
+    #potentially do confidence intervals?
+    #plot (relative) mean squared error, plot times perhaps -> maybe plotting doesnt make sense here yet, need longitudinal data points
+end
