@@ -143,7 +143,7 @@ person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
 #dose_gen = BigFourDoses()
 if seizure_model isa SeizureVPA
     dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
