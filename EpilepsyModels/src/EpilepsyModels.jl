@@ -254,8 +254,8 @@ function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractV
     return X
 end
 
-function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
-                objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, printing::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), run_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
+                objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, printing::Bool = true, confidence::AbstractFloat = 0.95, finite_not_forward::Bool = false, sandwich::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -339,23 +339,23 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     #transform parameters back into non logscale
     partial_transform_to_logscale_partwise!(estimate_Seizure.u, logscale = logscale, detransform = true)
 
-    estimate = (u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure)
+    if run_CI
+        CI = inverse_hessian(estimate.u, p, confidence = confidence, logscale = logscale, finite_not_forward = finite_not_forward, sandwich = sandwich)
+        estimate = (u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure, CI = CI)
+    else
+        estimate = (u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure)
+    end
     if printing
         println("Estimate: ", estimate.u)
         println(estimate.retcode)
         println(estimate.objective)
     end
-    if inv_hess_CI
-        CI = inverse_hessian(estimate.u, p, logscale = logscale)
-        return estimate, CI
-    else
-        return estimate
-    end
+    return estimate
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), inv_hess_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), run_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
-    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true,
+    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true, confidence::AbstractFloat = 0.95, finite_not_forward::Bool = false, sandwich::Bool = true,
     solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
@@ -650,19 +650,19 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     #println(solutions)
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate_u, logscale = logscale, detransform = true)
-    estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
+    if run_CI
+        CI = inverse_hessian(estimate.u, p, confidence = confidence, logscale = logscale, finite_not_forward = finite_not_forward, sandwich = sandwich)
+        estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, CI = CI, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
+    else
+        estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
+    end
     if printing
         println("Estimate: ", estimate_u)
         println("Retcode: ", estimate.retcode)
         println("Objective: ", estimate.objective)
         println("Multistart best start: ", best_start_idx, " Number of Starts: ", n_starts)
     end
-    if inv_hess_CI
-        CI = inverse_hessian(estimate.u, p, logscale = logscale)
-        return estimate, CI
-    else
-        return estimate
-    end
+    return estimate
 end
 
 #prior that is log of default value 1
@@ -684,7 +684,7 @@ LogDensityProblems.capabilities(::LogTargetDensity) = LogDensityProblems.LogDens
 
 function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, nadapts::Int64 = 0, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
-    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true,
+    use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true, run_CI::Bool = false, confidence::AbstractFloat = 0.95,
     sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     names = get_keys_PK(m.pk_model)
@@ -908,16 +908,32 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     #Start threads, divide n_starts onto maximal thread number
     starts_per_thread = Int(ceil(n_starts/thread_num))
     chains = Array{Chains}(undef, min(n_starts, thread_num))
+    #For recording sampling times rather naively, for this interface cant get it to log them
+    times = Array{Real}(undef, min(n_starts, thread_num))
     Threads.@threads for j in 1:min(n_starts, thread_num)
         starts_thread = [starts_list[i] for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)]
+        start = time()
         chains[j] = sample(model, sampler, MCMCThreads(), (per_chain+nadapts), length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
+        ending = time()
+        times[j] = ending - start
     end
     #Collect all chains into one object
     Chain = cat(chains...; dims = 3)
 
     means = ComponentArray([mean(Chain, label) for label in labels_θ], axes_θ)
     eval = get_negloglikelihood(means, p)
-    estimate = (u = means, objective = eval, raw = Chain, multistart_nstarts = n_starts)
+
+    if run_CI
+        if !(0 ≤ confidence ≤ 1)
+            @warn "Invalid confidence for CIs, reset to default 0.95"
+            confidence = 0.95
+        end
+        confidence = 1-confidence
+        CI = ComponentArray([quantile(vec(Chain[label]), [confidence/2, 1-confidence/2]) for label in labels_θ], axes_θ)
+        estimate = (u = means, objective = eval, raw = Chain, times = times, CI = CI, multistart_nstarts = n_starts)
+    else
+        estimate = (u = means, objective = eval, raw = Chain, times = times, multistart_nstarts = n_starts)
+    end
     if printing
         println("Estimate: ", estimate.u)
         println("Objective: ", estimate.objective)
@@ -941,6 +957,10 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
     if confidence>1
         confidence = confidence/100
         @warn "Presumably you meant a percentage. Your input confidence has been divided by 100"
+    end
+    if !(0 ≤ confidence ≤ 1)
+        @warn "Invalid confidence for CIs, reset to default 0.95"
+        confidence = 0.95
     end
     f(x) = get_negloglikelihood(x, p)
     θ_use = deepcopy(θ)
@@ -1198,7 +1218,7 @@ function multi_data_run(mod::FullModel, data::Function, estimate::Function, eval
         for i in ((j-1)*runs_per_thread+1):min(j*runs_per_thread, run_count)
             Random.seed!(seeds[i])
             #create data
-            data = data(1)
+            data = data()
             datas[i] = data
             #run optimisation
             test_mod = FullModel(typeof(mod.pk_model).name.wrapper(), typeof(mod.seizure_model).name.wrapper(mod.pk_model), deepcopy(mod.population_gen), deepcopy(mod.dose_gen))
@@ -1232,11 +1252,23 @@ function multi_data_run(mod::FullModel, data::Function, estimate::Function, eval
                 times[i] = Optim.time_run(estimate.raw.original)
             else
                 #handle sampled time
-                times[i] = MCMCChains.compute_duration(estimate.raw)
+                chain_time = MCMCChains.compute_duration(estimate.raw)
+                if chain_time isa Real
+                    times[i] = chain_time
+                elseif hasproperty(estimate, :times)
+                    times[i] = max(estimate.times...)
+                else
+                    times[i] = NaN
+                end
             end
         end
     end
-    result = (datas = datas, estimates = estimates, abs_errors = abs_errors, rel_errors = rel_errors, mean_squared_errors = mean_squared_errors, rel_squared_errors = rel_squared_errors, times = times, obj_diffs = obj_diffs)
+    if !isempty(estimates) && hasproperty(estimates[1], :CI)
+        CIs = [estimate.CI for estimate in estimates]
+        result = (datas = datas, estimates = estimates, abs_errors = abs_errors, rel_errors = rel_errors, mean_squared_errors = mean_squared_errors, rel_squared_errors = rel_squared_errors, times = times, obj_diffs = obj_diffs, CIs = CIs)
+    else
+        result = (datas = datas, estimates = estimates, abs_errors = abs_errors, rel_errors = rel_errors, mean_squared_errors = mean_squared_errors, rel_squared_errors = rel_squared_errors, times = times, obj_diffs = obj_diffs)
+    end
     return result
     #plot (relative) mean squared error, plot times perhaps -> maybe plotting doesnt make sense here yet, need longitudinal data points
 end

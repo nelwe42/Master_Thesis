@@ -75,7 +75,7 @@ println("logscale = ", logscale)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
 sampler = NUTS(0.8) #nothing
-sampling_options = (verbose = false, silent = true, progress = true) #limits output
+sampling_options = (verbose = false, progress = false) #limits output
 ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
@@ -97,11 +97,12 @@ Multistart_bounds = nothing #25.0
 fail_hard = false
 
 run_CI = false
+confidence = 0.95
 sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = true
 hierarchical_optimisation = false
-sampling = false
+sampling = true
 plotting = false
 show_original = true
 
@@ -153,10 +154,10 @@ Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 
 #Set data generating function
-data(x) = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+data() = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
-data_modified(x) = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-data_updating(x) = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data_modified() = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data_updating() = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 
 
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
@@ -190,60 +191,52 @@ if hierarchical_optimisation
     #Hierarchical optimisation
     estimate(new_mod, data) = optimise_hierarchical(new_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
                         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = false,
-                        printing = false, solver_optim = solver_optim, ODE_options = ODE_options)
+                        printing = false, solver_optim = solver_optim, ODE_options = ODE_options, 
+                        run_CI = run_CI, confidence = confidence, finite_not_forward = finite_diff_hessian, sandwich = sandwich)
     eval(data) = get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 elseif sampling
-    estimate(new_mod, data) = optimise_sampled(deepcopy(new_mod), data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, printing = false, sampler = sampler, sampling_options = sampling_options) 
+    estimate(new_mod, data) = optimise_sampled(deepcopy(new_mod), data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, 
+                        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, 
+                        prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, 
+                        multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, printing = false, 
+                        run_CI = run_CI, confidence = confidence, sampler = sampler, sampling_options = sampling_options) 
     eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 else
     estimate(new_mod, data) = optimise(new_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = false,
         multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
-        multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, printing = false)
+        multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, printing = false,
+        run_CI = run_CI, confidence = confidence, finite_not_forward = finite_diff_hessian, sandwich = sandwich)
     eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 end
 
-multi = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
-println("Done")
+results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
 
-#Print everything, including possibly originals, handle confidence intervals, disable printing in estimate
-
-#Testing out hessian confidence intervals if flag is set
-if run_hessian
-    if (!sampling && SciMLBase.successful_retcode(estimate.retcode))
-        CI = EpilepsyModels.inverse_hessian(estimate.u, mod, data, logscale=logscale, finite_not_forward=finite_diff_hessian, sandwich = sandwich, ODE_options = ODE_options)
-        #CI = EpilepsyModels.inverse_hessian(Input_θ, mod, data, logscale=logscale, ODE_options = ODE_options)
-        println("Confidence Intervals: ", CI)
-    end
-end
-
-if show_original
-    println()
-    if sampling
-        tracing = plot(estimate.raw)
-        if plotting
-            display(tracing)
+#Print everything, including possibly originals
+for a in keys(results)
+    if a == :estimates
+        println("Estimates:")
+        for estimate in results.estimates
+            println(estimate.u)
+            if show_original
+                if hierarchical_optimisation
+                    println()
+                    println("PK output:")
+                    println(estimate.estimate_PK.original)
+                    println()
+                    println("Seizure output:")
+                    println(estimate.estimate_Seizure.original)
+                elseif !sampling
+                    println()
+                    println(estimate.raw.original)
+                end
+            end
         end
-    elseif hierarchical_optimisation
-        println("PK output:")
-        println(estimate.estimate_PK.original)
         println()
-        println("Seizure output:")
-        println(estimate.estimate_Seizure.original)
-        if optimisation_trace
-            println()
-            println("PK trace: ")
-            println(estimate.estimate_PK.original.trace)
-            println()
-            println("Seizure trace: ")
-            println(estimate.estimate_Seizure.original.trace)
-        end
-    else
-        println(estimate.raw.original)
+    elseif !(a==:datas)
+        println("$(a):")
+        println(results[a])
         println()
-        if optimisation_trace
-            println(estimate.raw.original.trace)
-        end
     end
 end
 
