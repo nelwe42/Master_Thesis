@@ -85,7 +85,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
-max_threads_simul = 21
+max_threads_simul = Threads.nthreads()
 Multistart_nstarts = 2
 prefilter = 10
 Multistart_seed = 42
@@ -271,7 +271,7 @@ end
 plot_change = false
 #Plotting change for k_abs/other param specified through index
 if plot_change
-indices_interest = [8] #[1,2,3,4,5,6,8,9]#[3,4,5] 
+indices_interest = [7] #[1,2,3,4,5,6,8,9]#[3,4,5] 
 for j in indices_interest
 #for multi in 1:10
     #point, name_point = ComponentArray(PK = typeof(pk_model).name.wrapper().θ, Seizure = typeof(seizure_model).name.wrapper().θ), "Default_Start"
@@ -300,7 +300,7 @@ for j in indices_interest
         θ_vary[index] = x
         return EpilepsyModels.get_negloglikelihood(θ_vary, p)
     end
-    plot_for = [1.5, 5] #plotting range in untransformed space
+    plot_for = [0.0, 50.0] #plotting range in untransformed space
     if String(index_name) in logscale
         plot_for .= log.(plot_for)
     end

@@ -182,7 +182,7 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
         age = person.covariates.age(n)
     end
     comed_CBZ = !isempty([dose for dose in person.dosing if (n ≤ dose.t < n+m.timeframe.inherent_timeframe) && dose.state == :d_CBZ])
-    logit = m.θ.a + m.θ.a1*(age/10) - m.θ.a2^comed_CBZ
+    logit = θ.a + θ.a1*(age/10) - θ.a2^comed_CBZ
     if !isfinite(logit)
         return nothing
     end
@@ -193,7 +193,7 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
         else
             average_trough_concentration = sum([sol(t, idxs=m.target_drug) for t in trough_times])/length(trough_times)
         end
-        logit -= (m.θ.b1 - m.θ.b2^person.covariates.seizure_type)*average_trough_concentration*0.00693
+        logit -= (θ.b1 - θ.b2^person.covariates.seizure_type)*average_trough_concentration*0.00693
     end
     #Transform from representation with logit to with probability
     #Going by impact of VPA are modelling the prob of not seeing reduction in logit

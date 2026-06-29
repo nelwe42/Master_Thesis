@@ -5,4 +5,4 @@
 #SBATCH --ntasks=22
 #SBATCH --chdir=~
 
-julia --project=/home/s6newell_hpc/EpilepsyModels /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl
+julia --threads=22 --project=/home/s6newell_hpc/EpilepsyModels /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl

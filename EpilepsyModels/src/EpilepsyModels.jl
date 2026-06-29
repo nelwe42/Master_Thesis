@@ -685,7 +685,7 @@ LogDensityProblems.capabilities(::LogTargetDensity) = LogDensityProblems.LogDens
 function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, nadapts::Int64 = 0, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true, run_CI::Bool = false, confidence::AbstractFloat = 0.95,
-    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options = (), sampling_rng::AbstractRNG = Xoshiro(42), ODE_options = (AutoTsit5(Rosenbrock23()),))
     
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
@@ -795,7 +795,8 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     elseif prior isa Function
         model = LogTargetDensity(p, lb, ub, (log ∘ prior))
     else
-        model = LogTargetDensity(p, lb, ub, x -> logpdf(prior,x))
+        func_prior(x) = logpdf(prior,x)
+        model = LogTargetDensity(p, lb, ub, func_prior)
     end
     model = AdvancedHMC.LogDensityModel(LogDensityProblemsAD.ADgradient(AutoForwardDiff(), model))
 
@@ -906,14 +907,16 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     n_starts = max(1,multistart)
 
     #Start threads, divide n_starts onto maximal thread number
-    starts_per_thread = Int(ceil(n_starts/thread_num))
-    chains = Array{Chains}(undef, min(n_starts, thread_num))
+    not_parallel = Int(ceil(n_starts/thread_num))
+    chains = Array{Chains}(undef, not_parallel)
     #For recording sampling times rather naively, for this interface cant get it to log them
-    times = Array{Real}(undef, min(n_starts, thread_num))
-    Threads.@threads for j in 1:min(n_starts, thread_num)
-        starts_thread = [starts_list[i] for i in ((j-1)*starts_per_thread+1):min(j*starts_per_thread, n_starts)]
+    times = Array{Real}(undef, not_parallel)
+    for j in 1:not_parallel
+        starts_thread = [starts_list[i] for i in ((j-1)*thread_num+1):min(j*thread_num, n_starts)]
+        println("Starts: ", starts_thread, length(starts_thread))
+        println
         start = time()
-        chains[j] = sample(model, sampler, MCMCThreads(), (per_chain+nadapts), length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
+        chains[j] = sample(sampling_rng, model, sampler, MCMCThreads(), (per_chain+nadapts), length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
         ending = time()
         times[j] = ending - start
     end
@@ -1065,8 +1068,11 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     people_per_thread = Int(ceil(n/max_threads))
+    seeds = rand(Int64,n)
     Threads.@threads for j in 1:min(n, max_threads)
         for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
+            #For basic calculations guarantees reproducibility when run in same part of seeded program
+            Random.seed!(seeds[i])
             assign_dose!(m.dose_gen, population[i], names = names, timeframe = time, wo_treatment = wo_treatment)
             sol = generate_measurements!(m.pk_model, sys, population[i], timepoints = timepoints_PK, endpoint = time, options = ODE_options)
             generate_seizures!(m.seizure_model, sol, population[i], timepoints = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
@@ -1085,8 +1091,11 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     people_per_thread = Int(ceil(n/max_threads))
+    seeds = rand(Int64,n)
     Threads.@threads for j in 1:min(n, max_threads)
         for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
+            #For basic calculations guarantees reproducibility when run in same part of seeded program
+            Random.seed!(seeds[i])
             if wo_treatment > 0
                 passed_time = min(wo_treatment, time)
             else
@@ -1132,8 +1141,11 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
     modifiers = Tuple(mod[2] isa Number ? (mod[1], Dirac(mod[2])) : mod for mod in modification_unfunctioned)
     data = Vector{Person}(undef, n)
     people_per_thread = Int(ceil(n/max_threads))
+    seeds = rand(Int64, n)
     Threads.@threads for j in 1:min(n, max_threads)
         for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, n)
+            #For basic calculations guarantees reproducibility when run in same part of seeded program
+            Random.seed!(seeds[i])
             modifiers_person = [(mod[1],rand(mod[2])) for mod in modifiers]
             new_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
             for mod in modifiers_person
@@ -1216,6 +1228,7 @@ function multi_data_run(mod::FullModel, data::Function, estimate::Function, eval
     runs_per_thread = Int(ceil(run_count/max_threads_runs))
     Threads.@threads for j in 1:min(run_count, max_threads_runs)
         for i in ((j-1)*runs_per_thread+1):min(j*runs_per_thread, run_count)
+            #For basic calculations guarantees reproducibility when run in same part of seeded program
             Random.seed!(seeds[i])
             #create data
             data = data()

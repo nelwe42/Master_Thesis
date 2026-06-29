@@ -1521,3 +1521,14 @@ Objective: 70.74452731894179
 Multistart best start: 2 Number of Starts: 5
 True Objective Value: -4.936429947224925
 True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
+
+Ran SeizureVPA sampler with NUTS and very limited steps (only 1 adap, 4 steps):
+Estimate: (PK = (k_abs = 84.33207149000924, c1 = 20.186765738392076, c2 = 0.7459900957093614, c3 = 1.203959683550146, v1 = 0.31913122913949604, σ = 9.74114355320635), Seizure = (a = 3.3102670120776425, a1 = -1.2484608504926664, a2 = -3.7131014804775937, b1 = 36.18716358462855, b2 = -2.764918139522756))
+Objective: 1388.9225900866404
+True Objective Value: 5.0728849408136405
+-> finding initial step size took very long, possibly issue with gradient?
+Same with same step number and RWMH no gradient:
+Estimate: (PK = (k_abs = 84.50749706081598, c1 = 20.24390557172008, c2 = 0.828637465482905, c3 = 1.5200069047708513, v1 = 0.5465421509336419, σ = 10.273495702035996), Seizure = (a = 3.542205531314005, a1 = -1.6038061482478878, a2 = -4.045812025072299, b1 = 36.60009983948495, b2 = -3.403163907249971))
+Objective: 1550.9668688518268
+True Objective Value: 5.0728849408136405
+-> similar result but much faster
