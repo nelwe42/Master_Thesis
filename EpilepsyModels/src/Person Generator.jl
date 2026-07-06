@@ -2,10 +2,12 @@ using Random
 using Distributions
 using Parameters
 
+#For continuous models, seizure count of 0 at a time means censored
+#generally time is float for cox, if censored in middle may have tuple of times between which next even occurs and count false
 @with_kw struct Person{T<:NamedTuple, D<:AbstractVector{<:NamedTuple}, S<:AbstractVector{<:NamedTuple}, M<:AbstractVector{<:NamedTuple}, R<:AbstractVector}
     covariates::T = NamedTuple() #named tuple of covariates
     dosing::D = Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}() #vector of NamedTuples of the form t, dose, state
-    seizure_counts::S = Vector{@NamedTuple{time::Tuple{AbstractFloat, AbstractFloat}, count::Union{Int64, Bool}}}() #vector of NamedTuples of the form time, count
+    seizure_counts::S = Vector{@NamedTuple{time::Union{Tuple{AbstractFloat, AbstractFloat}, AbstractFloat}, count::Union{Int64, Bool}}}() #vector of NamedTuples of the form time, count
     measurements::M = Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}() 
     #vector of NamedTuples of the form timepoint, measurement, state being measured, both obs and corresponding s
     #later make attribute with individual values of random effects

@@ -250,7 +250,7 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
         current_drugs = unique([dose.state for dose in daily_doses])
         current_summarised = Tuple((drug = drug, daily = [dose.dose for dose in daily_doses if dose.state == drug]) for drug in current_drugs)
         current = Tuple((drug = entry.drug, dose = sum(entry.daily), times = length(entry.daily)) for entry in current_summarised) 
-        if !(sum([seizure.count for seizure in person.seizure_counts if seizure.time[2]>last_iter]) >0)
+        if !(sum([seizure.count for seizure in person.seizure_counts if (seizure.time isa Tuple && seizure.time[2]>last_iter) || (!(seizure.time isa Tuple) && seizure.time>last_iter)]) >0)
             #seizures controlled in last iteration, keep regiment
             info = current
         else

@@ -11,22 +11,29 @@ abstract type SeizureModel end
 
 #To distinguish if possibly decide to make time continuous models later
 abstract type SeizureModelDiscrete <: SeizureModel end
+abstract type SeizureModelContinuous <: SeizureModel end
 
 #later for checking if random effects need to be handled in inference
 abstract type SeizureModelNonrandom <: SeizureModelDiscrete end
-#For this need some getter for which are random effects?
+abstract type SeizureModelContNonrandom <: SeizureModelContinuous end
 
-#Every model specification should have: ComponentArray of parameters, list of keys of required covariates
+#Specific type of continuous model with no random effects, partial likelihood can be handled jointly
+abstract type CoxTypeModels <: SeizureModelContNonrandom end
+
+#Every Discrete model specification should have: ComponentArray of parameters, list of keys of required covariates
 #specify timeframe model supports, what kind of autocorrelation it needs
 #models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
 #models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
 #if have autocorrelation distribution takes extra argument seizures, if general timeframe takes extra argument record_interval
 #Every model should have function returning distribution given day/further information
 
+#Every Cox type model specification needs: ComponentArray of hazard ration parameters, list of keys of required covariates
+#specify baseline hazards for data generation, potentially multiple for e.g. pwp models
+
 #Within discrete/continuous and (non)random returning seizure probability, likelihoods and 
 #generating data can be handled once
 
-#1)Specific model instances with their intensities
+#1)Specific model instances with their distributions
 
 @with_kw struct SeizureBasic{T<:ComponentArray, T2<:Tuple, T3<:NamedTuple} <: SeizureModelNonrandom
     θ::T=ComponentArray((a = 2.0, b = SA[0.0])) #a base rate, b coefficient of drug 
@@ -205,7 +212,28 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
     return distribution
 end
 
-#2) Implement Seizure Probabilities, Likelihoods and Data Generators for discrete, nonrandom
+@with_kw struct SeizureSANAD{T<:ComponentArray, T2<:Tuple, T3<:Union{Function, Real, Tuple{Vararg{Union{Function, Real}}}}, T4<:NamedTuple} <: CoxTypeModels
+    θ::T=ComponentArray((a = 0.5, a1 = 0.1, a2 = 0.0, b1 = 10.0, b2 = 0.0)) 
+    cov::T2 = (:age, :seizure_type) 
+    baseline::T3 = 2.0
+    bounds::T4 = (lb = ComponentArray((a = 0.0, a1 = -10.0, a2 = -10.0, b1 = 0.0, b2 = -10.0)) , ub = ComponentArray((a = 100.0, a1 = 10.0, a2 = 10.0, b1 = 100.0, b2 = 10.0)) )
+end
+
+#return term in exponential for pwp model for person at time n for event s
+function linear_predictor(m::SeizureSANAD, sol, n::AbstractFloat, s::Int; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+    #Check valid event number
+    if s <= 0
+        return nothing
+    end
+    #Check exposure is finite, what do we want here instead of n+1?
+    if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
+        return nothing
+    end
+end
+
+#2) Implement Seizure Probabilities, Likelihoods
+
+#2.1) Discrete Nonrandom Models
 
 #k_n number of seizures (or presence/absence) on day n
 function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Union{Int64, Bool}, record_interval::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
@@ -270,7 +298,7 @@ function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Com
     return prob
 end
 
-function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, person::Person; names::NamedTuple)
+function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom, sol, person::Person; names::NamedTuple)
     if m.timeframe.general_timeframe
         return log_Seizure_prob(m, sol, person, θ=θ, names = names)
     elseif !(m.autocorrelation[1])
@@ -358,7 +386,55 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModel, sol, per
     end
 end
 
-#3) Implement generation of seizures for discrete, nonrandom models
+#2.2) Cox type Models
+
+function get_seizure_loglikelihood(θ::ComponentArray, m::CoxTypeModels, sols, data::Tuple{Vararg{Person}}; names::NamedTuple)
+    #Check have solution for each person
+    if length(data) != length(sols)
+        error("Cannot compute seizure likelihood, solutions and data size do not match")
+    end
+    S = max([length(person.seizure_counts) for person in data])
+    #Construct partial likelihood stratified by event number
+    prob = zero(eltype(θ))
+    #first sum over person
+    for i in eachindex(data)
+        #Then sum over event number
+        for s in 1:S
+            #Check if event s occurs for person i and if not censored, count of false at event time means censored
+            delta = (length(data[i].seizure_counts)>=s && data[i].seizure_counts[s])
+            if delta
+                t = data[i].seizure_counts[s].time
+                contr = linear_predictor(m, sols[i], t, s, person=data[i], names=names, θ=θ)
+                if !isnothing(contr)
+                    prob += contr
+                else
+                    return -Inf
+                end
+                #normalising factor of partial likelihood
+                normalise = zero(eltype(θ))
+                for j in eachindex(data)
+                    #Check if person j is at risk for event s at time t, check if have interval where censored in middle
+                    if (length(data[j].seizure_counts)>=s-1 && (s==1 || ((data[j].seizure_counts[s-1].time isa Tuple) ? data[j].seizure_counts[s-1].time[2] : data[j].seizure_counts[s-1].time)<=t)) && 
+                        (!length(data[j].seizure_counts)>=s || ((data[j].seizure_counts[s].time isa Tuple) ? data[j].seizure_counts[s].time[1] : data[j].seizure_counts[s].time) >=t)
+                        
+                        contr = exp(linear_predictor(m, sols[j], t, s, person=data[j], names=names, θ=θ))
+                        if !isnothing(contr)
+                            normalise += contr
+                        else
+                            return -Inf
+                        end
+                    end
+                end
+                prob -= log(normalise)
+            end
+        end
+    end
+    return prob
+end
+
+#3) Implement generation of seizures 
+
+#3.1) Discrete Nonrandom Models
 
 #models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
 #models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
@@ -426,12 +502,49 @@ function summarise_seizures!(m::SeizureModelNonrandom, person::Person; timepoint
     append!(person.seizure_counts, summarised)
 end
 
+#3.2) Coy type models
+
+function generate_seizures!(m::CoxTypeModels, sol, person::Person; endpoint::AbstractFloat, start::AbstractFloat = zero(typeof(endpoint)), max_events::Union{Int, Nothing} = nothing, names::NamedTuple)
+    if isnothing(max_events)
+        S = Inf
+    else
+        S = max_events
+    end
+    t = start
+    s = one(Int64)
+    while t<endpoint && s<=S
+        #Generate next seizure time from current distribution
+        if m.baseline isa Vector
+            baseline = m.baseline[min(s, length(m.baseline))]
+        else
+            baseline = m.baseline
+        end
+        if baseline isa Function
+            h(t) = baseline(t)*exp(linear_predictor(m, sol, t, s, person=data[j], names=names, θ=θ))
+        else
+            h(t) = baseline*exp(linear_predictor(m, sol, t, s, person=data[j], names=names, θ=θ))
+        end
+        #TODO sample from inhomogenous exponential with intensity h(t)
+
+        
+        t += T
+        s += 1
+        if t<endpoint
+            push!(person.seizure_counts, (time = t, count = true))
+        end
+    end
+    #add censoring at endpoint
+    push!(person.seizure_counts, (time = endpoint, count = false))
+end
+
 #4) Functions for visualisation
+
+#4.1) Discrete nonrandom models
 
 #Plots fit for person i up to time given solutions from PK model (if they should be plotted)
 #estimate and true distributions plotted in same timeframes as individuals data
 #If solutions modified with random effects are passed get additional plots modified and estimate (violin can only plot 2 at once)
-function plot_fit(mod::SeizureModel, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+function plot_fit(mod::SeizureModelNonrandom, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
     names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
     
@@ -700,3 +813,154 @@ function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tup
         end
     end
 end
+
+#4.2) Cox type models
+
+function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+    sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
+    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
+    
+    output = Plots.Plot[]
+    if !isnothing(sols_true)
+        endpoint = sols_true[1].t[end]
+    elseif !isnothing(sols_estimated)
+        endpoint = sols_estimated[1].t[end]
+    else
+        endpoint = max(data[1].measurements[end].timepoint, data[1].seizure_counts[end].time[2])
+    end
+    if time isa Number
+        time = (0,time)
+    end
+    if time[1]<0 || time[2] > endpoint || time[1] > time[2]
+        error("Incorrectly defined time window for seizure plotting")
+    end
+    if isnothing(sols_true)
+        sols = nothing
+    else
+        sols = sols_true
+    end
+    if !isnothing(sols) && any(.!(SciMLBase.successful_retcode.(sols[individuals])))
+        @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
+        sols = nothing
+    end
+    if isnothing(sols_estimated)
+        sols2 = nothing
+    else
+        sols2 = sols_estimated
+    end
+    if !isnothing(estimate_param) && isnothing(sols2)
+        error("Estimate solutions are missing")
+    end
+    if !isnothing(sols2) && any(.!(SciMLBase.successful_retcode.(sols2[individuals])))
+        @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
+        estimate_param = nothing
+    end
+    true_param = mod.θ
+    if !isnothing(sols_modified) && any(.!(SciMLBase.successful_retcode.(sols_modified[individuals])))
+        @warn "Unsuccessful ODE solve in true parameters modified with random effects, modified parameters will be ignored for plotting"
+        sols_modified = nothing
+    end
+    if !isnothing(sols_modified) && isnothing(length_PK)
+        @warn "Modified Solutions are passed but length of PK parameters are missing, modified parameters will be ignored for plotting"
+        sols_modified = nothing
+    end
+    if !isnothing(sols_modified)
+        if length(data)>0 && !isempty(data[1].random_effects)
+            person_param = [deepcopy(true_param) for person in data]
+            for i in eachindex(data)
+                for mod in data[i].random_effects
+                    if mod[1] > length_PK
+                        person_param[i][mod[1]-length_PK] += mod[2]
+                    end
+                end
+            end
+        else
+            sols_modified = nothing
+        end
+    end
+    for i in individuals
+        #Get timepoints and corresponding indices for plotting from seizure data
+        indices = [index for index in eachindex(data[i].seizure_counts) if ((data[i].seizure_counts[index].time isa Tuple) && data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]) || 
+                                                                            (!(data[i].seizure_counts[index].time isa Tuple) && data[i].seizure_counts[index].time >= time[1] && data[i].seizure_counts[index].time <= time[2])]
+        pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard", title = "Seizure Hazards for person $(i) from $(time[1]) to $(time[2])")
+        if !isnothing(sols)
+            samples_true = [get_hazard(mod, sols[i], person=data[i], t=t, names = names) for t in time[1]:(1/sample_nr):time[2]]
+            if any(isnothing.(samples_true))
+                @warn "Hazard for true parameters is not always well-defined"
+                sols = nothing
+            end
+        end
+        if !isnothing(sols_modified)
+            samples_mod = [get_hazard(mod, sols[i], person=data[i], t=t, names = names, θ = person_param[i]) for t in time[1]:(1/sample_nr):time[2]]
+            if any(isnothing.(samples_mod))
+                @warn "Distribution for true parameters modified with random effects is not always well-defined"
+                sols_modified = nothing
+            end
+        end
+        if !isnothing(estimate_param)
+            samples_estimate = [get_hazard(mod, sols[i], person=data[i], t=t, names = names, θ = estimate_param) for t in time[1]:(1/sample_nr):time[2]]
+            if any(isnothing.(samples_estimate))
+                @warn "Distribution for estimate parameters is not always well-defined"
+                estimate_param = nothing
+            end
+        end
+        #Plot hazards now
+        times = collect(time[1]:(1/sample_nr):time[2])
+        #true plot if param specified
+        if !isnothing(sols)
+            plot!(times, samples_true, label="True hazard")
+        end
+        if !isnothing(sols_modified)
+            plot!(times, samples_mod, label="True hazard with random effects", linecolor = :green)
+        end
+        #add estimate plot if specified
+        if !isnothing(estimate_param)
+            plot!(times, samples_estimate, label="Estimated hazard", linecolor = :red)
+        end
+        #add event times
+        times_event = [data[i].seizure_counts.time for i in indices if data[i].seizure_counts.count]
+        vline!(times_event, linecolor = :black, label = "Event times", linewidth=2)
+        censoring_ends = [data[i].seizure_counts.time for i in indices if (!data[i].seizure_counts.count && !(data[i].seizure_counts.time isa Tuple))]
+        vline!(censoring_ends, linecolor = :purple, label = "Censoring times", linewidth=2)
+        censoring_middle = [data[i].seizure_counts.time for i in indices if (!data[i].seizure_counts.count && (data[i].seizure_counts.time isa Tuple))]
+        for interval in censoring_middle
+            vspan!(collect(interval), color=:purple, alpha=0.3, label = "")
+        end
+        #add to output
+        push!(output, pl2)
+        if display_plot
+            display(pl2)
+        end
+    end
+    return output
+end
+
+function get_hazard(m::CoxTypeModels, sol::SciMLBase.AbstractNoTimeSolution; person::Person, t::AbstractFloat, θ::ComponentArray = mod.θ, names::NamedTuple)
+    #Find where in seizure counts we are by finding last seizure before t, if none still at first
+    index = findlast(x -> x<=t, [(count.time isa Tuple ? count.time[1] : count.time) for count in person.seizure_counts])
+    if isnothing(index)
+        s = 1
+    else
+        s = index+1
+    end
+    #If we are within censored interval, return 0
+    if (s>1 && !person.seizure_counts[s-1].count && (!(person.seizure_counts[s-1].time isa Tuple) || t<=person.seizure_counts[s-1].time[2])) 
+        return zero(eltype(θ))
+    end
+    #Else evaluate hazard at t
+    if m.baseline isa Vector
+        baseline = m.baseline[min(s, length(m.baseline))]
+    else
+        baseline = m.baseline
+    end
+    pred = linear_predictor(m, sol, t, s, person=person, names=names, θ=θ)
+    if isnothing(pred)
+        return nothing
+    end
+    if baseline isa Function
+        return baseline(t)*exp(pred)
+    else
+        return baseline*exp(pred)
+    end
+end
+    

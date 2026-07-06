@@ -107,6 +107,10 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
     loglikeli = zero(eltype(θ_use))
     try
         loglikelihoods = Array{Union{Float64, ForwardDiff.Dual}}(undef, individuals)
+        #If need all solutions at once for partial likelihood, collect them here
+        if p.cont_seizure
+            sols = Array{SciMLBase.AbstractNoTimeSolution}(undef, individuals)
+        end
         keep_going = Threads.Atomic{Bool}(true)
         Threads.@threads for j in 1:min(individuals, thread_num)
             for i in ((j-1)*people_per_thread+1):min(j*people_per_thread, individuals)
@@ -119,13 +123,24 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
                     break
                 end
                 @inbounds loglikelihoods[i] = get_PK_loglikelihood(θ_use.PK, data[i], sol=sol)
-                @inbounds loglikelihoods[i] += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
+                #Check if can evaluate seizure likelihood now or need all data for partial likelihood
+                if p.cont_seizure
+                    sols[i] = sol
+                else
+                    @inbounds loglikelihoods[i] += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sol, data[i], names=names)
+                end
             end
         end
         if !keep_going[]
             return Inf
         end
-        return -sum(loglikelihoods)
+        if p.cont_seizure
+            loglikeli = sum(loglikelihoods)
+            loglikeli += get_seizure_loglikelihood(θ_use.Seizure, m.seizure_model, sols, data, names=names)
+            return -loglikeli
+        else
+            return -sum(loglikelihoods)
+        end
     catch e
         fail_hard = hasproperty(p, :objective_fail_hard) ? p.objective_fail_hard : false
         if fail_hard
@@ -186,9 +201,13 @@ function get_negloglikelihood_Seizure(θ::ComponentArray, p::NamedTuple)
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale_partwise!(θ_use, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ_use))
-    for i in eachindex(data)
-        sol = solutions[i]
-        @inbounds loglikeli += get_seizure_loglikelihood(θ_use, m.seizure_model, sol, data[i], names=names)
+    if p.cont.seizure
+        loglikeli = get_seizure_loglikelihood(θ_use, m.seizure_model, solutions, data, names=names)
+    else
+        for i in eachindex(data)
+            sol = solutions[i]
+            @inbounds loglikeli += get_seizure_loglikelihood(θ_use, m.seizure_model, sol, data[i], names=names)
+        end
     end
     return -loglikeli
 end
@@ -206,7 +225,7 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     θ_use = deepcopy(θ)
     partial_transform_to_logscale!(θ_use, logscale = logscale)
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, cont_seizure = (m.seizure_model isa SeizureModelContinuous))
     negloglikeli = get_negloglikelihood(θ_use, p)
     return negloglikeli
 end
@@ -459,7 +478,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     n_starts = max(multistart, 1)
     thread_num = max(max_threads, 1)
     internal_threads = Int(floor(thread_num/min(n_starts, thread_num)))
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, cont_seizure = (m.seizure_model isa SeizureModelContinuous), axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     if vectorised
         objective = OptimizationFunction(get_negloglikelihood_vectorised, Optimization.AutoForwardDiff())
         #Change everything to vectors
@@ -782,7 +801,7 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     n_starts = max(multistart, 1)
     thread_num = max(max_threads, 1)
     internal_threads = Int(floor(thread_num/min(n_starts, thread_num)))
-    p = (m = m, data = data, logscale = (), options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
+    p = (m = m, data = data, logscale = (), options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, cont_seizure = (m.seizure_model isa SeizureModelContinuous), axes_θ = axes_θ, max_threads = internal_threads, objective_fail_hard = objective_fail_hard, objective_warn = objective_warn, objective_warned_ref = Ref(false))
     
     #Change everything to vectors
     ub = collect(ub)
@@ -951,7 +970,7 @@ function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confiden
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
-    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ)
+    p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, cont_seizure = (m.seizure_model isa SeizureModelContinuous))
     return inverse_hessian(θ, p, confidence = confidence, logscale = logscale, finite_not_forward=finite_not_forward, sandwich = sandwich)
 end
 
@@ -1060,7 +1079,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -1075,15 +1094,19 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
             Random.seed!(seeds[i])
             assign_dose!(m.dose_gen, population[i], names = names, timeframe = time, wo_treatment = wo_treatment)
             sol = generate_measurements!(m.pk_model, sys, population[i], timepoints = timepoints_PK, endpoint = time, options = ODE_options)
-            generate_seizures!(m.seizure_model, sol, population[i], timepoints = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
-            summarise_seizures!(m.seizure_model, population[i], timepoints = timepoints_seizure, just_Bool= just_Bool)
+            if m.seizure_model isa SeizureModelDiscrete
+                generate_seizures!(m.seizure_model, sol, population[i], timepoints = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+                summarise_seizures!(m.seizure_model, population[i], timepoints = timepoints_seizure, just_Bool= just_Bool)
+            else
+                generate_seizures!(m.seizure_model, sol, population[i], endpoint=time, max_events=max_events, names=names)
+            end
         end
     end
     return population
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -1105,8 +1128,12 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
             assign_dose!(m.dose_gen, data[i], names=names, timeframe = passed_time, wo_treatment = wo_treatment)
             current_timepoints_PK = [t for t in timepoints_PK if 0.0 <= t < passed_time] #filter timepoints in this interval
             sol = generate_measurements!(m.pk_model, sys, data[i], timepoints = current_timepoints_PK, endpoint = passed_time, options = ODE_options)
-            current_timepoints_seizure = [t for t in timepoints_seizure if 0.0 <= t < passed_time]
-            generate_seizures!(m.seizure_model, sol, data[i], timepoints=current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+            if m.seizure_model isa SeizureModelDiscrete
+                current_timepoints_seizure = [t for t in timepoints_seizure if 0.0 <= t < passed_time]
+                generate_seizures!(m.seizure_model, sol, data[i], timepoints=current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+            else
+                generate_seizures!(m.seizure_model, sol, data[i], endpoint=passed_time, max_events=max_events, names=names)
+            end
             while passed_time < time
                 sol_prev = sol
                 increment = min(time, passed_time + update_reg) - passed_time
@@ -1117,9 +1144,21 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
                 start_solution = min(passed_time-increment, current_timepoints_seizure[1])
                 assign_dose!(m.dose_gen, data[i], names=names, timeframe = increment)
                 sol = generate_measurements!(m.pk_model, sys, data[i], timepoints = current_timepoints_PK, endpoint = passed_time, start = (start_solution, sol_prev(start_solution)), options = ODE_options)
-                generate_seizures!(m.seizure_model, sol, data[i], timepoints = current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+                if m.seizure_model isa SeizureModelDiscrete
+                    generate_seizures!(m.seizure_model, sol, data[i], timepoints = current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
+                else
+                    #Ensure dont have more than max events
+                    if isnothing(max_events)
+                        events_left = nothing
+                    else
+                        events_left = max_events - length(data[i].seizure_counts)
+                    end
+                    generate_seizures!(m.seizure_model, sol, data[i], endpoint=passed_time, start = (passed_time - increment), max_events=events_left, names=names)
+                end
             end
-            summarise_seizures!(m.seizure_model, data[i], timepoints = timepoints_seizure, just_Bool= just_Bool)
+            if m.seizure_model isa SeizureModelDiscrete
+                summarise_seizures!(m.seizure_model, data[i], timepoints = timepoints_seizure, just_Bool= just_Bool)
+            end
         end
     end
     return data
@@ -1128,7 +1167,7 @@ end
 #generate with a parameter modified with randomly drawn addition for specified indices and distributions, effects constant per person
 #is automatically updating, if no update_reg is passed then no updates
 #expects modifications as tuple of 2-tuples (index, distribution to add)
-function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_events::Union{Int, Nothing} = nothing, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     #Check modification if functions have correct return type
     if any([(mod[2] isa Function && !(mod[2](1.0) isa Union{Number, Distribution})) for mod in modifications])
         error("Modification function has unsupported return type")
@@ -1155,7 +1194,7 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
             new_model.pk_model.θ .= new_θ.PK
             new_model.seizure_model.θ .= new_θ.Seizure
             #generate 1 person population with these parameters
-            person = generate_data_updating(new_model, 1, time, update_reg = update_reg, timepoints_PK = timepoints_PK, timepoints_seizure = timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, wo_treatment = wo_treatment, ODE_options = ODE_options)
+            person = generate_data_updating(new_model, 1, time, update_reg = update_reg, timepoints_PK = timepoints_PK, timepoints_seizure = timepoints_seizure, max_events = max_events, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, wo_treatment = wo_treatment, ODE_options = ODE_options)
             data[i] = person[1]
             #write modifiers to person
             append!(person[1].random_effects, modifiers_person)
