@@ -109,10 +109,10 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
@@ -136,7 +136,7 @@ else
     end
 end
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 
 person_gen = BigFourPersonGenerator()
@@ -364,3 +364,20 @@ end
 end
 end
 end
+
+#Attempts to pull noise model outside
+#=
+using ModelingToolkit
+using ModelingToolkit: t_nounits as t, D_nounits as D
+
+Θ = (σ=1.0, v = 3.0)
+exp = :(D(s) ~ (s-3.0))
+@parameters σ=Θ.σ v=Θ.v
+@variables s(t)=0.0
+@variables obs(t) 
+eqs = [D(s) ~ s+3.0, obs ~ build_function(exp, [s,σ])]
+
+@mtkcompile internal_model = System(eqs, t)
+prob = ODEProblem{true, SciMLBase.FullSpecialize}(internal_model, [], (0.0,10.0))
+sol = solve(prob)
+=#

@@ -1,7 +1,5 @@
 using Pkg
 
-#Pkg.instantiate()
-println("Starting")
 include("EpilepsyModels.jl")
 
 using .EpilepsyModels
@@ -19,18 +17,22 @@ using BenchmarkTools
 using ModelingToolkit
 using MCMCChains
 using AdvancedHMC
+using FileWatching
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
-open(joinpath(path,"output.txt"), "w") do io
-open(joinpath(path,"errors.txt"), "w") do io_err
-redirect_stdout(io) do
-redirect_stderr(io_err) do
+lock_path_output = "./output.txt.lock"
 
 try
 
+#Can e.g. use parsed job array id as seed here
+if !isempty(ARGS)
+    parsed = parse(Int, ARGS[1])
+else
+    parsed = 42
+end
 #set seed
-Random.seed!(42)
+Random.seed!(parsed)
 
 #Specify parameters for models
 #PK Models
@@ -55,13 +57,12 @@ Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
 Adaptation_steps = 1000
-Max_Time = 14*60.0*60.0 #
+Max_Time = 5*60
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 2 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 20.0 #40.0
+Obs_Duration = wo_treatment + 10.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-#TODO Change this back later
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
@@ -71,7 +72,6 @@ logscale = ("σ", "k_abs", "c1", "v1")
 #logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
-println("logscale = ", logscale)
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
 #solver_optim = BBO_adaptive_de_rand_1_bin_radiuslimited()
 sampler = NUTS(0.8) #nothing
@@ -81,7 +81,7 @@ ODE_options = (AutoTsit5(Rosenbrock23()),)
 #Multistart settings (LHS) for robust optimisation from weak/default initial guesses.
 #All bounds are in transformed space (i.e. log-scale for logscale parameters).
 run_count = 1
-max_threads_simul = 21
+max_threads_simul = Threads.nthreads()
 max_threads_runs = min(run_count, max_threads_simul)
 max_threads_simul = Int(max(floor(max_threads_simul/run_count),1))
 Multistart_nstarts = 2
@@ -212,6 +212,14 @@ end
 
 results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
 
+
+#create lockfile to ensure no multiwriting
+mkpidlock(lock_path_output; stale_age=30, wait=true) do
+open(joinpath(path,"output.txt"), "a") do io
+redirect_stdout(io) do
+    println("My id is ", parsed)
+    println()
+    
 #Print everything, including possibly originals
 for a in keys(results)
     if a == :estimates
@@ -240,13 +248,17 @@ for a in keys(results)
     end
 end
 
-println("Done")
+end
+end
+end
+
 
 catch e
-   @warn e
-end
-
-end
-end
-end
+    mkpidlock(lock_path_output; stale_age=30, wait=true) do
+    open(joinpath(path,"output.txt"), "a") do io_err
+    redirect_stderr(io_err) do
+        @warn "At id $(parsed) encountered error: " e
+    end
+    end
+    end
 end

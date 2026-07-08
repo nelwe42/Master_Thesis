@@ -1,8 +1,9 @@
 #!/bin/bash
-#SBATCH --partition=intelsr_medium
+#SBATCH --array=1-2
+#SBATCH --partition=intelsr_short
 #SBATCH --account=ag_irumls_hasenauer
-#SBATCH --time=24:00:00
-#SBATCH --ntasks=22
+#SBATCH --time=02:00:00
+#SBATCH --ntasks=1
 #SBATCH --chdir=~
 
-julia --threads=22 --project=/home/s6newell_hpc/EpilepsyModels /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl
+julia --threads=2 --project=/home/s6newell_hpc/EpilepsyModels /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl $SLURM_ARRAY_TASK_ID
