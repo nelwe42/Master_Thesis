@@ -23,14 +23,13 @@ using FileWatching
 path = "/home/s6newell_hpc"
 lock_path_output = "./output.txt.lock"
 
-try
-
 #Can e.g. use parsed job array id as seed here
 if !isempty(ARGS)
     parsed = parse(Int, ARGS[1])
 else
     parsed = 42
 end
+
 #set seed
 Random.seed!(parsed)
 
@@ -57,7 +56,7 @@ Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
 Adaptation_steps = 1000
-Max_Time = 5*60
+Max_Time = 5*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 2 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
@@ -102,7 +101,7 @@ sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = true
 hierarchical_optimisation = false
-sampling = true
+sampling = false
 plotting = false
 show_original = true
 
@@ -210,6 +209,8 @@ else
     eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
 end
 
+try
+
 results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
 
 
@@ -228,26 +229,26 @@ for a in keys(results)
             println(estimate.u)
             if show_original
                 if hierarchical_optimisation
-                    println()
+                    #println()
                     println("PK output:")
                     println(estimate.estimate_PK.original)
-                    println()
+                    #println()
                     println("Seizure output:")
                     println(estimate.estimate_Seizure.original)
                 elseif !sampling
-                    println()
+                    #println()
                     println(estimate.raw.original)
                 end
             end
         end
-        println()
+        #println()
     elseif !(a==:datas)
         println("$(a):")
         println(results[a])
-        println()
+        #println()
     end
 end
-
+println()
 end
 end
 end

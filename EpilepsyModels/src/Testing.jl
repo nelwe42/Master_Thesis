@@ -138,6 +138,7 @@ end
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+seizure_model = SeizureSANAD()
 
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -369,15 +370,35 @@ end
 #=
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
+using DifferentialEquations
+using Distributions
 
+N = Normal
 Θ = (σ=1.0, v = 3.0)
-exp = :(D(s) ~ (s-3.0))
+function sys(Θ)
+exp = :(Normal(s,σ))
 @parameters σ=Θ.σ v=Θ.v
+@parameters noise(..)=N
 @variables s(t)=0.0
 @variables obs(t) 
-eqs = [D(s) ~ s+3.0, obs ~ build_function(exp, [s,σ])]
-
+parse_dict = Dict(:obs => obs, :σ => σ, :s => s, :v => v)
+eqs = [D(s) ~ s+3.0, obs ~ parse_expr_to_symbolic(exp, parse_dict)]
+#This second one works but only as long as is at top scope, not in function
+#eqs = [D(s) ~ s+3.0, obs ~ parse_expr_to_symbolic(exp, @__MODULE__)]
+#Eval also uses global/module scope
+#eqs = [D(s) ~ s+3.0, obs ~ @eval $exp]
+#This creates system successfully, but problem creation crashes
+#eqs = [D(s) ~ s+3.0, obs ~ noise(s,σ)]
+eqs2 = [D(s) ~ s+3.0, obs ~ Normal(s,σ)]
+println(eqs==eqs2)
+println(typeof(eqs[1]))
+println(typeof(eqs[2]))
+println(eqs)
 @mtkcompile internal_model = System(eqs, t)
+return internal_model
+end
+
+internal_model = sys(Θ)
 prob = ODEProblem{true, SciMLBase.FullSpecialize}(internal_model, [], (0.0,10.0))
 sol = solve(prob)
 =#

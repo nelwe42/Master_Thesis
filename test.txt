@@ -2006,3 +2006,187 @@ My id is 1
 My id is 2
 My id is 3
 My id is 4
+┌ Error: Exception while generating log record in module Main at /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl:260
+│   exception =
+│    UndefVarError: `parsed` not defined in `Main`
+│    Suggestion: check for spelling errors or missing imports.
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ./logging/logging.jl:385 [inlined]
+│      [2] (::var"#6#17"{UndefVarError})()
+│        @ Main ~/EpilepsyModels/src/MultiData.jl:260
+│      [3] (::Base.RedirectStdStream)(thunk::var"#6#17"{UndefVarError}, stream::IOStream)
+│        @ Base ./stream.jl:1464
+│      [4] #5
+│        @ ~/EpilepsyModels/src/MultiData.jl:259 [inlined]
+│      [5] open(::var"#5#16"{UndefVarError}, ::String, ::Vararg{String}; kwargs::@Kwargs{})
+│        @ Base ./io.jl:410
+│      [6] open
+│        @ ./io.jl:407 [inlined]
+│      [7] (::var"#4#15"{UndefVarError})()
+│        @ Main ~/EpilepsyModels/src/MultiData.jl:258
+│      [8] mkpidlock(f::var"#4#15"{UndefVarError}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64, wait::Bool})
+│        @ FileWatching.Pidfile ~/.julia/juliaup/julia-1.11.7+0.x64.linux.gnu/share/julia/stdlib/v1.11/FileWatching/src/pidfile.jl:95
+│      [9] #mkpidlock#6
+│        @ ~/.julia/juliaup/julia-1.11.7+0.x64.linux.gnu/share/julia/stdlib/v1.11/FileWatching/src/pidfile.jl:90 [inlined]
+│     [10] top-level scope
+│        @ ~/EpilepsyModels/src/MultiData.jl:257
+│     [11] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:562
+│     [12] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:323
+│     [13] _start()
+│        @ Base ./client.jl:531
+└ @ Main ~/EpilepsyModels/src/MultiData.jl:260
+┌ Error: Exception while generating log record in module Main at /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl:260
+│   exception =
+│    UndefVarError: `parsed` not defined in `Main`
+│    Suggestion: check for spelling errors or missing imports.
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ./logging/logging.jl:385 [inlined]
+│      [2] (::var"#6#17"{UndefVarError})()
+│        @ Main ~/EpilepsyModels/src/MultiData.jl:260
+│      [3] (::Base.RedirectStdStream)(thunk::var"#6#17"{UndefVarError}, stream::IOStream)
+│        @ Base ./stream.jl:1464
+│      [4] #5
+│        @ ~/EpilepsyModels/src/MultiData.jl:259 [inlined]
+│      [5] open(::var"#5#16"{UndefVarError}, ::String, ::Vararg{String}; kwargs::@Kwargs{})
+│        @ Base ./io.jl:410
+│      [6] open
+│        @ ./io.jl:407 [inlined]
+│      [7] (::var"#4#15"{UndefVarError})()
+│        @ Main ~/EpilepsyModels/src/MultiData.jl:258
+│      [8] mkpidlock(f::var"#4#15"{UndefVarError}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64, wait::Bool})
+│        @ FileWatching.Pidfile ~/.julia/juliaup/julia-1.11.7+0.x64.linux.gnu/share/julia/stdlib/v1.11/FileWatching/src/pidfile.jl:95
+│      [9] #mkpidlock#6
+│        @ ~/.julia/juliaup/julia-1.11.7+0.x64.linux.gnu/share/julia/stdlib/v1.11/FileWatching/src/pidfile.jl:90 [inlined]
+│     [10] top-level scope
+│        @ ~/EpilepsyModels/src/MultiData.jl:257
+│     [11] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:562
+│     [12] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:323
+│     [13] _start()
+│        @ Base ./client.jl:531
+└ @ Main ~/EpilepsyModels/src/MultiData.jl:260
+┌ Warning: At id 2 encountered error: 
+│   e =
+│    UndefVarError: `#estimate#10` not defined in `Main`
+│    Suggestion: check for spelling errors or missing imports.
+└ @ Main ~/EpilepsyModels/src/MultiData.jl:261
+┌ Warning: At id 1 encountered error: 
+│   e =
+│    UndefVarError: `#estimate#10` not defined in `Main`
+│    Suggestion: check for spelling errors or missing imports.
+└ @ Main ~/EpilepsyModels/src/MultiData.jl:261
+┌ Warning: At id 1 encountered error: 
+│   e =
+│    TaskFailedException
+│    
+│        nested task error: TypeError: in keyword argument maxtime, expected AbstractFloat, got a value of type Int64
+│        Stacktrace:
+│         [1] estimate(new_mod::FullModel{PKLEV{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, NTuple{4, Symbol}, Tuple{}, @NamedTuple{d::SVector{1, Symbol}, s::SVector{1, Symbol}, S::SVector{1, Symbol}, obs::SVector{1, Tuple{Symbol, Symbol}}}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}}}, SeizureBasic{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, Tuple{}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}}}, BigFourPersonGenerator{Float64, MixtureModel{Univariate, Discrete, Binomial{Float64}, Categorical{Float64, Vector{Float64}}}}, PolyDosesRandom{@NamedTuple{d_LEV::@NamedTuple{min::Float64, avg_num::Float64, max_num::Int64}}, Categorical{Float64, Vector{Float64}}, Categorical{Float64, Vector{Float64}}, Tuple{Symbol}, Tuple{Symbol}, Float64, Int64}}, data::Tuple{Main.EpilepsyModels.Person{@NamedTuple{height::Float64, weight::Float64, kidney_disease::Float64, CLCr::Float64, prev_CBZ::Float64, smoking::Float64, seizure_type::Float64, age::Int64, gender::Float64}, Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}, Vector{@NamedTuple{time::Union{AbstractFloat, Tuple{AbstractFloat, AbstractFloat}}, count::Union{Bool, Int64}}}, Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}, Vector{Any}}, Main.EpilepsyModels.Person{@NamedTuple{height::Float64, weight::Float64, kidney_disease::Float64, CLCr::Float64, prev_CBZ::Float64, smoking::Float64, seizure_type::Float64, age::Int64, gender::Float64}, Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}, Vector{@NamedTuple{time::Union{AbstractFloat, Tuple{AbstractFloat, AbstractFloat}}, count::Union{Bool, Int64}}}, Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}, Vector{Any}}})
+│           @ Main ~/EpilepsyModels/src/MultiData.jl:204
+│         [2] macro expansion
+│           @ ~/EpilepsyModels/src/EpilepsyModels.jl:1275 [inlined]
+│         [3] (::Main.EpilepsyModels.var"#1212#threadsfor_fun#700"{Main.EpilepsyModels.var"#1212#threadsfor_fun#698#701"{Int64, FullModel{PKLEV{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, NTuple{4, Symbol}, Tuple{}, @NamedTuple{d::SVector{1, Symbol}, s::SVector{1, Symbol}, S::SVector{1, Symbol}, obs::SVector{1, Tuple{Symbol, Symbol}}}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}}}, SeizureBasic{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, Tuple{}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}}}, BigFourPersonGenerator{Float64, MixtureModel{Univariate, Discrete, Binomial{Float64}, Categorical{Float64, Vector{Float64}}}}, PolyDosesRandom{@NamedTuple{d_LEV::@NamedTuple{min::Float64, avg_num::Float64, max_num::Int64}}, Categorical{Float64, Vector{Float64}}, Categorical{Float64, Vector{Float64}}, Tuple{Symbol}, Tuple{Symbol}, Float64, Int64}}, typeof(eval), Int64, ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(PK = ViewAxis(1:7, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)), Seizure = ViewAxis(8:9, Axis(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))))}}}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{ComponentArray}, Vector{ComponentArray}, Vector{NamedTuple}, Vector{Tuple{Vararg{Main.EpilepsyModels.Person}}}, Vector{Int64}, UnitRange{Int64}}})(tid::Int64; onethread::Bool)
+│           @ Main.EpilepsyModels ./threadingconstructs.jl:253
+│         [4] #1212#threadsfor_fun
+│           @ ./threadingconstructs.jl:220 [inlined]
+│         [5] (::Base.Threads.var"#1#2"{Main.EpilepsyModels.var"#1212#threadsfor_fun#700"{Main.EpilepsyModels.var"#1212#threadsfor_fun#698#701"{Int64, FullModel{PKLEV{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, NTuple{4, Symbol}, Tuple{}, @NamedTuple{d::SVector{1, Symbol}, s::SVector{1, Symbol}, S::SVector{1, Symbol}, obs::SVector{1, Tuple{Symbol, Symbol}}}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}}}, SeizureBasic{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, Tuple{}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}}}, BigFourPersonGenerator{Float64, MixtureModel{Univariate, Discrete, Binomial{Float64}, Categorical{Float64, Vector{Float64}}}}, PolyDosesRandom{@NamedTuple{d_LEV::@NamedTuple{min::Float64, avg_num::Float64, max_num::Int64}}, Categorical{Float64, Vector{Float64}}, Categorical{Float64, Vector{Float64}}, Tuple{Symbol}, Tuple{Symbol}, Float64, Int64}}, typeof(eval), Int64, ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(PK = ViewAxis(1:7, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)), Seizure = ViewAxis(8:9, Axis(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))))}}}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{ComponentArray}, Vector{ComponentArray}, Vector{NamedTuple}, Vector{Tuple{Vararg{Main.EpilepsyModels.Person}}}, Vector{Int64}, UnitRange{Int64}}}, Int64})()
+│           @ Base.Threads ./threadingconstructs.jl:154
+└ @ Main ~/EpilepsyModels/src/MultiData.jl:261
+┌ Warning: At id 2 encountered error: 
+│   e =
+│    TaskFailedException
+│    
+│        nested task error: TypeError: in keyword argument maxtime, expected AbstractFloat, got a value of type Int64
+│        Stacktrace:
+│         [1] estimate(new_mod::FullModel{PKLEV{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, NTuple{4, Symbol}, Tuple{}, @NamedTuple{d::SVector{1, Symbol}, s::SVector{1, Symbol}, S::SVector{1, Symbol}, obs::SVector{1, Tuple{Symbol, Symbol}}}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}}}, SeizureBasic{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, Tuple{}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}}}, BigFourPersonGenerator{Float64, MixtureModel{Univariate, Discrete, Binomial{Float64}, Categorical{Float64, Vector{Float64}}}}, PolyDosesRandom{@NamedTuple{d_LEV::@NamedTuple{min::Float64, avg_num::Float64, max_num::Int64}}, Categorical{Float64, Vector{Float64}}, Categorical{Float64, Vector{Float64}}, Tuple{Symbol}, Tuple{Symbol}, Float64, Int64}}, data::Tuple{Main.EpilepsyModels.Person{@NamedTuple{height::Float64, weight::Float64, kidney_disease::Float64, CLCr::Float64, prev_CBZ::Float64, smoking::Float64, seizure_type::Float64, age::Int64, gender::Float64}, Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}, Vector{@NamedTuple{time::Union{AbstractFloat, Tuple{AbstractFloat, AbstractFloat}}, count::Union{Bool, Int64}}}, Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}, Vector{Any}}, Main.EpilepsyModels.Person{@NamedTuple{height::Float64, weight::Float64, kidney_disease::Float64, CLCr::Float64, prev_CBZ::Float64, smoking::Float64, seizure_type::Float64, age::Int64, gender::Float64}, Vector{@NamedTuple{t::AbstractFloat, dose::AbstractFloat, state::Symbol}}, Vector{@NamedTuple{time::Union{AbstractFloat, Tuple{AbstractFloat, AbstractFloat}}, count::Union{Bool, Int64}}}, Vector{@NamedTuple{timepoint::AbstractFloat, measurement::AbstractFloat, state::Tuple{Symbol, Symbol}}}, Vector{Any}}})
+│           @ Main ~/EpilepsyModels/src/MultiData.jl:204
+│         [2] macro expansion
+│           @ ~/EpilepsyModels/src/EpilepsyModels.jl:1275 [inlined]
+│         [3] (::Main.EpilepsyModels.var"#1212#threadsfor_fun#700"{Main.EpilepsyModels.var"#1212#threadsfor_fun#698#701"{Int64, FullModel{PKLEV{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, NTuple{4, Symbol}, Tuple{}, @NamedTuple{d::SVector{1, Symbol}, s::SVector{1, Symbol}, S::SVector{1, Symbol}, obs::SVector{1, Tuple{Symbol, Symbol}}}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}}}, SeizureBasic{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, Tuple{}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}}}, BigFourPersonGenerator{Float64, MixtureModel{Univariate, Discrete, Binomial{Float64}, Categorical{Float64, Vector{Float64}}}}, PolyDosesRandom{@NamedTuple{d_LEV::@NamedTuple{min::Float64, avg_num::Float64, max_num::Int64}}, Categorical{Float64, Vector{Float64}}, Categorical{Float64, Vector{Float64}}, Tuple{Symbol}, Tuple{Symbol}, Float64, Int64}}, typeof(eval), Int64, ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(PK = ViewAxis(1:7, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)), Seizure = ViewAxis(8:9, Axis(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))))}}}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{ComponentArray}, Vector{ComponentArray}, Vector{NamedTuple}, Vector{Tuple{Vararg{Main.EpilepsyModels.Person}}}, Vector{Int64}, UnitRange{Int64}}})(tid::Int64; onethread::Bool)
+│           @ Main.EpilepsyModels ./threadingconstructs.jl:253
+│         [4] #1212#threadsfor_fun
+│           @ ./threadingconstructs.jl:220 [inlined]
+│         [5] (::Base.Threads.var"#1#2"{Main.EpilepsyModels.var"#1212#threadsfor_fun#700"{Main.EpilepsyModels.var"#1212#threadsfor_fun#698#701"{Int64, FullModel{PKLEV{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, NTuple{4, Symbol}, Tuple{}, @NamedTuple{d::SVector{1, Symbol}, s::SVector{1, Symbol}, S::SVector{1, Symbol}, obs::SVector{1, Tuple{Symbol, Symbol}}}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)}}}}}, SeizureBasic{ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, Tuple{}, @NamedTuple{lb::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}, ub::ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))}}}}}, BigFourPersonGenerator{Float64, MixtureModel{Univariate, Discrete, Binomial{Float64}, Categorical{Float64, Vector{Float64}}}}, PolyDosesRandom{@NamedTuple{d_LEV::@NamedTuple{min::Float64, avg_num::Float64, max_num::Int64}}, Categorical{Float64, Vector{Float64}}, Categorical{Float64, Vector{Float64}}, Tuple{Symbol}, Tuple{Symbol}, Float64, Int64}}, typeof(eval), Int64, ComponentVector{Float64, Vector{Float64}, Tuple{Axis{(PK = ViewAxis(1:7, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, v2 = 6, σ = 7)), Seizure = ViewAxis(8:9, Axis(a = 1, b = ViewAxis(2:2, Shaped1DAxis((1,))))))}}}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{Real}, Vector{ComponentArray}, Vector{ComponentArray}, Vector{NamedTuple}, Vector{Tuple{Vararg{Main.EpilepsyModels.Person}}}, Vector{Int64}, UnitRange{Int64}}}, Int64})()
+│           @ Base.Threads ./threadingconstructs.jl:154
+└ @ Main ~/EpilepsyModels/src/MultiData.jl:261
+My id is 2
+
+Estimates:
+(PK = (k_abs = 48.000000000099895, c1 = 62.982437728009, c2 = 0.16733843196841705, c3 = 0.7600458493056403, v1 = 32.26751960305488, v2 = 1.7956204415634265, σ = 0.07308919274640761), Seizure = (a = 4.200263449047166, b = [0.3173208390497428]))
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     2.704990e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 2.78e-17 ≰ 0.0e+00
+    |x - x'|/|x'|          = 6.61e-18 ≰ 0.0e+00
+    |f(x) - f(x')|         = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 0.00e+00 ≤ 0.0e+00
+    |g(x)|                 = 4.09e-04 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   20  (vs limit 300)
+    Iterations:    8
+    f(x) calls:    624
+    ∇f(x) calls:   194
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 35.999999999900105, c1 = 33.017562271991, c2 = 0.08266156803158295, c3 = 0.6380458493056403, v1 = 2.5675196030548797, v2 = 1.0543795584365736, σ = 0.12691080725359238), Seizure = (a = 0.2002634490471662, b = [0.15732083904974278]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.42857142857023933, c1 = 0.34393294033323957, c2 = 0.3306462721263318, c3 = 5.22988401070197, v1 = 0.08644847148332928, v2 = 0.3699577398023065, σ = 0.6345540362679619), Seizure = (a = 0.05006586226179155, b = [0.9832552440608924]))]
+mean_squared_errors:
+Real[266.03979873688854]
+rel_squared_errors:
+Real[3.2532528241603145]
+times:
+Real[20.054394006729126]
+obj_diffs:
+Real[-6.3600434912206225]
+
+My id is 1
+
+Estimates:
+(PK = (k_abs = 69.2599339283915, c1 = 62.169790820559484, c2 = 2.2815709092300995, c3 = 0.7319711195240906, v1 = 41.540120000582384, v2 = 0.8447997410820972, σ = 0.044058535443875946), Seizure = (a = 2.799189195092572, b = [-9.999999999857506e-5]))
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     2.203474e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 8.72e-11 ≰ 0.0e+00
+    |x - x'|/|x'|          = 2.06e-11 ≰ 0.0e+00
+    |f(x) - f(x')|         = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 0.00e+00 ≤ 0.0e+00
+    |g(x)|                 = 2.20e-05 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   23  (vs limit 300)
+    Iterations:    7
+    f(x) calls:    565
+    ∇f(x) calls:   217
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 14.740066071608496, c1 = 33.830209179440516, c2 = 2.0315709092300995, c3 = 0.6099711195240906, v1 = 11.840120000582385, v2 = 2.005200258917903, σ = 0.15594146455612407), Seizure = (a = 1.200810804907428, b = [0.16009999999999858]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.17547697704295828, c1 = 0.3523980122858387, c2 = 8.126283636920398, c3 = 4.999763274787628, v1 = 0.39865723907684797, v2 = 0.703579038216808, σ = 0.7797073227806203), Seizure = (a = 0.300202701226857, b = [1.000624999999991]))]
+mean_squared_errors:
+Real[167.99479023245274]
+rel_squared_errors:
+Real[10.393595744340395]
+times:
+Real[23.28472399711609]
+obj_diffs:
+Real[-7.6260425126964435]
+

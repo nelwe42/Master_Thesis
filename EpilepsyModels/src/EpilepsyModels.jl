@@ -17,7 +17,7 @@ using MCMCChains
 
 export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, generate_data_modified, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit, multi_data_run,
 BasicDoses, PolyDosesRandom, PolyDoses, BigFourDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
-BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, SeizureVPA, SeizureMult, FullModel
+BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, SeizureVPA, SeizureMult, SeizureSANAD, FullModel
 
 include("Person Generator.jl")
 include("PK Model.jl")
@@ -109,7 +109,7 @@ function get_negloglikelihood(θ::ComponentArray, p::NamedTuple)
         loglikelihoods = Array{Union{Float64, ForwardDiff.Dual}}(undef, individuals)
         #If need all solutions at once for partial likelihood, collect them here
         if p.cont_seizure
-            sols = Array{SciMLBase.AbstractNoTimeSolution}(undef, individuals)
+            sols = Array{ODESolution}(undef, individuals)
         end
         keep_going = Threads.Atomic{Bool}(true)
         Threads.@threads for j in 1:min(individuals, thread_num)
@@ -932,8 +932,6 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     times = Array{Real}(undef, not_parallel)
     for j in 1:not_parallel
         starts_thread = [starts_list[i] for i in ((j-1)*thread_num+1):min(j*thread_num, n_starts)]
-        println("Starts: ", starts_thread, length(starts_thread))
-        println
         start = time()
         chains[j] = sample(sampling_rng, model, sampler, MCMCThreads(), (per_chain+nadapts), length(starts_thread); n_adapts = nadapts, param_names=labels_θ, initial_params = starts_thread, chain_type=Chains, sampling_options...)
         ending = time()

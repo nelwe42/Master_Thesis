@@ -5,6 +5,8 @@ using Parameters
 using ComponentArrays
 using StaticArrays
 using Combinatorics
+using NonlinearSolve
+using DifferentialEquations
 
 #Overtype of Seizure Models that will go into full model
 abstract type SeizureModel end
@@ -229,6 +231,7 @@ function linear_predictor(m::SeizureSANAD, sol, n::AbstractFloat, s::Int; person
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
+    return θ.a*person.covariates.age/500
 end
 
 #2) Implement Seizure Probabilities, Likelihoods
@@ -504,6 +507,34 @@ end
 
 #3.2) Coy type models
 
+#Get hazard at each particular timepoint for person and event S
+function get_hazard_for_s(m::CoxTypeModels, sol::ODESolution; person::Person, t::AbstractFloat, event::Int, names::NamedTuple)
+    if m.baseline isa Vector
+        baseline = m.baseline[min(event, length(m.baseline))]
+    else
+        baseline = m.baseline
+    end
+    pred = linear_predictor(m, sol, t, event, person=person, names=names)
+    if isnothing(pred)
+        return NaN
+    end
+    if baseline isa Function
+        return baseline(t)*exp(pred)
+    else
+        return baseline*exp(pred)
+    end
+end
+
+#Output cdf as time dependent function, is given by 1-exp(-integral from 0 to t over h(s) ds)
+function cox_integral(m::CoxTypeModels, sol, person::Person; endpoint::AbstractFloat, event::Int, start::AbstractFloat = zero(typeof(endpoint)), names::NamedTuple)
+    f(u, p, t) = get_hazard_for_s(m, sol, person=person, t=t, event=event, names=names) 
+    u0 = 0.0
+    tspan = (start, endpoint)
+    prob = ODEProblem{false, SciMLBase.FullSpecialize}(f, u0, tspan, [])
+    sol = solve(prob, AutoTsit5(Rosenbrock23()))
+    return sol
+end
+
 function generate_seizures!(m::CoxTypeModels, sol, person::Person; endpoint::AbstractFloat, start::AbstractFloat = zero(typeof(endpoint)), max_events::Union{Int, Nothing} = nothing, names::NamedTuple)
     if isnothing(max_events)
         S = Inf
@@ -512,22 +543,17 @@ function generate_seizures!(m::CoxTypeModels, sol, person::Person; endpoint::Abs
     end
     t = start
     s = one(Int64)
+    U = Uniform(0,1)
     while t<endpoint && s<=S
-        #Generate next seizure time from current distribution
-        if m.baseline isa Vector
-            baseline = m.baseline[min(s, length(m.baseline))]
-        else
-            baseline = m.baseline
-        end
-        if baseline isa Function
-            h(t) = baseline(t)*exp(linear_predictor(m, sol, t, s, person=data[j], names=names, θ=θ))
-        else
-            h(t) = baseline*exp(linear_predictor(m, sol, t, s, person=data[j], names=names, θ=θ))
-        end
-        #TODO sample from inhomogenous exponential with intensity h(t)
-
-        
-        t += T
+        #sample from distribution for next time by inverse of survival function
+        u = rand(U)
+        sol2 = cox_integral(m, sol, person, endpoint=endpoint, event = s, start=t, names=names)
+        p = (point=u, sol=sol2)
+        f(u,p) = exp(-p.sol(u)) - p.point
+        prob = NonlinearProblem(f, t, p)
+        sol3 = solve(prob)
+        T=sol3.u
+        t = T
         s += 1
         if t<endpoint
             push!(person.seizure_counts, (time = t, count = true))
@@ -935,7 +961,7 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
     return output
 end
 
-function get_hazard(m::CoxTypeModels, sol::SciMLBase.AbstractNoTimeSolution; person::Person, t::AbstractFloat, θ::ComponentArray = mod.θ, names::NamedTuple)
+function get_hazard(m::CoxTypeModels, sol::ODESolution; person::Person, t::AbstractFloat, θ::ComponentArray = mod.θ, names::NamedTuple)
     #Find where in seizure counts we are by finding last seizure before t, if none still at first
     index = findlast(x -> x<=t, [(count.time isa Tuple ? count.time[1] : count.time) for count in person.seizure_counts])
     if isnothing(index)
