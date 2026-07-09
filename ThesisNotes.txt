@@ -207,3 +207,13 @@ Note somewhere for seizuremult, negative binomial a in logscale doesnt really ma
 SeizureMult: same as basic just now exp, multiplicative treatment effect
 -> no longer general timeframe since while Poisson generalises, sum of exponential doesnt
 -> no more problems with b being too large for doses
+
+SeizureSANAD: 
+linear predictor = a1*male + a2*age + a3*focal - b^T*s(t, idxs=names.s)
+-refrained from splitting according to type, left out most covariates
+-based on Modelling seizure rates rather than time to an event within clinical trials of antiepileptic drugs
+-true value a1 log of gender effect arm B
+-a2 calculated as slope of age categories reported in arm B (exp(a2*50) = 0.87)
+-focal effect guess based on negative binomial intercepts from same paper
+-b true values based on effects reported, LEV one is LTG arm B, not really accurate since hazard ratio and 
+    not exponent but otherwise 1.0 doesnt make sense

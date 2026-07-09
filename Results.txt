@@ -1545,3 +1545,31 @@ True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, 
 Relative errors: (PK = (k_abs = 0.3732594833737184, c1 = 0.0036482333448878065, c2 = 0.005736446089327062, c3 = 0.0003576598395780601, v1 = 0.003849787679170118, σ = 0.06169679195230468), Seizure = (a = 0.12141462023875768, a1 = 0.38545739144474966, a2 = 0.06602661805710501, b1 = 0.2819513213036926, b2 = 0.7361603077166577))
 Absolute errors: (PK = (k_abs = 16.66230333780279, c1 = 0.05052073536000634, c2 = 0.0030689986577899786, c3 = 0.0003129523596308026, v1 = 0.0010779405501676331, σ = 0.012339358390460936), Seizure = (a = 0.7406291834564218, a1 = 0.38545739144474966, a2 = 0.11884791250278903, b1 = 3.7499525733391117, b2 = 1.7667847385199784))
 -> looks reasonably good for limited data
+
+Results first tests SeizureSANAD:
+Estimate: (PK = (k_abs = 70.345757149866, c1 = 96.65843909040025, c2 = 0.1686156185588497, c3 = 0.12641941678283086, v1 = 30.616109329823157, v2 = 2.4283379312385978, σ = 0.21860143501415522), Seizure = (a1 = -1.5026761654409924, a2 = -0.0009409953593510368, a3 = 1.695083191077956, b = [-0.24670113164413904]))
+Retcode: Failure
+Objective: 35.471808380792446
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 44.3174441060454
+* Status: failure (exceeded time limit of 900.0)
+
+ * Candidate solution
+    Final objective value:     3.547181e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 1.70e+00 ≰ 0.0e+00
+    |x - x'|/|x'|          = 3.71e-01 ≰ 0.0e+00
+    |f(x) - f(x')|         = 7.97e+02 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 2.49e+01 ≰ 0.0e+00
+    |g(x)|                 = 2.74e+00 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   975  (vs limit 900)
+    Iterations:    1
+    f(x) calls:    193
+    ∇f(x) calls:   81
+-> Problem: True values clearly not minimum

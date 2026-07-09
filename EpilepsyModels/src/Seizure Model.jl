@@ -126,7 +126,7 @@ end
 
 #Outer Constructor to make default for N drugs
 function SeizureNegativeBinomial(N::Int64)
-    obj = SeizureNegativeBinomial(θ = ComponentArray((a = 2.0, o = 0.01, prev = 0.0, b = SA[0 for i in 1:N])))
+    obj = SeizureNegativeBinomial(θ = ComponentArray((a = 2.0, o = 0.01, prev = 0.0, b = SA[[0 for i in 1:N]...])))
     return obj
 end
 
@@ -215,23 +215,44 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
 end
 
 @with_kw struct SeizureSANAD{T<:ComponentArray, T2<:Tuple, T3<:Union{Function, Real, Tuple{Vararg{Union{Function, Real}}}}, T4<:NamedTuple} <: CoxTypeModels
-    θ::T=ComponentArray((a = 0.5, a1 = 0.1, a2 = 0.0, b1 = 10.0, b2 = 0.0)) 
-    cov::T2 = (:age, :seizure_type) 
-    baseline::T3 = 2.0
-    bounds::T4 = (lb = ComponentArray((a = 0.0, a1 = -10.0, a2 = -10.0, b1 = 0.0, b2 = -10.0)) , ub = ComponentArray((a = 100.0, a1 = 10.0, a2 = 10.0, b1 = 100.0, b2 = 10.0)) )
+    θ::T=ComponentArray((a1 = 0.0, a2 = 0.0, a3 = 0.0, b = SA[0.0])) 
+    cov::T2 = (:age, :seizure_type, :gender) 
+    baseline::T3 = 0.25
+    bounds::T4 = (lb = ComponentArray((a1 = -5.0, a2 = -5.0, a3 = -5.0, b = SA[[-0.5 for i in eachindex(θ.b)]...])), ub = ComponentArray((a1 = 5.0, a2 = 5.0, a3 = 5.0, b = SA[[0.2 for i in eachindex(θ.b)]...])))
+end
+
+#Outer Constructor to make default for N drugs
+function SeizureSANAD(N::Int64)
+    obj = SeizureSANAD(θ = ComponentArray((a1 = 0.0, a2 = 0.0, a3 = 0.0, b = SA[[0.0 for i in 1:N]...])))
+    return obj
+end
+
+#Outer Constructor to make default for drugs in pk model
+function SeizureSANAD(m::PKModel)
+    obj = SeizureSANAD(length(m.keys.s))
+    return obj
 end
 
 #return term in exponential for pwp model for person at time n for event s
-function linear_predictor(m::SeizureSANAD, sol, n::AbstractFloat, s::Int; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+function linear_predictor(m::SeizureSANAD, sol, t::AbstractFloat, s::Int; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
     #Check valid event number
     if s <= 0
         return nothing
     end
+    pred = θ.a1*(1-person.covariates.gender)
+    if person.covariates.age isa Number
+        pred += θ.a2*person.covariates.age
+    else
+        #assume it is a function
+        pred += θ.a2*person.covariates.age(t)
+    end
+    pred += θ.a3*(person.covariates.seizure_type)
+    pred -= θ.b'*sol(t, idxs = names.s)
     #Check exposure is finite, what do we want here instead of n+1?
-    if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
+    if !isfinite(pred)
         return nothing
     end
-    return θ.a*person.covariates.age/500
+    return pred
 end
 
 #2) Implement Seizure Probabilities, Likelihoods
@@ -396,7 +417,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::CoxTypeModels, sols, d
     if length(data) != length(sols)
         error("Cannot compute seizure likelihood, solutions and data size do not match")
     end
-    S = max([length(person.seizure_counts) for person in data])
+    S = max([length(person.seizure_counts) for person in data]...)
     #Construct partial likelihood stratified by event number
     prob = zero(eltype(θ))
     #first sum over person
@@ -404,7 +425,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::CoxTypeModels, sols, d
         #Then sum over event number
         for s in 1:S
             #Check if event s occurs for person i and if not censored, count of false at event time means censored
-            delta = (length(data[i].seizure_counts)>=s && data[i].seizure_counts[s])
+            delta = (length(data[i].seizure_counts)>=s && data[i].seizure_counts[s].count)
             if delta
                 t = data[i].seizure_counts[s].time
                 contr = linear_predictor(m, sols[i], t, s, person=data[i], names=names, θ=θ)
@@ -415,14 +436,16 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::CoxTypeModels, sols, d
                 end
                 #normalising factor of partial likelihood
                 normalise = zero(eltype(θ))
+                people = Vector{Int64}()
                 for j in eachindex(data)
                     #Check if person j is at risk for event s at time t, check if have interval where censored in middle
                     if (length(data[j].seizure_counts)>=s-1 && (s==1 || ((data[j].seizure_counts[s-1].time isa Tuple) ? data[j].seizure_counts[s-1].time[2] : data[j].seizure_counts[s-1].time)<=t)) && 
-                        (!length(data[j].seizure_counts)>=s || ((data[j].seizure_counts[s].time isa Tuple) ? data[j].seizure_counts[s].time[1] : data[j].seizure_counts[s].time) >=t)
+                        (!(length(data[j].seizure_counts)>=s) || ((data[j].seizure_counts[s].time isa Tuple) ? data[j].seizure_counts[s].time[1] : data[j].seizure_counts[s].time) >=t)
                         
-                        contr = exp(linear_predictor(m, sols[j], t, s, person=data[j], names=names, θ=θ))
+                        push!(people,j)
+                        contr = linear_predictor(m, sols[j], t, s, person=data[j], names=names, θ=θ)
                         if !isnothing(contr)
-                            normalise += contr
+                            normalise += exp(contr)
                         else
                             return -Inf
                         end
@@ -530,7 +553,7 @@ function cox_integral(m::CoxTypeModels, sol, person::Person; endpoint::AbstractF
     f(u, p, t) = get_hazard_for_s(m, sol, person=person, t=t, event=event, names=names) 
     u0 = 0.0
     tspan = (start, endpoint)
-    prob = ODEProblem{false, SciMLBase.FullSpecialize}(f, u0, tspan, [])
+    prob = ODEProblem{false, SciMLBase.FullSpecialize}(f, u0, tspan, ())
     sol = solve(prob, AutoTsit5(Rosenbrock23()))
     return sol
 end
@@ -544,18 +567,21 @@ function generate_seizures!(m::CoxTypeModels, sol, person::Person; endpoint::Abs
     t = start
     s = one(Int64)
     U = Uniform(0,1)
-    while t<endpoint && s<=S
+    f(u,p) = exp(-p.sol(u)) - p.point
+    while start<=t<endpoint && s<=S
         #sample from distribution for next time by inverse of survival function
         u = rand(U)
         sol2 = cox_integral(m, sol, person, endpoint=endpoint, event = s, start=t, names=names)
         p = (point=u, sol=sol2)
-        f(u,p) = exp(-p.sol(u)) - p.point
         prob = NonlinearProblem(f, t, p)
         sol3 = solve(prob)
         T=sol3.u
+        if T<=t
+            break
+        end
         t = T
         s += 1
-        if t<endpoint
+        if start<t<endpoint
             push!(person.seizure_counts, (time = t, count = true))
         end
     end
@@ -751,7 +777,7 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple; estimate_param::Union
     return output
 end
 
-function draw_data_samples(mod::SeizureModel, sol; person::Person, interval::Tuple, names::NamedTuple, θ::ComponentArray = mod.θ, sample_nr::Int = 1000)
+function draw_data_samples(mod::SeizureModelNonrandom, sol; person::Person, interval::Tuple, names::NamedTuple, θ::ComponentArray = mod.θ, sample_nr::Int = 1000)
     if mod.timeframe.general_timeframe
         distribute = distribution(mod, sol, interval[1], person=person, record_interval=(interval[2]-interval[1]),names=names, θ=θ)
         if isnothing(distribute)
@@ -944,11 +970,11 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
             plot!(times, samples_estimate, label="Estimated hazard", linecolor = :red)
         end
         #add event times
-        times_event = [data[i].seizure_counts.time for i in indices if data[i].seizure_counts.count]
+        times_event = [data[i].seizure_counts[j].time for j in indices if data[i].seizure_counts[j].count]
         vline!(times_event, linecolor = :black, label = "Event times", linewidth=2)
-        censoring_ends = [data[i].seizure_counts.time for i in indices if (!data[i].seizure_counts.count && !(data[i].seizure_counts.time isa Tuple))]
+        censoring_ends = [data[i].seizure_counts[j].time for j in indices if (!data[i].seizure_counts[j].count && !(data[i].seizure_counts[j].time isa Tuple))]
         vline!(censoring_ends, linecolor = :purple, label = "Censoring times", linewidth=2)
-        censoring_middle = [data[i].seizure_counts.time for i in indices if (!data[i].seizure_counts.count && (data[i].seizure_counts.time isa Tuple))]
+        censoring_middle = [data[i].seizure_counts[j].time for j in indices if (!data[i].seizure_counts[j].count && (data[i].seizure_counts[j].time isa Tuple))]
         for interval in censoring_middle
             vspan!(collect(interval), color=:purple, alpha=0.3, label = "")
         end
@@ -961,7 +987,7 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
     return output
 end
 
-function get_hazard(m::CoxTypeModels, sol::ODESolution; person::Person, t::AbstractFloat, θ::ComponentArray = mod.θ, names::NamedTuple)
+function get_hazard(m::CoxTypeModels, sol::ODESolution; person::Person, t::AbstractFloat, θ::ComponentArray = m.θ, names::NamedTuple)
     #Find where in seizure counts we are by finding last seizure before t, if none still at first
     index = findlast(x -> x<=t, [(count.time isa Tuple ? count.time[1] : count.time) for count in person.seizure_counts])
     if isnothing(index)

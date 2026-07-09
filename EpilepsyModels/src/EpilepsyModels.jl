@@ -201,7 +201,7 @@ function get_negloglikelihood_Seizure(θ::ComponentArray, p::NamedTuple)
     #for keys in logscale take exponential in θ
     partial_transform_to_logscale_partwise!(θ_use, logscale = logscale, detransform = true)
     loglikeli = zero(eltype(θ_use))
-    if p.cont.seizure
+    if p.cont_seizure
         loglikeli = get_seizure_loglikelihood(θ_use, m.seizure_model, solutions, data, names=names)
     else
         for i in eachindex(data)
@@ -221,7 +221,7 @@ end
 function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
-    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     θ_use = deepcopy(θ)
     partial_transform_to_logscale!(θ_use, logscale = logscale)
@@ -233,7 +233,7 @@ end
 function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
-    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     θ_use = deepcopy(θ)
     #Solve before PK gets transferred into logscale
@@ -243,7 +243,7 @@ function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::Full
     end
     partial_transform_to_logscale!(θ_use, logscale = logscale)
     p_PK = (data = data, logscale = logscale, options = ODE_options, problems = problems, system = sys, indices_θ = indices_θ, axes_θ = getaxes(θ_use))
-    p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions)
+    p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions, cont_seizure = (m.seizure_model isa SeizureModelContinuous))
     
     negloglikeli = (PK = get_negloglikelihood_PK(θ_use.PK, p_PK), Seizure = get_negloglikelihood_Seizure(θ_use.Seizure, p_Seizure))
     return negloglikeli
@@ -282,7 +282,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
     sys = create_ode_system(m.pk_model)
-    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #get indices for setting θ
@@ -347,7 +347,7 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     end
 
     #Fit Seizure model
-    p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions)
+    p_Seizure = (m = m, data = data, logscale = logscale, names = names, solutions = solutions, cont_seizure = (m.seizure_model isa SeizureModelContinuous))
     objective_Seizure = OptimizationFunction(get_negloglikelihood_Seizure, Optimization.AutoForwardDiff())
     if isnothing(lb)
         problem_Seizure = OptimizationProblem(objective_Seizure, θ_0_Seizure, p_Seizure)
@@ -383,7 +383,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
     sys = create_ode_system(m.pk_model)
-    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #get indices for setting θ
@@ -709,7 +709,7 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
     sys = create_ode_system(m.pk_model)
-    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
     #create initial guess
     θ_0 = ComponentArray((PK = m.pk_model.θ, Seizure = m.seizure_model.θ)) 
     #get indices for setting θ
@@ -966,7 +966,7 @@ end
 function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, sandwich::Bool = true, ODE_options = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
-    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, person.seizure_counts[end].time[2])) for person in data)
+    problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
     indices_θ = [ModelingToolkit.parameter_index(sys, x).idx for x in keys(θ.PK)]
     p = (m = m, data = data, logscale = logscale, options = ODE_options, names=names, problems = problems, system = sys, indices_θ = indices_θ, cont_seizure = (m.seizure_model isa SeizureModelContinuous))
     return inverse_hessian(θ, p, confidence = confidence, logscale = logscale, finite_not_forward=finite_not_forward, sandwich = sandwich)
@@ -1077,7 +1077,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -1104,7 +1104,7 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -1165,7 +1165,7 @@ end
 #generate with a parameter modified with randomly drawn addition for specified indices and distributions, effects constant per person
 #is automatically updating, if no update_reg is passed then no updates
 #expects modifications as tuple of 2-tuples (index, distribution to add)
-function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.seizure_model.timeframe.inherent_timeframe:time, max_events::Union{Int, Nothing} = nothing, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_events::Union{Int, Nothing} = nothing, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
     #Check modification if functions have correct return type
     if any([(mod[2] isa Function && !(mod[2](1.0) isa Union{Number, Distribution})) for mod in modifications])
         error("Modification function has unsupported return type")
@@ -1208,7 +1208,7 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
     output = Plots.Plot[]
     if isnothing(endpoint)
         measurements_ends = Tuple(person.measurements[end].timepoint for person in data)
-        seizure_ends = Tuple(person.seizure_counts[end].time[2] for person in data)
+        seizure_ends = Tuple((person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time) for person in data)
         endpoint = max(measurements_ends...,seizure_ends...)
     end
     if isnothing(time_pk)
