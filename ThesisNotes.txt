@@ -217,3 +217,5 @@ linear predictor = a1*male + a2*age + a3*focal - b^T*s(t, idxs=names.s)
 -focal effect guess based on negative binomial intercepts from same paper
 -b true values based on effects reported, LEV one is LTG arm B, not really accurate since hazard ratio and 
     not exponent but otherwise 1.0 doesnt make sense
+-to make b more accurate took log of reported ratio divided by median concentration, CBZ and VPA with ratio 1
+    changed to 1.08 each

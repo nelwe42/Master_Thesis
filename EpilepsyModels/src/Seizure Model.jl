@@ -870,7 +870,7 @@ end
 
 function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
-    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
+    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true)
     
     output = Plots.Plot[]
     if !isnothing(sols_true)
@@ -891,7 +891,7 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
     else
         sols = sols_true
     end
-    if !isnothing(sols) && any(.!(SciMLBase.successful_retcode.(sols[individuals])))
+    if !isnothing(sols) && (any(.!(SciMLBase.successful_retcode.(sols[individuals]))) || (!isnothing(reference_covariates_index) && !(SciMLBase.successful_retcode(sols[reference_covariates_index]))))
         @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
         sols = nothing
     end
@@ -903,12 +903,12 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
     if !isnothing(estimate_param) && isnothing(sols2)
         error("Estimate solutions are missing")
     end
-    if !isnothing(sols2) && any(.!(SciMLBase.successful_retcode.(sols2[individuals])))
+    if !isnothing(sols2) && (any(.!(SciMLBase.successful_retcode.(sols2[individuals]))) || (!isnothing(reference_covariates_index) && !(SciMLBase.successful_retcode(sols2[reference_covariates_index]))))
         @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
         estimate_param = nothing
     end
     true_param = mod.θ
-    if !isnothing(sols_modified) && any(.!(SciMLBase.successful_retcode.(sols_modified[individuals])))
+    if !isnothing(sols_modified) && (any(.!(SciMLBase.successful_retcode.(sols_modified[individuals]))) || (!isnothing(reference_covariates_index) && !(SciMLBase.successful_retcode(sols_modified[reference_covariates_index]))))
         @warn "Unsuccessful ODE solve in true parameters modified with random effects, modified parameters will be ignored for plotting"
         sols_modified = nothing
     end
@@ -934,26 +934,67 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
         #Get timepoints and corresponding indices for plotting from seizure data
         indices = [index for index in eachindex(data[i].seizure_counts) if ((data[i].seizure_counts[index].time isa Tuple) && data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]) || 
                                                                             (!(data[i].seizure_counts[index].time isa Tuple) && data[i].seizure_counts[index].time >= time[1] && data[i].seizure_counts[index].time <= time[2])]
-        pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard", title = "Seizure Hazards for person $(i) from $(time[1]) to $(time[2])")
+        if isnothing(reference_covariates_index)
+            pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard", title = "Seizure Hazards for person $(i) from $(time[1]) to $(time[2])")
+        else
+            pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard normalised by reference covariates", title = "Seizure Hazards for person $(i) from $(time[1]) to $(time[2])")
+            ref_person = Person(covariates = data[reference_covariates_index].covariates, dosing=deepcopy(data[i].dosing), seizure_counts = deepcopy(data[i].seizure_counts), measurements = deepcopy(data[i].measurements))
+            if !isnothing(sols)
+                ref_sol = sols[reference_covariates_index]
+            end
+            if !isnothing(sols_modified)
+                ref_sol_modified = sols_modified[reference_covariates_index]
+            end
+            if !isnothing(estimate_param)
+                ref_sol_estimate = sols_estimated[reference_covariates_index]
+            end
+        end
         if !isnothing(sols)
             samples_true = [get_hazard(mod, sols[i], person=data[i], t=t, names = names) for t in time[1]:(1/sample_nr):time[2]]
             if any(isnothing.(samples_true))
                 @warn "Hazard for true parameters is not always well-defined"
                 sols = nothing
             end
+            if !isnothing(reference_covariates_index) && !isnothing(sols)
+                samples_ref = [get_hazard(mod, ref_sol, person=ref_person, t=t, names = names) for t in time[1]:(1/sample_nr):time[2]]
+                if any(isnothing.(samples_ref))
+                    @warn "Hazard for true parameters is not always well-defined"
+                    sols = nothing
+                else
+                    samples_true = [samples_true[i]/samples_ref[i] for i in eachindex(samples_true)]
+                end
+            end
         end
         if !isnothing(sols_modified)
             samples_mod = [get_hazard(mod, sols[i], person=data[i], t=t, names = names, θ = person_param[i]) for t in time[1]:(1/sample_nr):time[2]]
             if any(isnothing.(samples_mod))
-                @warn "Distribution for true parameters modified with random effects is not always well-defined"
+                @warn "Hazard for true parameters modified with random effects is not always well-defined"
                 sols_modified = nothing
+            end
+            if !isnothing(reference_covariates_index) && !isnothing(sols_modified)
+                samples_ref = [get_hazard(mod, ref_sol_modified, person=ref_person, t=t, names = names, θ = person_param[i]) for t in time[1]:(1/sample_nr):time[2]]
+                if any(isnothing.(samples_ref))
+                    @warn "Hazard for true parameters modified with random effects is not always well-defined"
+                    sols_modified = nothing
+                else
+                    samples_mod = [samples_mod[i]/samples_ref[i] for i in eachindex(samples_mod)]
+                end
             end
         end
         if !isnothing(estimate_param)
             samples_estimate = [get_hazard(mod, sols[i], person=data[i], t=t, names = names, θ = estimate_param) for t in time[1]:(1/sample_nr):time[2]]
             if any(isnothing.(samples_estimate))
-                @warn "Distribution for estimate parameters is not always well-defined"
+                @warn "Hazard for estimate parameters is not always well-defined"
                 estimate_param = nothing
+            end
+            if !isnothing(reference_covariates_index) && !isnothing(estimate_param)
+                samples_ref = [get_hazard(mod, ref_sol_estimate, person=ref_person, t=t, names = names, θ = estimate_param) for t in time[1]:(1/sample_nr):time[2]]
+                if any(isnothing.(samples_ref))
+                    @warn "Hazard for estimate parameters is not always well-defined"
+                    estimate_param = nothing
+                else
+                    samples_estimate = [samples_estimate[i]/samples_ref[i] for i in eachindex(samples_estimate)]
+                end
             end
         end
         #Plot hazards now

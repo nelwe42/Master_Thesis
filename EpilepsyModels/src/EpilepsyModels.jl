@@ -359,8 +359,9 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     partial_transform_to_logscale_partwise!(estimate_Seizure.u, logscale = logscale, detransform = true)
 
     if run_CI
-        CI = inverse_hessian(estimate.u, p, confidence = confidence, logscale = logscale, finite_not_forward = finite_not_forward, sandwich = sandwich)
-        estimate = (u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure, CI = CI)
+        estimate_u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u)
+        CI = inverse_hessian(estimate_u, p, confidence = confidence, logscale = logscale, finite_not_forward = finite_not_forward, sandwich = sandwich)
+        estimate = (u = estimate_u, retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure, CI = CI)
     else
         estimate = (u = ComponentVector(PK = estimate_PK.u, Seizure = estimate_Seizure.u), retcode = estimate_Seizure.retcode, objective = (PK = estimate_PK.objective, Seizure = estimate_Seizure.objective), estimate_PK = estimate_PK, estimate_Seizure = estimate_Seizure)
     end
@@ -670,7 +671,7 @@ function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::Ab
     #transform parameters back into non logscale
     partial_transform_to_logscale!(estimate_u, logscale = logscale, detransform = true)
     if run_CI
-        CI = inverse_hessian(estimate.u, p, confidence = confidence, logscale = logscale, finite_not_forward = finite_not_forward, sandwich = sandwich)
+        CI = inverse_hessian(estimate_u, p, confidence = confidence, logscale = logscale, finite_not_forward = finite_not_forward, sandwich = sandwich)
         estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, CI = CI, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
     else
         estimate = (u = estimate_u, retcode = estimate_raw.retcode, objective = estimate_raw.objective, raw = estimate_raw, multistart_best_start = best_start_idx, multistart_nstarts = n_starts)
@@ -1203,7 +1204,7 @@ end
 
 function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
     individuals::AbstractVector = [1], endpoint::Union{AbstractFloat, Nothing} = nothing, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, 
-    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
 
     output = Plots.Plot[]
     if isnothing(endpoint)
@@ -1244,7 +1245,11 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
     else 
         estimate_seizure = estimate_param.Seizure
     end
-    seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
+    if mod.seizure_model isa CoxTypeModels
+        seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, reference_covariates_index = reference_covariates_index, display_plot = display_plot)
+    else
+        seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
+    end
     append!(output, seizure_output)
     return output
 end

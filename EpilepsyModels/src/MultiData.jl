@@ -56,11 +56,11 @@ Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
 Adaptation_steps = 1000
-Max_Time = 5*60.0
+Max_Time = 7*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 2 #5 #20 #10 #20
+Population_size = 10 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 10.0 #40.0
+Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
@@ -95,7 +95,7 @@ Variance_bound = nothing #log(1.0) #upper bounds will be reset accordingly after
 Multistart_bounds = nothing #25.0
 fail_hard = false
 
-run_CI = false
+run_CI = true
 confidence = 0.95
 sandwich = true
 finite_diff_hessian = false
@@ -219,6 +219,8 @@ mkpidlock(lock_path_output; stale_age=30, wait=true) do
 open(joinpath(path,"output.txt"), "a") do io
 redirect_stdout(io) do
     println("My id is ", parsed)
+    println()
+    println("True θ: ", Input_θ)
     println()
     
 #Print everything, including possibly originals
