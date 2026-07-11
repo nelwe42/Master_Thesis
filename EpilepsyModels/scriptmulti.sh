@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --array=1-100
-#SBATCH --partition=intelsr_short
+#SBATCH --partition=intelsr_medium
 #SBATCH --account=ag_irumls_hasenauer
-#SBATCH --time=08:00:00
+#SBATCH --time=24:00:00
 #SBATCH --ntasks=2
 #SBATCH --chdir=~
 

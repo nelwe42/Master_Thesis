@@ -21,7 +21,7 @@ using FileWatching
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
-lock_path_output = "./output.txt.lock"
+lock_path_output = "./output2.txt.lock"
 
 #Can e.g. use parsed job array id as seed here
 if !isempty(ARGS)
@@ -61,7 +61,7 @@ Max_Time = 7*60.0*60.0
 Population_size = 10 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
-PK_timepoints = wo_treatment:3.75:Obs_Duration
+PK_timepoints = wo_treatment:0.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
@@ -216,7 +216,7 @@ results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_thr
 
 #create lockfile to ensure no multiwriting
 mkpidlock(lock_path_output; stale_age=30, wait=true) do
-open(joinpath(path,"output.txt"), "a") do io
+open(joinpath(path,"output2.txt"), "a") do io
 redirect_stdout(io) do
     println("My id is ", parsed)
     println()
@@ -229,6 +229,9 @@ for a in keys(results)
         println("Estimates:")
         for estimate in results.estimates
             println(estimate.u)
+            if hasproperty(estimate, :multistart_best_start)
+                println("Best start: ", estimate.multistart_best_start)
+            end
             if show_original
                 if hierarchical_optimisation
                     #println()
@@ -258,7 +261,7 @@ end
 
 catch e
     mkpidlock(lock_path_output; stale_age=30, wait=true) do
-    open(joinpath(path,"output.txt"), "a") do io_err
+    open(joinpath(path,"output2.txt"), "a") do io_err
     redirect_stderr(io_err) do
         @warn "At id $(parsed) encountered error: " e
     end
