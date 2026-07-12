@@ -19,16 +19,21 @@ using MCMCChains
 using AdvancedHMC
 using FileWatching
 
-#This will redirect output to txt file, not including error messages/warnings
-path = "/home/s6newell_hpc"
-lock_path_output = "./output2.txt.lock"
-
 #Can e.g. use parsed job array id as seed here
 if !isempty(ARGS)
     parsed = parse(Int, ARGS[1])
 else
     parsed = 42
 end
+#Check which id and which value of considered ones we are at
+parsed2 = Int(ceil(parsed/100))
+parsed = (parsed % 100)
+considered = [0.75, 1.0, 3.75, 7.0]
+
+#This will redirect output to txt file, not including error messages/warnings
+path = "/home/s6newell_hpc"
+file_name = "CBZ_$(considered[parsed2]).txt"
+lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
 Random.seed!(parsed)
@@ -61,7 +66,7 @@ Max_Time = 7*60.0*60.0
 Population_size = 10 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
-PK_timepoints = wo_treatment:0.75:Obs_Duration
+PK_timepoints = wo_treatment:considered[parsed2]:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
@@ -106,9 +111,9 @@ plotting = false
 show_original = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
@@ -216,7 +221,7 @@ results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_thr
 
 #create lockfile to ensure no multiwriting
 mkpidlock(lock_path_output; stale_age=30, wait=true) do
-open(joinpath(path,"output2.txt"), "a") do io
+open(joinpath(path,file_name), "a") do io
 redirect_stdout(io) do
     println("My id is ", parsed)
     println()
@@ -261,7 +266,7 @@ end
 
 catch e
     mkpidlock(lock_path_output; stale_age=30, wait=true) do
-    open(joinpath(path,"output2.txt"), "a") do io_err
+    open(joinpath(path,file_name), "a") do io_err
     redirect_stderr(io_err) do
         @warn "At id $(parsed) encountered error: " e
     end
