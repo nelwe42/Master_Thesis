@@ -55,8 +55,8 @@ Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, 
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
-Input_θ_SeizureSANAD_one = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[0.05])) 
-Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[log(0.98)/9, log(1.17)/29, log(1.08)/8, log(1.08)/75]))
+Input_θ_SeizureSANAD_one = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[7/30])) 
+Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[6.75/9, 7.5/29, 7.25/8, 7.25/75]))
 
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
@@ -160,7 +160,6 @@ else
     end
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one)
 end
-seizure_model = SeizureSANAD(θ = ComponentArray(a2 = log(0.87)))
 
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -285,10 +284,14 @@ end
 
 if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #Plot fit for specified individuals
-    individuals = collect(1:10) #[1]
+    individuals = [1]
+    ref = length(data)
     time_seizures = (0,Obs_Duration)
     time_pk = (0.0, Obs_Duration)
-    plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options)
+    #estimate = (u = deepcopy(Input_θ),)
+    #estimate.u.Seizure.b[1] = 7.0/29.0
+    plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options,
+    reference_covariates_index = ref)
 end
 
 plot_change = false

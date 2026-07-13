@@ -1604,3 +1604,98 @@ Absolute errors: (PK = (k_abs = 15.492024884739905, c1 = 0.24666622882003253, c2
     f(x) calls:    221
     ∇f(x) calls:   90
 -> tried SANAD with just age effect, roughly correct direction
+
+logscale = ("σ", "k_abs", "c1", "v1")
+Generated
+PK start: (k_abs = 72.0, c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ = 0.5)
+Estimate: (PK = (k_abs = 76.40087711007635, c1 = 96.33981826924402, c2 = 0.1733876431979585, c3 = 0.12597110166500966, v1 = 30.465835698423227, v2 = 2.4429225033979103, σ = 0.21904538632309176), Seizure = (a1 = -0.5577303654975251, a2 = -0.35009309636706437, a3 = 3.8791846133982397, b = [-0.12059650396213917]))
+Retcode: Failure
+Objective: -1.119411724923343
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 8.524225365031501
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a1 = 0.0861776962410524, a2 = -0.13926206733350766, a3 = 0.13976194237515863, b = [0.25862068965517243]))
+Relative errors: (PK = (k_abs = 0.09046574868956725, c1 = 0.003539773637958543, c2 = 0.30644942720816604, c3 = 0.03255001364762019, v1 = 0.02578571375162383, v2 = 0.1428342093340666, σ = 0.09522693161545873), Seizure = (a1 = 7.47186441300852, a2 = 1.5139156919784498, a3 = 26.755657566531703, b = [1.466306481986938]))
+Absolute errors: (PK = (k_abs = 7.599122889923649, c1 = 0.33981826924402014, c2 = 0.07661235680204151, c3 = 0.003971101665009663, v1 = 0.7658356984232277, v2 = 0.4070774966020898, σ = 0.019045386323091745), Seizure = (a1 = 0.6439080617385775, a2 = 0.21083102903355672, a3 = 3.739422671023081, b = [0.3792171936173116]))
+
+ * Status: failure (exceeded time limit of 1200.0)
+
+ * Candidate solution
+    Final objective value:     -1.119412e+00
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 3.88e+00 ≰ 0.0e+00
+    |x - x'|/|x'|          = 8.49e-01 ≰ 0.0e+00
+    |f(x) - f(x')|         = 7.97e+02 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 1.85e+02 ≰ 0.0e+00
+    |g(x)|                 = 2.77e-01 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   1261  (vs limit 1200)
+    Iterations:    1
+    f(x) calls:    149
+    ∇f(x) calls:   59
+-> all params with larger b same problem
+
+logscale = ("σ", "k_abs", "c1", "v1")
+PK start: (k_abs = 72.0, c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ = 0.5)
+Estimate: (PK = (k_abs = 75.96318175191183, c1 = 96.34235061934932, c2 = 0.1734654480272212, c3 = 0.12622979950780308, v1 = 30.4637151892464, v2 = 2.444080947019818, σ = 0.21906177200612145), Seizure = (b = [-0.1485212223475282]))
+Retcode: Failure
+Objective: 2.7137737568203892
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 7.91473181817227
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a1 = 0.0861776962410524, a2 = -0.13926206733350766, a3 = 0.13976194237515863, b = [0.25862068965517243]))
+* Status: failure (exceeded time limit of 1200.0)
+
+ * Candidate solution
+    Final objective value:     -5.669680e+00
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 2.11e-01 ≰ 0.0e+00
+    |x - x'|/|x'|          = 4.58e-02 ≰ 0.0e+00
+    |f(x) - f(x')|         = 1.63e-01 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 2.88e-02 ≰ 0.0e+00
+    |g(x)|                 = 1.39e-01 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   1471  (vs limit 1200)
+    Iterations:    2
+    f(x) calls:    290
+    ∇f(x) calls:   87
+-> estimating just b underestimates treatment impact, but at least correct sign
+
+PK start: (k_abs = 72.0, c1 = 72.0, c2 = 1.0, c3 = 1.0, v1 = 40.0, v2 = 1.0, σ = 0.5)
+Estimate: (PK = (k_abs = 75.82315262060672, c1 = 96.28287406672966, c2 = 0.1746364161496034, c3 = 0.12731642073244448, v1 = 30.424326078656325, v2 = 2.4550387892113092, σ = 0.2190624274705634), Seizure = (a1 = -0.3624204101574891, a2 = -0.4656987682589769, a3 = 0.6461249711271081))
+Retcode: Failure
+Objective: 50.097515564641306
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 56.401534687424025
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a1 = 0.0861776962410524, a2 = -0.13926206733350766, a3 = 0.13976194237515863))
+Relative errors: (PK = (k_abs = 0.09734342118325333, c1 = 0.0029466048617673066, c2 = 0.3014543354015864, c3 = 0.043577219118397396, v1 = 0.024388083456441934, v2 = 0.138582880978488, σ = 0.09531213735281693), Seizure = (a1 = 5.205501260369538, a2 = 2.3440460649181083, a3 = 3.6230394351041215))
+Absolute errors: (PK = (k_abs = 8.17684737939328, c1 = 0.2828740667296614, c2 = 0.0753635838503966, c3 = 0.005316420732444482, v1 = 0.7243260786563255, v2 = 0.39496121078869084, σ = 0.019062427470563387), Seizure = (a1 = 0.4485981063985415, a2 = 0.3264367009254692, a3 = 0.5063630287519495))
+* Status: failure (exceeded time limit of 1200.0)
+
+ * Candidate solution
+    Final objective value:     5.009752e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 1.46e+00 ≰ 0.0e+00
+    |x - x'|/|x'|          = 3.19e-01 ≰ 0.0e+00
+    |f(x) - f(x')|         = 7.97e+02 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 1.81e+01 ≰ 0.0e+00
+    |g(x)|                 = 2.77e-01 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   1294  (vs limit 1200)
+    Iterations:    1
+    f(x) calls:    271
+    ∇f(x) calls:   95
+-> without b also not good, maybe just pop size

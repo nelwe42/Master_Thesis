@@ -219,3 +219,5 @@ linear predictor = a1*male + a2*age + a3*focal - b^T*s(t, idxs=names.s)
     not exponent but otherwise 1.0 doesnt make sense
 -to make b more accurate took log of reported ratio divided by median concentration, CBZ and VPA with ratio 1
     changed to 1.08 each
+-b too small to really see changes in seizure prob, updated to 7.0/average concentration,
+    see plot "Cox_small_vs_new_b.png" for old b vs 7/29 for LEV, some variation around the 7 to make it interesting
