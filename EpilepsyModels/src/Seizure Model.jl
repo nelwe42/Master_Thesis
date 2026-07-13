@@ -215,15 +215,18 @@ function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, name
 end
 
 @with_kw struct SeizureSANAD{T<:ComponentArray, T2<:Tuple, T3<:Union{Function, Real, Tuple{Vararg{Union{Function, Real}}}}, T4<:NamedTuple} <: CoxTypeModels
-    θ::T=ComponentArray((a1 = 0.0, a2 = 0.0, a3 = 0.0, b = SA[0.0])) 
+    #θ::T=ComponentArray((a1 = 0.0, a2 = 0.0, a3 = 0.0, b = SA[0.0])) 
+    θ::T=ComponentArray((a1 = 0.0,))
     cov::T2 = (:age, :seizure_type, :gender) 
     baseline::T3 = 0.25
-    bounds::T4 = (lb = ComponentArray((a1 = -5.0, a2 = -5.0, a3 = -5.0, b = SA[[-0.5 for i in eachindex(θ.b)]...])), ub = ComponentArray((a1 = 5.0, a2 = 5.0, a3 = 5.0, b = SA[[0.2 for i in eachindex(θ.b)]...])))
+    #bounds::T4 = (lb = ComponentArray((a1 = -5.0, a2 = -5.0, a3 = -5.0, b = SA[[-0.5 for i in eachindex(θ.b)]...])), ub = ComponentArray((a1 = 5.0, a2 = 5.0, a3 = 5.0, b = SA[[0.2 for i in eachindex(θ.b)]...])))
+    bounds::T4 = (lb = ComponentArray((a1 = -5.0,)), ub = ComponentArray((a1 = 5.0,)))
 end
 
 #Outer Constructor to make default for N drugs
 function SeizureSANAD(N::Int64)
-    obj = SeizureSANAD(θ = ComponentArray((a1 = 0.0, a2 = 0.0, a3 = 0.0, b = SA[[0.0 for i in 1:N]...])))
+    #obj = SeizureSANAD(θ = ComponentArray((a1 = 0.0, a2 = 0.0, a3 = 0.0, b = SA[[0.0 for i in 1:N]...])))
+    obj = SeizureSANAD(θ = ComponentArray((a2 = 0.0,)))
     return obj
 end
 
@@ -239,16 +242,19 @@ function linear_predictor(m::SeizureSANAD, sol, t::AbstractFloat, s::Int; person
     if s <= 0
         return nothing
     end
-    pred = θ.a1*(1-person.covariates.gender)
+    #pred = θ.a1*(1-person.covariates.gender)
+    pred = zero(eltype(θ))
     if person.covariates.age isa Number
-        pred += θ.a2*person.covariates.age
+        pred += θ.a2*person.covariates.age/50
     else
         #assume it is a function
-        pred += θ.a2*person.covariates.age(t)
+        pred += θ.a2*person.covariates.age(t)/50
     end
+    #=
     pred += θ.a3*(person.covariates.seizure_type)
     pred -= θ.b'*sol(t, idxs = names.s)
     #Check exposure is finite, what do we want here instead of n+1?
+    =#
     if !isfinite(pred)
         return nothing
     end

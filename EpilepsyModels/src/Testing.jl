@@ -55,8 +55,8 @@ Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, 
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
-Input_θ_SeizureSANAD_one = ComponentArray((a1 = log(1.09), a2 = log(0.87)/50, a3 = log(1.15), b = SA[0.05])) 
-Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87)/50, a3 = log(1.15), b = SA[log(0.98)/9, log(1.17)/29, log(1.08)/8, log(1.08)/75]))
+Input_θ_SeizureSANAD_one = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[0.05])) 
+Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[log(0.98)/9, log(1.17)/29, log(1.08)/8, log(1.08)/75]))
 
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
@@ -69,7 +69,7 @@ Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #TODO Change this back later
 Seizure_timepoints = 0.0:5.0:Obs_Duration
-max_events = 1
+max_events = nothing
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
@@ -160,7 +160,7 @@ else
     end
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one)
 end
-
+seizure_model = SeizureSANAD(θ = ComponentArray(a2 = log(0.87)))
 
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -285,7 +285,7 @@ end
 
 if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #Plot fit for specified individuals
-    individuals = [1]
+    individuals = collect(1:10) #[1]
     time_seizures = (0,Obs_Duration)
     time_pk = (0.0, Obs_Duration)
     plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options)

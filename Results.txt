@@ -1573,3 +1573,34 @@ True Objective Value: 44.3174441060454
     f(x) calls:    193
     ∇f(x) calls:   81
 -> Problem: True values clearly not minimum
+
+logscale = ("σ", "k_abs", "c1", "v1")
+Estimate: (PK = (k_abs = 99.4920248847399, c1 = 95.75333377117997, c2 = 0.17921895389740908, c3 = 0.12127493969906257, v1 = 30.286465574913166, v2 = 2.428809841861683, σ = 0.2190023472986027), Seizure = (a2 = -0.16197390197242909))
+Retcode: Failure
+Objective: 48.01945591784177
+Multistart best start: 1 Number of Starts: 1
+True Objective Value: 52.765267981249785
+True θ: (PK = (k_abs = 84.0, c1 = 96.0, c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ = 0.2), Seizure = (a2 = -0.13926206733350766))
+Relative errors: (PK = (k_abs = 0.18442886767547506, c1 = 0.0025694398835420054, c2 = 0.2831241844103637, c3 = 0.005943117220798585, v1 = 0.019746315653641967, v2 = 0.14778602039940958, σ = 0.0950117364930135), Seizure = (a2 = 0.16308701338269424))
+Absolute errors: (PK = (k_abs = 15.492024884739905, c1 = 0.24666622882003253, c2 = 0.07078104610259092, c3 = 0.0007250603009374273, v1 = 0.5864655749131664, v2 = 0.4211901581383173, σ = 0.0190023472986027), Seizure = (a2 = 0.02271183463892143))
+* Status: failure (exceeded time limit of 1200.0)
+
+ * Candidate solution
+    Final objective value:     4.801946e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 2.73e-01 ≰ 0.0e+00
+    |x - x'|/|x'|          = 5.92e-02 ≰ 0.0e+00
+    |f(x) - f(x')|         = 7.81e-02 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 1.63e-03 ≰ 0.0e+00
+    |g(x)|                 = 1.73e-02 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   1343  (vs limit 1200)
+    Iterations:    2
+    f(x) calls:    221
+    ∇f(x) calls:   90
+-> tried SANAD with just age effect, roughly correct direction
