@@ -28,11 +28,11 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-considered = [0.75, 1.0, 3.75, 7.0]
+considered = [5.0, 10.0, 20.0, 30.0, 50.0]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
-file_name = "LTG_$(considered[parsed2]).txt"
+file_name = "Obs_VPA_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -61,12 +61,12 @@ Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
 Adaptation_steps = 1000
-Max_Time = 20*60.0*60.0
+Max_Time = 36*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 10 #5 #20 #10 #20
+Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 20.0 #40.0
-PK_timepoints = wo_treatment:considered[parsed2]:Obs_Duration
+Obs_Duration = wo_treatment + considered[parsed2] #20.0 #40.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
@@ -114,10 +114,11 @@ show_original = true
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
-pk_model = PKLTG(θ=Input_θ_PKLTG)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
+#=
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -137,8 +138,9 @@ else
         end
     end
 end
+=#
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 
 person_gen = BigFourPersonGenerator()
