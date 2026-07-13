@@ -1245,10 +1245,15 @@ function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray,
     else 
         estimate_seizure = estimate_param.Seizure
     end
+    if isnothing(true_param)
+        true_seizure = nothing
+    else 
+        true_seizure = true_param.Seizure
+    end
     if mod.seizure_model isa CoxTypeModels
-        seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, reference_covariates_index = reference_covariates_index, display_plot = display_plot)
+        seizure_output = plot_fit(mod.seizure_model, data, true_param = true_seizure, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, reference_covariates_index = reference_covariates_index, display_plot = display_plot)
     else
-        seizure_output = plot_fit(mod.seizure_model, data, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
+        seizure_output = plot_fit(mod.seizure_model, data, true_param = true_seizure, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
     end
     append!(output, seizure_output)
     return output

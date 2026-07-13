@@ -596,7 +596,7 @@ end
 #Plots fit for person i up to time given solutions from PK model (if they should be plotted)
 #estimate and true distributions plotted in same timeframes as individuals data
 #If solutions modified with random effects are passed get additional plots modified and estimate (violin can only plot 2 at once)
-function plot_fit(mod::SeizureModelNonrandom, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+function plot_fit(mod::SeizureModelNonrandom, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
     names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
     
@@ -623,6 +623,13 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple; estimate_param::Union
         @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
         sols = nothing
     end
+    if !isnothing(true_param) && isnothing(sols)
+        error("True solutions are missing")
+    end
+    if isnothing(true_param) && !isnothing(sols)
+        @warn "True parameters are missing, set to model parameters"
+        true_param = mod.θ
+    end
     if isnothing(sols_estimated)
         sols2 = nothing
     else
@@ -635,7 +642,6 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple; estimate_param::Union
         @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
         estimate_param = nothing
     end
-    true_param = mod.θ
     if !isnothing(sols_modified) && any(.!(SciMLBase.successful_retcode.(sols_modified[individuals])))
         @warn "Unsuccessful ODE solve in true parameters modified with random effects, modified parameters will be ignored for plotting"
         sols_modified = nothing
@@ -664,7 +670,7 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple; estimate_param::Union
         intervals = [data[i].seizure_counts[index].time for index in indices]
         pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
         if !isnothing(sols)
-            samples_true = [draw_data_samples(mod, sols[i], person=data[i], interval=interval,names=names, sample_nr=sample_nr) for interval in intervals]
+            samples_true = [draw_data_samples(mod, sols[i], person=data[i], interval=interval,names=names, θ = true_param, sample_nr=sample_nr) for interval in intervals]
             if any(isnothing.(samples_true))
                 @warn "Distribution for true parameters is not well-defined"
                 sols = nothing
@@ -870,7 +876,7 @@ end
 
 #4.2) Cox type models
 
-function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+function plot_fit(mod::CoxTypeModels, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
     names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true)
     
@@ -897,6 +903,13 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
         @warn "Unsuccessful ODE solve in true parameters, true parameters will be ignored for plotting"
         sols = nothing
     end
+    if !isnothing(true_param) && isnothing(sols)
+        error("True solutions are missing")
+    end
+    if isnothing(true_param) && !isnothing(sols)
+        @warn "True parameters are missing, set to model parameters"
+        true_param = mod.θ
+    end
     if isnothing(sols_estimated)
         sols2 = nothing
     else
@@ -909,7 +922,6 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
         @warn "Unsuccessful ODE solve in estimated parameters, estimated parameters will be ignored for plotting"
         estimate_param = nothing
     end
-    true_param = mod.θ
     if !isnothing(sols_modified) && (any(.!(SciMLBase.successful_retcode.(sols_modified[individuals]))) || (!isnothing(reference_covariates_index) && !(SciMLBase.successful_retcode(sols_modified[reference_covariates_index]))))
         @warn "Unsuccessful ODE solve in true parameters modified with random effects, modified parameters will be ignored for plotting"
         sols_modified = nothing
@@ -952,13 +964,13 @@ function plot_fit(mod::CoxTypeModels, data::Tuple; estimate_param::Union{Compone
             end
         end
         if !isnothing(sols)
-            samples_true = [get_hazard(mod, sols[i], person=data[i], t=t, names = names) for t in time[1]:(1/sample_nr):time[2]]
+            samples_true = [get_hazard(mod, sols[i], person=data[i], t=t, names = names, θ = true_param) for t in time[1]:(1/sample_nr):time[2]]
             if any(isnothing.(samples_true))
                 @warn "Hazard for true parameters is not always well-defined"
                 sols = nothing
             end
             if !isnothing(reference_covariates_index) && !isnothing(sols)
-                samples_ref = [get_hazard(mod, ref_sol, person=ref_person, t=t, names = names) for t in time[1]:(1/sample_nr):time[2]]
+                samples_ref = [get_hazard(mod, ref_sol, person=ref_person, t=t, names = names, θ = true_param) for t in time[1]:(1/sample_nr):time[2]]
                 if any(isnothing.(samples_ref))
                     @warn "Hazard for true parameters is not always well-defined"
                     sols = nothing
