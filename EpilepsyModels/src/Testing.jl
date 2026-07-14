@@ -63,7 +63,7 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 20*60.0 #14*60.0*60.0 
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 10 #5 #20 #10 #20
+Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -145,7 +145,7 @@ end
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 if (typeof(pk_model).name.wrapper in [PKBigFour])
-    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four)
+    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
 else
     if drug_appropriate_dosing
         if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
@@ -158,7 +158,7 @@ else
             Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[4]]
         end
     end
-    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one)
+    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
 
 person_gen = BigFourPersonGenerator()
