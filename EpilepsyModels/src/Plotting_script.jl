@@ -1,9 +1,15 @@
 using ComponentArrays
+using Plots
+using StatsPlots
+using Distributions
 
 #files to read data from, relative to 
-files = ["./PK_reg/CBZ_10.txt"]
+files = ["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_10.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_70.txt"]
 #corresponding values of interest
-values = [10]
+values = [0.75, 1, 3.75, 7]
+
+upper_outlier_bound = 1.1
+spaced_accordingly = false
 
 estimates_all = []
 abs_errors_all = []
@@ -60,4 +66,30 @@ for file in files
     push!(times_all, times)
     push!(obj_diffs_all, obj_diffs)
     push!(CIs_all, CIs)
+end
+
+if spaced_accordingly
+    values2 = deepcopy(values)
+else
+    values2 = String.(Symbol.(values))
+end
+#Mention how handle outliers
+rel_squared_errors_all2 = deepcopy(rel_squared_errors_all)
+for i in eachindex(rel_squared_errors_all2)
+    rel_squared_errors_all2[i] = [rel for rel in rel_squared_errors_all2[i] if rel <= upper_outlier_bound]
+end
+pl = plot(xlabel = "Regularity", ylabel = "Relative squared error", title = "Relative squared errors for different \n regularities of PK measurements")
+for i in eachindex(values)
+    violin!([values2[i]], rel_squared_errors_all2[i], outliers=false, label = "", alpha = 0.5, color = :blue)
+end
+means = [mean(rel) for rel in rel_squared_errors_all2]
+plot!(values2, means, linecolor = :blue, linewidth = 2, label = "mean")
+if spaced_accordingly
+    plot!(xticks = values2, xrotation = 90)
+end
+
+display(pl)
+#print outliers
+for i in eachindex(rel_squared_errors_all)
+    println("Outliers for $(values[i]): ", [rel for rel in rel_squared_errors_all[i] if rel > upper_outlier_bound])
 end
