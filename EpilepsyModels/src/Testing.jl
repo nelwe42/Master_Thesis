@@ -220,7 +220,7 @@ if hierarchical_optimisation
     println("True Objective Value: ", get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 elseif sampling
     estimate = optimise_sampled(test_mod, data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, 
-                        lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, 
+                        lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, multistart = Multistart_nstarts, prefilter = prefilter, run_CI = run_hessian,
                         custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, sampler = sampler, sampling_options = sampling_options) 
     println("True Objective Value: ", get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 else

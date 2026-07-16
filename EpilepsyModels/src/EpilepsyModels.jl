@@ -950,7 +950,10 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
             confidence = 0.95
         end
         confidence = 1-confidence
-        CI = ComponentArray([quantile(vec(Chain[label]), [confidence/2, 1-confidence/2]) for label in labels_θ], axes_θ)
+        Post = hpd(Chain, alpha=confidence)
+        CI_quantile = ComponentArray([quantile(vec(Chain[label]), [confidence/2, 1-confidence/2]) for label in labels_θ], axes_θ)
+        CI_hpd = ComponentArray([(Post.nt.lower[i], Post.nt.upper[i]) for i in 1:Post.nrows], axes_θ)
+        CI = (Quantiles = CI_quantile, HPD = CI_hpd)
         estimate = (u = means, objective = eval, raw = Chain, times = times, CI = CI, multistart_nstarts = n_starts)
     else
         estimate = (u = means, objective = eval, raw = Chain, times = times, multistart_nstarts = n_starts)
