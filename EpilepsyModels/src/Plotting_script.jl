@@ -4,10 +4,10 @@ using StatsPlots
 using Distributions
 
 #files to read data from, relative to 
-files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt"], 
-         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt"],
-         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt"],
-         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt"]]
+files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt", "./PK_reg/CBZ_725.txt"], 
+         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt", "./PK_reg/LEV_725.txt"],
+         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt", "./PK_reg/VPA_725.txt"],
+         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt", "./PK_reg/LTG_725.txt"]]
 #models each subarray corresponds to
 models = ["CBZ", "LEV", "VPA", "LTG"]
 #colour for each model
@@ -15,7 +15,7 @@ colours = [:blue, :green, :red, :purple]
 #quantity of interest
 quant = "regularities of PK measurements"
 #corresponding values of interest
-values = [0.75, 1, 3.75, 7]
+values = [0.75, 1, 3.75, 7, 7.25]
 #Legend setting for plotting
 legendcolumns = 2
 #set variable of interest below

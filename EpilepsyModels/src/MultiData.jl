@@ -28,6 +28,12 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
+considered = [30.0, 50.0]
+
+#This will redirect output to txt file, not including error messages/warnings
+path = "/home/s6newell_hpc"
+file_name = "Obs_Big4_$(considered[parsed2]).txt"
+lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
 Random.seed!(parsed)
@@ -55,19 +61,19 @@ Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
 Adaptation_steps = 1000
-Max_Time = 20*60.0*60.0
+Max_Time = 40*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 10 #5 #20 #10 #20
+Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 20 #20.0 #40.0
-PK_timepoints = wo_treatment:7.25:Obs_Duration
+Obs_Duration = wo_treatment + considered[parsed2] #20.0 #40.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ", "k_abs", "c1", "v1")
-#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
+#logscale = ("σ", "k_abs", "c1", "v1")
+logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -104,12 +110,14 @@ sampling = false
 plotting = false
 show_original = true
 
+#=
 considered = [PKLEV(θ=Input_θ_PKLEV), PKCBZ(θ=Input_θ_PKCBZ), PKVPA(θ=Input_θ_PKVPA), PKLTG(θ=Input_θ_PKLTG)]
 pk_model = considered[parsed2]
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 file_name = "$(typeof(pk_model).name.wrapper)_725.txt"
 lock_path_output = joinpath("./", file_name * ".lock")
+=#
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
@@ -117,7 +125,7 @@ lock_path_output = joinpath("./", file_name * ".lock")
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 
 if (typeof(pk_model).name.wrapper in [PKVPA])
