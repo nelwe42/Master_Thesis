@@ -5,5 +5,7 @@
 #SBATCH --time=72:00:00
 #SBATCH --ntasks=3
 #SBATCH --chdir=~
+#SBATCH --output=slurm_%a.out
+#SBATCH --error=slurm_%a.out
 
 julia --threads=6 --project=/home/s6newell_hpc/EpilepsyModels /home/s6newell_hpc/EpilepsyModels/src/MultiData.jl $SLURM_ARRAY_TASK_ID
