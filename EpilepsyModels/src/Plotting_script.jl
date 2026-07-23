@@ -125,7 +125,9 @@ for k in eachindex(interests)
     push!(means_truncated[k], means2)
     push!(means_full[k], means)
 
-    plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
+    #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
+    scatter!(values2, means, markercolor = colours[k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k])
+    scatter!(values2, means2, markercolor = colours[k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
     #Plot untruncated means only in full one?
     #plot!(values2, means2, linecolor = :blue, linewidth = 2, label = "means")
     if spaced_accordingly

@@ -1,0 +1,43 @@
+My id is 28
+
+True θ: (PK = (k_abs_LTG = 47.04, c1_LTG = 57.599999999999994, c2_LTG = 0.938, c3_LTG = 0.3608, c4_LTG = 0.34, c_Inh_LTG = 0.42100000000000004, c_Ind_LTG = 1.546, v1_LTG = 2.14, σ_LTG = 0.2, k_abs_VPA = 44.64, c1_VPA = 13.847999999999999, c2_VPA = 0.535, c3_VPA = 0.875, c_Ind_VPA = 1.22, v1_VPA = 0.28, σ_VPA = 0.2, k_abs_CBZ = 10.8, c1_CBZ = 47.04, c2_CBZ = 1.73, c3_CBZ = 32.64, v1_CBZ = 2.1866666666666665, σ_CBZ = 0.2, k_abs_LEV = 84.0, c1_LEV = 96.0, c2_LEV = 0.25, c3_LEV = 0.122, c_Inh_LEV = 0.812, c_Ind_LEV = 1.09, v1_LEV = 29.7, v2_LEV = 2.85, σ_LEV = 0.2), Seizure = (a = 4.0, b = [0.5714285714285714, 0.16, 0.2, 0.03333333333333333]))
+
+Estimates:
+(PK = (k_abs_LTG = 72.0, c1_LTG = 72.0, c2_LTG = 0.02, c3_LTG = 0.02, c4_LTG = 0.02, c_Inh_LTG = 1.0, c_Ind_LTG = 1.0, v1_LTG = 1.0, σ_LTG = 0.5, k_abs_VPA = 72.0, c1_VPA = 7.499999999999999, c2_VPA = 0.1, c3_VPA = 1.0, c_Ind_VPA = 1.0, v1_VPA = 0.5, σ_VPA = 0.10000000000000002, k_abs_CBZ = 36.0, c1_CBZ = 72.0, c2_CBZ = 1.0, c3_CBZ = 1.0, v1_CBZ = 1.0, σ_CBZ = 0.10000000000000002, k_abs_LEV = 72.0, c1_LEV = 72.0, c2_LEV = 1.0, c3_LEV = 1.0, c_Inh_LEV = 1.0, c_Ind_LEV = 1.0, v1_LEV = 40.0, v2_LEV = 1.0, σ_LEV = 0.5), Seizure = (a = 2.0, b = [0.0, 0.0, 0.0, 0.0]))
+Best start: 1
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     Inf
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = NaN ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = NaN ≰ 0.0e+00
+    |g(x)|                 = 9.90e+01 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   631  (vs limit 144000)
+    Iterations:    1
+    f(x) calls:    1
+    ∇f(x) calls:   1
+
+abs_errors:
+ComponentArray[(PK = (k_abs_LTG = 24.96, c1_LTG = 14.400000000000006, c2_LTG = 0.9179999999999999, c3_LTG = 0.3408, c4_LTG = 0.32, c_Inh_LTG = 0.579, c_Ind_LTG = 0.546, v1_LTG = 1.1400000000000001, σ_LTG = 0.3, k_abs_VPA = 27.36, c1_VPA = 6.348, c2_VPA = 0.43500000000000005, c3_VPA = 0.125, c_Ind_VPA = 0.21999999999999997, v1_VPA = 0.21999999999999997, σ_VPA = 0.09999999999999999, k_abs_CBZ = 25.2, c1_CBZ = 24.96, c2_CBZ = 0.73, c3_CBZ = 31.64, v1_CBZ = 1.1866666666666665, σ_CBZ = 0.09999999999999999, k_abs_LEV = 12.0, c1_LEV = 24.0, c2_LEV = 0.75, c3_LEV = 0.878, c_Inh_LEV = 0.18799999999999994, c_Ind_LEV = 0.09000000000000008, v1_LEV = 10.3, v2_LEV = 1.85, σ_LEV = 0.3), Seizure = (a = 2.0, b = [0.5714285714285714, 0.16, 0.2, 0.03333333333333333]))]
+rel_errors:
+ComponentArray[(PK = (k_abs_LTG = 0.5306122448979592, c1_LTG = 0.2500000000000001, c2_LTG = 0.9786780383795309, c3_LTG = 0.9445676274944567, c4_LTG = 0.9411764705882353, c_Inh_LTG = 1.375296912114014, c_Ind_LTG = 0.3531694695989651, v1_LTG = 0.5327102803738318, σ_LTG = 1.4999999999999998, k_abs_VPA = 0.6129032258064516, c1_VPA = 0.4584055459272097, c2_VPA = 0.8130841121495328, c3_VPA = 0.14285714285714285, c_Ind_VPA = 0.180327868852459, v1_VPA = 0.7857142857142856, σ_VPA = 0.49999999999999994, k_abs_CBZ = 2.333333333333333, c1_CBZ = 0.5306122448979592, c2_CBZ = 0.42196531791907516, c3_CBZ = 0.9693627450980392, v1_CBZ = 0.5426829268292682, σ_CBZ = 0.49999999999999994, k_abs_LEV = 0.14285714285714285, c1_LEV = 0.25, c2_LEV = 3.0, c3_LEV = 7.19672131147541, c_Inh_LEV = 0.23152709359605902, c_Ind_LEV = 0.08256880733944962, v1_LEV = 0.34680134680134683, v2_LEV = 0.6491228070175439, σ_LEV = 1.4999999999999998), Seizure = (a = 0.5, b = [1.0, 1.0, 1.0, 1.0]))]
+mean_squared_errors:
+Real[131.08552853169817]
+rel_squared_errors:
+Real[2.365638165558373]
+times:
+Real[631.2407817840576]
+obj_diffs:
+Real[Inf]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:31, Axis(k_abs_LTG = 1, c1_LTG = 2, c2_LTG = 3, c3_LTG = 4, c4_LTG = 5, c_Inh_LTG = 6, c_Ind_LTG = 7, v1_LTG = 8, σ_LTG = 9, k_abs_VPA = 10, c1_VPA = 11, c2_VPA = 12, c3_VPA = 13, c_Ind_VPA = 14, v1_VPA = 15, σ_VPA = 16, k_abs_CBZ = 17, c1_CBZ = 18, c2_CBZ = 19, c3_CBZ = 20, v1_CBZ = 21, σ_CBZ = 22, k_abs_LEV = 23, c1_LEV = 24, c2_LEV = 25, c3_LEV = 26, c_Inh_LEV = 27, c_Ind_LEV = 28, v1_LEV = 29, v2_LEV = 30, σ_LEV = 31)), Seizure = ViewAxis(32:36, Axis(a = 1, b = ViewAxis(2:5, Shaped1DAxis((4,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:31, Axis(k_abs_LTG = 1, c1_LTG = 2, c2_LTG = 3, c3_LTG = 4, c4_LTG = 5, c_Inh_LTG = 6, c_Ind_LTG = 7, v1_LTG = 8, σ_LTG = 9, k_abs_VPA = 10, c1_VPA = 11, c2_VPA = 12, c3_VPA = 13, c_Ind_VPA = 14, v1_VPA = 15, σ_VPA = 16, k_abs_CBZ = 17, c1_CBZ = 18, c2_CBZ = 19, c3_CBZ = 20, v1_CBZ = 21, σ_CBZ = 22, k_abs_LEV = 23, c1_LEV = 24, c2_LEV = 25, c3_LEV = 26, c_Inh_LEV = 27, c_Ind_LEV = 28, v1_LEV = 29, v2_LEV = 30, σ_LEV = 31)), Seizure = ViewAxis(32:36, Axis(a = 1, b = ViewAxis(2:5, Shaped1DAxis((4,))))))}}}}[(InverseHessian = (PK = (k_abs_LTG = (0.0, Inf), c1_LTG = (0.0, Inf), c2_LTG = (-Inf, Inf), c3_LTG = (-Inf, Inf), c4_LTG = (-Inf, Inf), c_Inh_LTG = (-Inf, Inf), c_Ind_LTG = (-Inf, Inf), v1_LTG = (0.0, Inf), σ_LTG = (0.0, Inf), k_abs_VPA = (0.0, Inf), c1_VPA = (0.0, Inf), c2_VPA = (-Inf, Inf), c3_VPA = (-Inf, Inf), c_Ind_VPA = (-Inf, Inf), v1_VPA = (0.0, Inf), σ_VPA = (0.0, Inf), k_abs_CBZ = (0.0, Inf), c1_CBZ = (0.0, Inf), c2_CBZ = (-Inf, Inf), c3_CBZ = (-Inf, Inf), v1_CBZ = (0.0, Inf), σ_CBZ = (0.0, Inf), k_abs_LEV = (0.0, Inf), c1_LEV = (0.0, Inf), c2_LEV = (-Inf, Inf), c3_LEV = (-Inf, Inf), c_Inh_LEV = (-Inf, Inf), c_Ind_LEV = (-Inf, Inf), v1_LEV = (0.0, Inf), v2_LEV = (-Inf, Inf), σ_LEV = (0.0, Inf)), Seizure = (a = (0.0, Inf), b = [(-Inf, Inf), (-Inf, Inf), (-Inf, Inf), (-Inf, Inf)])), Sandwich = (PK = (k_abs_LTG = (0.0, Inf), c1_LTG = (0.0, Inf), c2_LTG = (-Inf, Inf), c3_LTG = (-Inf, Inf), c4_LTG = (-Inf, Inf), c_Inh_LTG = (-Inf, Inf), c_Ind_LTG = (-Inf, Inf), v1_LTG = (0.0, Inf), σ_LTG = (0.0, Inf), k_abs_VPA = (0.0, Inf), c1_VPA = (0.0, Inf), c2_VPA = (-Inf, Inf), c3_VPA = (-Inf, Inf), c_Ind_VPA = (-Inf, Inf), v1_VPA = (0.0, Inf), σ_VPA = (0.0, Inf), k_abs_CBZ = (0.0, Inf), c1_CBZ = (0.0, Inf), c2_CBZ = (-Inf, Inf), c3_CBZ = (-Inf, Inf), v1_CBZ = (0.0, Inf), σ_CBZ = (0.0, Inf), k_abs_LEV = (0.0, Inf), c1_LEV = (0.0, Inf), c2_LEV = (-Inf, Inf), c3_LEV = (-Inf, Inf), c_Inh_LEV = (-Inf, Inf), c_Ind_LEV = (-Inf, Inf), v1_LEV = (0.0, Inf), v2_LEV = (-Inf, Inf), σ_LEV = (0.0, Inf)), Seizure = (a = (0.0, Inf), b = [(-Inf, Inf), (-Inf, Inf), (-Inf, Inf), (-Inf, Inf)])))]
+

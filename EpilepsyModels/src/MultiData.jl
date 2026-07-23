@@ -28,7 +28,7 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-considered = [30.0, 50.0]
+considered = [50.0]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
@@ -57,6 +57,8 @@ Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, 
 #Input_θ_SeizureNegativeBinomial = ComponentArray((a = -1.923, o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
 Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
+Input_θ_SeizureSANAD_one = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[7/30])) 
+Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[6.75/9, 7.5/29, 7.25/8, 7.25/75]))
 
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
@@ -89,7 +91,7 @@ max_threads_simul = Threads.nthreads()
 max_threads_runs = min(run_count, max_threads_simul)
 max_threads_simul = Int(max(floor(max_threads_simul/run_count),1))
 Multistart_nstarts = 2
-prefilter = 10
+prefilter = 25
 Multistart_seed = 42
 Multistart_include_initial = true
 custom_starts = nothing
@@ -151,7 +153,25 @@ end
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
-
+#SeizureSANAD set b appropriately
+#=
+if (typeof(pk_model).name.wrapper in [PKBigFour])
+    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
+else
+    if drug_appropriate_dosing
+        if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[2]]
+        elseif (typeof(pk_model).name.wrapper in [PKLTG])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[1]]
+        elseif (typeof(pk_model).name.wrapper in [PKCBZ])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[3]]
+        elseif (typeof(pk_model).name.wrapper in [PKVPA])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[4]]
+        end
+    end
+    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
+end
+=#
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
@@ -170,7 +190,7 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 
 #Set data generating function
 data() = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
-modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
+#modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
 data_modified() = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 data_updating() = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 
