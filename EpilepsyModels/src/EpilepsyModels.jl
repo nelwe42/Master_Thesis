@@ -218,7 +218,7 @@ function get_negloglikelihood_vectorised(θ::AbstractVector, p::NamedTuple)
     return get_negloglikelihood(θ_struct, p)
 end
 
-function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::Tuple{Vararg{Person}}; logscale::Tuple{Vararg{String}} = (), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
@@ -230,7 +230,7 @@ function get_negloglikelihood_evaluated(θ::ComponentArray, m::FullModel, data::
     return negloglikeli
 end
 
-function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::FullModel, data::Tuple; logscale::Tuple{Vararg{String}} = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::FullModel, data::Tuple{Vararg{Person}}; logscale::Tuple{Vararg{String}} = (), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
@@ -250,7 +250,7 @@ function get_negloglikelihood_evaluated_hierarchical(θ::ComponentArray, m::Full
 end
 
 #generate multistart points randomly
-function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractVector; rng = Random.default_rng())
+function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractVector; rng::AbstractRNG = Random.default_rng())
     d = length(lower)
     if length(upper) != d
         error("latin_hypercube_samples: lower and upper must have the same length")
@@ -273,8 +273,8 @@ function latin_hypercube_samples(n::Int, lower::AbstractVector, upper::AbstractV
     return X
 end
 
-function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), run_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
-                objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, printing::Bool = true, confidence::AbstractFloat = 0.95, finite_not_forward::Bool = false, sandwich::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+function optimise_hierarchical(m::FullModel, data::Tuple{Vararg{Person}}; maxiters::Int64 = 10^4, logscale::Tuple{Vararg{String}} = (), run_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing, 
+                objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, printing::Bool = true, confidence::AbstractFloat = 0.95, finite_not_forward::Bool = false, sandwich::Bool = true, solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options::Tuple = (), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -373,10 +373,10 @@ function optimise_hierarchical(m::FullModel, data::Tuple; maxiters::Int64 = 10^4
     return estimate
 end
 
-function optimise(m::FullModel, data::Tuple; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), run_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+function optimise(m::FullModel, data::Tuple{Vararg{Person}}; maxiters::Int64 = 10^4, maxtime::AbstractFloat = Inf, logscale::Tuple{Vararg{String}} = (), run_CI::Bool = false, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, store_trace::Bool = false, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true, confidence::AbstractFloat = 0.95, finite_not_forward::Bool = false, sandwich::Bool = true,
-    solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options = (), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    solver_optim = LBFGS(linesearch = LineSearches.BackTracking()), solver_options::Tuple = (), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     
     #check if either model has random effects
     #if has_random_effects(m.pk_model) || has_random_effects(m.seizure_model)
@@ -702,10 +702,10 @@ LogDensityProblems.logdensity(p::LogTargetDensity, θ) = (all(p.ub .>= θ .>= p.
 LogDensityProblems.dimension(p::LogTargetDensity) = length(p.lb)
 LogDensityProblems.capabilities(::LogTargetDensity) = LogDensityProblems.LogDensityOrder{0}()
 
-function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, nadapts::Int64 = 0, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
+function optimise_sampled(m::FullModel, data::Tuple{Vararg{Person}}; per_chain::Int64 = 10^4, nadapts::Int64 = 0, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true, run_CI::Bool = false, confidence::AbstractFloat = 0.95,
-    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options = (), sampling_rng::AbstractRNG = Xoshiro(42), ODE_options = (AutoTsit5(Rosenbrock23()),))
+    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options::Tuple = (), sampling_rng::AbstractRNG = Xoshiro(42), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
@@ -967,7 +967,7 @@ function optimise_sampled(m::FullModel, data::Tuple; per_chain::Int64 = 10^4, na
 end
 
 #finite_not_forward allows to switch to finite_diff hessian instead of ForwardDiff, often faster but less accurate
-function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, sandwich::Bool = true, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function inverse_hessian(θ::ComponentArray, m::FullModel, data::Tuple{Vararg{Person}}; confidence::AbstractFloat = 0.95, logscale::Tuple{Vararg{String}} = (), finite_not_forward::Bool = false, sandwich::Bool = true, ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     names = get_keys_PK(m.pk_model)
     sys = create_ode_system(m.pk_model)
     problems = Tuple(create_problem(m.pk_model, sys, person=person, endpoint = max(person.measurements[end].timepoint, (person.seizure_counts[end].time isa Tuple ? person.seizure_counts[end].time[2] : person.seizure_counts[end].time))) for person in data)
@@ -1081,7 +1081,7 @@ function inverse_hessian(θ::ComponentArray, p::NamedTuple; confidence::Abstract
 end
 
 #m determines model parts, n determines number of people, timepoints for measurements
-function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -1108,7 +1108,7 @@ function generate_data(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; ti
 end
 
 #for later when want to update doses etc regularly
-function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:m.(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_threads::Int = 1, max_events::Union{Int, Nothing} = nothing, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 3.0, ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     if max(timepoints_PK..., timepoints_seizure...)>time
         error("Timepoints for measurements occuring after assigned timeframe")
     end
@@ -1169,7 +1169,7 @@ end
 #generate with a parameter modified with randomly drawn addition for specified indices and distributions, effects constant per person
 #is automatically updating, if no update_reg is passed then no updates
 #expects modifications as tuple of 2-tuples (index, distribution to add)
-function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_events::Union{Int, Nothing} = nothing, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options = (AutoTsit5(Rosenbrock23()),))
+function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat = 10.0; modifications::Tuple{Vararg{Tuple{Int, Union{Distribution, Number, Function}}}}, update_reg::AbstractFloat = time, timepoints_PK::AbstractVector = 0:14.0:time, timepoints_seizure::AbstractVector = 0:(hasproperty(m.seizure_model, :timeframe) ? m.seizure_model.timeframe.inherent_timeframe : 1.0):time, max_events::Union{Int, Nothing} = nothing, max_threads::Int = 1, just_Bool::Bool = false, generate_in_lumps::Bool = true, wo_treatment::AbstractFloat = 0.0, ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     #Check modification if functions have correct return type
     if any([(mod[2] isa Function && !(mod[2](1.0) isa Union{Number, Distribution})) for mod in modifications])
         error("Modification function has unsupported return type")
@@ -1205,9 +1205,9 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
     return Tuple(data)
 end
 
-function plot_fit(mod::FullModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
-    individuals::AbstractVector = [1], endpoint::Union{AbstractFloat, Nothing} = nothing, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, 
-    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+function plot_fit(mod::FullModel, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
+    individuals::Vector{Int} = [1], endpoint::Union{AbstractFloat, Nothing} = nothing, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, 
+    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true, options::Tuple = (AutoTsit5(Rosenbrock23()),))
 
     output = Plots.Plot[]
     if isnothing(endpoint)

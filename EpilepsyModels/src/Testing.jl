@@ -61,11 +61,11 @@ Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 
 Maxiters_optimiser = 200
 Samples_per_chain = 2000
 Adaptation_steps = 1000
-Max_Time = 20*60.0 #14*60.0*60.0 
+Max_Time = 2*60.0 #14*60.0*60.0 
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 20 #5 #20 #10 #20
+Population_size = 5 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 30.0 #40.0
+Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #TODO Change this back later
 Seizure_timepoints = 0.0:5.0:Obs_Duration
@@ -119,7 +119,7 @@ pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-#=
+
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -139,11 +139,12 @@ else
     end
     seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
 end
-=#
+
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
+#=
 if (typeof(pk_model).name.wrapper in [PKBigFour])
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
 else
@@ -160,7 +161,7 @@ else
     end
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
-
+=#
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)

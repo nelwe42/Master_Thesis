@@ -374,7 +374,7 @@ function induction_dose_affect!(integrator; dose_param, ind_param)
     end
 end
 
-function create_dosing_callbacks(dosing::AbstractVector, ode_system; names::NamedTuple, set_daily_doses::Tuple = ())
+function create_dosing_callbacks(dosing::AbstractVector, ode_system::ODESystem; names::NamedTuple, set_daily_doses::Tuple = ())
     #save_positions = (false, false) so no two values at timepoint possible, bad for likelihood calculation/measurement generator
     #callbacks to inject doses
     @inbounds callbacks = [
@@ -515,7 +515,7 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
 end
 
 #solve ODE without system given
-function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
+function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::NamedTuple=NamedTuple(), endpoint::AbstractFloat=10.0, start::Union{Tuple, Nothing} = nothing, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, dosing=dosing, covariates=covariates, endpoint=endpoint)
     if !isnothing(start)
         new_tspan = (start[1], endpoint)
@@ -533,7 +533,7 @@ function solve_ODE(mod::PKModelNonrandom; dosing::AbstractVector, covariates::Na
 end
 
 #solve ODE given system
-function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
+function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoint::AbstractFloat=10.0, start::Union{Tuple, Nothing} = nothing, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     prob = create_problem(mod, sys, person=person, endpoint=endpoint)
     if !isnothing(start)
         new_tspan = (start[1], endpoint)
@@ -551,7 +551,7 @@ function solve_ODE(mod::PKModelNonrandom, sys::ODESystem; person::Person, endpoi
 end
 
 #solve for a different θ containing all PK Model parameters, for problem not given
-function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options = (AutoTsit5(Rosenbrock23()),))
+function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; endpoint::AbstractFloat = 10.0, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
     ode_system = create_ode_system(mod)
     prob = create_problem(mod, dosing=person.dosing, covariates=cov, endpoint=endpoint)
@@ -565,7 +565,7 @@ function solve_PK(mod::PKModelNonrandom, θ::ComponentArray, person::Person; end
 end
 
 #solve_PK for given problem, indices of parameters given
-function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; indices_θ::AbstractVector, options = (AutoTsit5(Rosenbrock23()),))
+function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; indices_θ::AbstractVector, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     #indices_θ = [ModelingToolkit.parameter_index(ode_system, x).idx for x in keys(θ)]
     mkt_parameters = prob.p
     new_mkt_parameters = Accessors.@set mkt_parameters.tunable[indices_θ] = θ
@@ -576,13 +576,13 @@ function solve_PK(prob::ODEProblem, ode_system::ODESystem, θ::ComponentArray; i
 end
 
 #likelihood when solution not given
-function get_PK_loglikelihood(θ::ComponentArray, m::PKModel, person::Person; options = (AutoTsit5(Rosenbrock23()),))
+function get_PK_loglikelihood(θ::ComponentArray, m::PKModelNonrandom, person::Person; options::Tuple = (AutoTsit5(Rosenbrock23()),))
     sol = solve_PK(m, θ, person, endpoint = person.measurements[end].timepoint, options = options)
     return get_PK_loglikelihood(θ, person, sol)
 end
 
 #likelihood when solution given
-function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol)
+function get_PK_loglikelihood(θ::ComponentArray, person::Person; sol::ODESolution)
     if any(x -> !isfinite(x), θ)
         return -Inf
     end
@@ -599,7 +599,7 @@ end
 
 #generates noisy measurements, returns solution for use in seizure model
 #if no endpoint given assumes timepoints are increasing
-function generate_measurements!(mod::PKModel, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
+function generate_measurements!(mod::PKModelNonrandom, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], start::Union{Tuple, Nothing} = nothing, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     cov = NamedTuple{mod.cov}(person.covariates)
     sol = solve_ODE(mod, dosing = person.dosing, covariates = cov, endpoint = endpoint, start = start, options = options)
     if !(SciMLBase.successful_retcode(sol))
@@ -612,7 +612,7 @@ function generate_measurements!(mod::PKModel, person::Person; timepoints::Abstra
 end
 
 #same function but given ODE system
-function generate_measurements!(mod::PKModel, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], start::Union{Tuple, Nothing} = nothing, options = (AutoTsit5(Rosenbrock23()),))
+function generate_measurements!(mod::PKModelNonrandom, sys::ODESystem, person::Person; timepoints::AbstractVector, endpoint::AbstractFloat = timepoints[end], start::Union{Tuple, Nothing} = nothing, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     sol = solve_ODE(mod, sys, person=person, endpoint = endpoint, start = start, options = options)
     if !(SciMLBase.successful_retcode(sol))
         @warn "Unsuccessful ODE solve in data generation, you might want to adjust model parameters"
@@ -626,8 +626,8 @@ end
 #4)Functions for visualisation
 
 #functions for plotting fit, with or without true or estimated parameters given, solutions given
-function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, sols_modified::Union{AbstractVector, Nothing} = nothing,
-    individuals::AbstractVector = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true)
+function plot_fit(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, sols_modified::Union{AbstractVector, Nothing} = nothing,
+    individuals::Vector{Int} = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true)
     if !isnothing(sols_true)
         endpoint = sols_true[1].t[end]
     elseif !isnothing(sols_estimated)
@@ -728,8 +728,8 @@ function plot_fit(mod::PKModel, data::Tuple; sols_true::Union{AbstractVector, No
 end
 
 #function above for solutions not given
-function plot_fit_param(mod::PKModel, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, individuals::AbstractVector = [1], 
-    endpoint::Union{Nothing, AbstractFloat} = nothing, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true, options = (AutoTsit5(Rosenbrock23()),))
+function plot_fit_param(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, individuals::Vector{Int} = [1], 
+    endpoint::Union{Nothing, AbstractFloat} = nothing, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     
     if isnothing(endpoint)
         measurements_ends = Tuple(person.measurements[end].timepoint for person in data)

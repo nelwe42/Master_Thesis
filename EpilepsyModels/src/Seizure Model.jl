@@ -59,7 +59,7 @@ function SeizureBasic(m::PKModel)
 end
 
 #basic distribution function for record_interval in days starting at n, requires sol from chosen PK model
-function distribution(m::SeizureBasic, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
+function distribution(m::SeizureBasic, sol::ODESolution, n::AbstractFloat; person::Union{Person, Nothing} = nothing, record_interval::AbstractFloat = 1.0, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+record_interval, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
@@ -101,7 +101,7 @@ function SeizureMult(m::PKModel; base_rate::AbstractFloat = 2.0, default_treat_e
 end
 
 #basic distribution function for timeframe in days starting at n, requires sol from chosen PK model
-function distribution(m::SeizureMult, sol, n::AbstractFloat; person::Union{Person, Nothing} = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
+function distribution(m::SeizureMult, sol::ODESolution, n::AbstractFloat; person::Union{Person, Nothing} = nothing, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+m.timeframe.inherent_timeframe, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
@@ -137,7 +137,7 @@ function SeizureNegativeBinomial(m::PKModel)
 end
 
 #negative binomial distribution function for record_interval starting at n, depends on if seizure on previous interval, requires sol from chosen PK model
-function distribution(m::SeizureNegativeBinomial, sol, n::AbstractFloat; person::Person, seizures::AbstractVector = person.seizure_counts, names::NamedTuple, θ::ComponentArray = m.θ)
+function distribution(m::SeizureNegativeBinomial, sol::ODESolution, n::AbstractFloat; person::Person, seizures::AbstractVector = person.seizure_counts, names::NamedTuple, θ::ComponentArray = m.θ)
     if any(x -> !isfinite(x), (sol(n+1, idxs = names.S)-sol(n,idxs = names.S)))
         return nothing
     end
@@ -181,7 +181,7 @@ function SeizureVPA(m::PKModel, target::Symbol = :s_VPA)
 end
 
 #bernoulli distribution for having no seizures in the next days on VPA
-function distribution(m::SeizureVPA, sol, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+function distribution(m::SeizureVPA, sol::ODESolution, n::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
     #Logit(Pr) = a + a1*(age/10) - a2^CBZ - (b1 - b2^partial seizures)*predicted trough concentration
     #for a2 and b2 consider taking max of effect with a/b1
     if person.covariates.age isa Number
@@ -234,7 +234,7 @@ function SeizureSANAD(m::PKModel)
 end
 
 #return term in exponential for pwp model for person at time n for event s
-function linear_predictor(m::SeizureSANAD, sol, t::AbstractFloat, s::Int; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+function linear_predictor(m::SeizureSANAD, sol::ODESolution, t::AbstractFloat, s::Int; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
     #Check valid event number
     if s <= 0
         return nothing
@@ -260,7 +260,7 @@ end
 #2.1) Discrete Nonrandom Models
 
 #k_n number of seizures (or presence/absence) on day n
-function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, k_n::Union{Int64, Bool}, record_interval::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
+function Seizure_prob_interval(m::SeizureModelNonrandom, sol::ODESolution, n::AbstractFloat, k_n::Union{Int64, Bool}, record_interval::AbstractFloat; person::Person, names::NamedTuple, θ::ComponentArray = m.θ)
     distribute = distribution(m,sol,n, person = person, record_interval = record_interval, names=names, θ = θ)
     if isnothing(distribute)
         return 0.0
@@ -277,7 +277,7 @@ function Seizure_prob_interval(m::SeizureModelNonrandom, sol, n::AbstractFloat, 
     end
 end
 
-function log_Seizure_prob_instance(m::SeizureModelNonrandom, sol; person::Person, seizures::AbstractVector = person.seizure_counts, prev_seizures::AbstractVector = seizures, names::NamedTuple, θ::ComponentArray = m.θ)
+function log_Seizure_prob_instance(m::SeizureModelNonrandom, sol::ODESolution; person::Person, seizures::AbstractVector = person.seizure_counts, prev_seizures::AbstractVector = seizures, names::NamedTuple, θ::ComponentArray = m.θ)
     prob = zero(eltype(θ))   
     for seizure in seizures
         if !(m.autocorrelation[1])
@@ -302,7 +302,7 @@ function log_Seizure_prob_instance(m::SeizureModelNonrandom, sol; person::Person
     return prob
 end
 
-function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
+function log_Seizure_prob(m::SeizureModelNonrandom, sol::ODESolution, person::Person; θ::ComponentArray = m.θ, names::NamedTuple)
     prob = zero(eltype(θ))
     for i in eachindex(person.seizure_counts) 
         @inbounds time = person.seizure_counts[i].time #get time interval out of named tuple
@@ -322,7 +322,7 @@ function log_Seizure_prob(m::SeizureModelNonrandom, sol, person::Person; θ::Com
     return prob
 end
 
-function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom, sol, person::Person; names::NamedTuple)
+function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom, sol::ODESolution, person::Person; names::NamedTuple)
     if m.timeframe.general_timeframe
         return log_Seizure_prob(m, sol, person, θ=θ, names = names)
     elseif !(m.autocorrelation[1])
@@ -412,7 +412,7 @@ end
 
 #2.2) Cox type Models
 
-function get_seizure_loglikelihood(θ::ComponentArray, m::CoxTypeModels, sols, data::Tuple{Vararg{Person}}; names::NamedTuple)
+function get_seizure_loglikelihood(θ::ComponentArray, m::CoxTypeModels, sols::AbstractVector, data::Tuple{Vararg{Person}}; names::NamedTuple)
     #Check have solution for each person
     if length(data) != length(sols)
         error("Cannot compute seizure likelihood, solutions and data size do not match")
@@ -465,7 +465,7 @@ end
 #models need attribute timeframe = (general_timeframe = yes/no, inherent_timeframe = length in days e.g. 1.0)
 #models need bool attribute autocorrelation, length if yes, i.e. autocorrelation = (yes/no, timeframe)
 #distribution only needs attribute record_interval if have general_timeframe
-function generate_seizures!(m::SeizureModelNonrandom, sol, person::Person; timepoints::AbstractVector=0.0:m.timeframe.inherent_timeframe:10.0, just_Bool::Bool = false, generate_in_lumps::Bool = true, names::NamedTuple)
+function generate_seizures!(m::SeizureModelNonrandom, sol::ODESolution, person::Person; timepoints::AbstractVector=0.0:m.timeframe.inherent_timeframe:10.0, just_Bool::Bool = false, generate_in_lumps::Bool = true, names::NamedTuple)
     if isempty(timepoints)
         return
     end
@@ -549,7 +549,7 @@ function get_hazard_for_s(m::CoxTypeModels, sol::ODESolution; person::Person, t:
 end
 
 #Output cdf as time dependent function, is given by 1-exp(-integral from 0 to t over h(s) ds)
-function cox_integral(m::CoxTypeModels, sol, person::Person; endpoint::AbstractFloat, event::Int, start::AbstractFloat = zero(typeof(endpoint)), names::NamedTuple)
+function cox_integral(m::CoxTypeModels, sol::ODESolution, person::Person; endpoint::AbstractFloat, event::Int, start::AbstractFloat = zero(typeof(endpoint)), names::NamedTuple)
     f(u, p, t) = get_hazard_for_s(m, sol, person=person, t=t, event=event, names=names) 
     u0 = 0.0
     tspan = (start, endpoint)
@@ -558,7 +558,7 @@ function cox_integral(m::CoxTypeModels, sol, person::Person; endpoint::AbstractF
     return sol
 end
 
-function generate_seizures!(m::CoxTypeModels, sol, person::Person; endpoint::AbstractFloat, start::AbstractFloat = zero(typeof(endpoint)), max_events::Union{Int, Nothing} = nothing, names::NamedTuple)
+function generate_seizures!(m::CoxTypeModels, sol::ODESolution, person::Person; endpoint::AbstractFloat, start::AbstractFloat = zero(typeof(endpoint)), max_events::Union{Int, Nothing} = nothing, names::NamedTuple)
     if isnothing(max_events)
         S = Inf
     else
@@ -596,9 +596,9 @@ end
 #Plots fit for person i up to time given solutions from PK model (if they should be plotted)
 #estimate and true distributions plotted in same timeframes as individuals data
 #If solutions modified with random effects are passed get additional plots modified and estimate (violin can only plot 2 at once)
-function plot_fit(mod::SeizureModelNonrandom, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+function plot_fit(mod::SeizureModelNonrandom, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
-    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
+    names::NamedTuple, individuals::Vector{Int} = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
     
     output = Plots.Plot[]
     if !isnothing(sols_true)
@@ -785,7 +785,7 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple; true_param::Union{Com
     return output
 end
 
-function draw_data_samples(mod::SeizureModelNonrandom, sol; person::Person, interval::Tuple, names::NamedTuple, θ::ComponentArray = mod.θ, sample_nr::Int = 1000)
+function draw_data_samples(mod::SeizureModelNonrandom, sol::ODESolution; person::Person, interval::Tuple, names::NamedTuple, θ::ComponentArray = mod.θ, sample_nr::Int = 1000)
     if mod.timeframe.general_timeframe
         distribute = distribution(mod, sol, interval[1], person=person, record_interval=(interval[2]-interval[1]),names=names, θ=θ)
         if isnothing(distribute)
@@ -876,9 +876,9 @@ end
 
 #4.2) Cox type models
 
-function plot_fit(mod::CoxTypeModels, data::Tuple; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
+function plot_fit(mod::CoxTypeModels, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
-    names::NamedTuple, individuals::AbstractVector = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true)
+    names::NamedTuple, individuals::Vector{Int} = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true)
     
     output = Plots.Plot[]
     if !isnothing(sols_true)

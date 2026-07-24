@@ -47,6 +47,9 @@ function PolyDoses(default_doses::NamedTuple, distr_first::NamedTuple, distr_sec
     if !(isempty(setdiff(names_first, dose_names))) || !(isempty(setdiff(names_second, dose_names)))
         @warn "Not all possible drug choices have an assigned default dose"
     end
+    if !(0 ≤ prob_second ≤ 1)
+        @warn "Probability for second drug not between 0 and 1"
+    end
     distr_one = Categorical(collect(values(distr_first)))
     distr_two = Categorical(collect(values(distr_second)))
     return PolyDoses(default_doses, distr_one, distr_two, names_first, names_second, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
@@ -56,6 +59,9 @@ end
 function PolyDoses(m::PKModel; default_dose::AbstractFloat = 5.0, prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1, assign_not_supported::Bool = false)
     names = Tuple(get_keys_PK(m).d)
     N = length(names)
+    if !(0 ≤ prob_second ≤ 1)
+        @warn "Probability for second drug not between 0 and 1"
+    end
     default_doses = NamedTuple{names}([default_dose for i in 1:N])
     distr_first = Categorical([1/N for i in 1:N])
     return PolyDoses(default_doses, distr_first, distr_first, names, names, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
@@ -127,6 +133,9 @@ function PolyDosesRandom(dose_distr::NamedTuple, distr_first::NamedTuple, distr_
     if !(isempty(setdiff(names_first, dose_names))) || !(isempty(setdiff(names_second, dose_names)))
         @warn "Not all possible drug choices have an assigned default dose"
     end
+    if !(0 ≤ prob_second ≤ 1)
+        @warn "Probability for second drug not between 0 and 1"
+    end
     distr_one = Categorical(collect(values(distr_first)))
     distr_two = Categorical(collect(values(distr_second)))
     return PolyDosesRandom(dose_distr, distr_one, distr_two, names_first, names_second, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
@@ -136,6 +145,9 @@ end
 function PolyDosesRandom(m::PKModel; default_min_dose::AbstractFloat = 1.0, default_avg_multiple_dose::AbstractFloat = 5.0, default_max_multiple_dose::Int = 10, prob_second::AbstractFloat = 0.0, times_per_day_first::Int = 1, times_per_day_second::Int = 1, assign_not_supported::Bool = false)
     names = Tuple(get_keys_PK(m).d)
     N = length(names)
+    if !(0 ≤ prob_second ≤ 1)
+        @warn "Probability for second drug not between 0 and 1"
+    end
     dose_distr = NamedTuple{names}([(min = default_min_dose, avg_num = default_avg_multiple_dose, max_num = default_max_multiple_dose) for i in 1:N])
     distr_first = Categorical([1/N for i in 1:N])
     return PolyDosesRandom(dose_distr, distr_first, distr_first, names, names, prob_second, times_per_day_first, times_per_day_second, assign_not_supported)
@@ -216,7 +228,6 @@ end
     start_second_in_min::Bool = true #start second drug in min instead of avg
     times_per_day_first::T6 = 2
     times_per_day_second::T6 = 2
-    assign_not_supported::Bool = true #controls if assign_dose! assigns drugs not given in names
 end
 
 #Generalised male: (:d_VPA, :d_LEV, :d_LTG)

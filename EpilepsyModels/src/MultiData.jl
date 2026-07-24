@@ -28,11 +28,11 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-considered = [50.0]
+considered = [2,5,10,50]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
-file_name = "Obs_Big4_$(considered[parsed2]).txt"
+file_name = "PopSize_VPA_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -65,17 +65,17 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 40*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 20 #5 #20 #10 #20
+Population_size = considered[parsed2] #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + considered[parsed2] #20.0 #40.0
+Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-Seizure_timepoints = 0.0:1.0:Obs_Duration
+Seizure_timepoints = 0.0:5.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-#logscale = ("σ", "k_abs", "c1", "v1")
-logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
+logscale = ("σ", "k_abs", "c1", "v1")
+#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -125,11 +125,11 @@ lock_path_output = joinpath("./", file_name * ".lock")
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-
+#=
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -149,9 +149,9 @@ else
         end
     end
 end
-
+=#
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
