@@ -32,7 +32,7 @@ considered = [2,5,10,50]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
-file_name = "PopSize_VPA_$(considered[parsed2]).txt"
+file_name = "PopSize_SANAD_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -69,7 +69,7 @@ Population_size = considered[parsed2] #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-Seizure_timepoints = 0.0:5.0:Obs_Duration
+Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 #logscale = ("σ",)
 #logscale = ("σ","v1")
@@ -122,10 +122,10 @@ lock_path_output = joinpath("./", file_name * ".lock")
 =#
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
@@ -151,10 +151,10 @@ else
 end
 =#
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
-#=
+
 if (typeof(pk_model).name.wrapper in [PKBigFour])
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
 else
@@ -171,7 +171,7 @@ else
     end
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
-=#
+
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
