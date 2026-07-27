@@ -28,11 +28,11 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-considered = [2,5,10,50]
+considered = [(1.0, false), (1.0, true), (2.0, false), (2.0, true), (5.0, false), (5.0, true), (10.0, false), (10.0, true)]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
-file_name = "PopSize_SANAD_$(considered[parsed2]).txt"
+file_name = "SeizureFreq_Basic_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -65,12 +65,12 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 40*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = considered[parsed2] #5 #20 #10 #20
+Population_size = 10 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 20.0 #40.0
+Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-Seizure_timepoints = 0.0:1.0:Obs_Duration
-no_counts_seizure = false
+Seizure_timepoints = 0.0:considered[parsed2][1]:Obs_Duration
+no_counts_seizure = considered[parsed2][2]
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
@@ -122,14 +122,14 @@ lock_path_output = joinpath("./", file_name * ".lock")
 =#
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-#=
+
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -149,12 +149,12 @@ else
         end
     end
 end
-=#
+
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
-
+#=
 if (typeof(pk_model).name.wrapper in [PKBigFour])
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
 else
@@ -171,7 +171,7 @@ else
     end
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
-
+=#
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
