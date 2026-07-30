@@ -4,24 +4,24 @@ using StatsPlots
 using Distributions
 
 #files to read data from, relative to 
-files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt", "./PK_reg/CBZ_725.txt"], 
-         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt", "./PK_reg/LEV_725.txt"],
-         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt", "./PK_reg/VPA_725.txt"],
-         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt", "./PK_reg/LTG_725.txt"]]
+files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt"], 
+        ["./Obs_Duration/Obs_SANAD_5.txt", "./Obs_Duration/Obs_SANAD_10.txt", "./Obs_Duration/Obs_SANAD_20.txt", "./Obs_Duration/Obs_SANAD_30.txt", "./Obs_Duration/Obs_SANAD_50.txt"], 
+        ["./Obs_Duration/Obs_VPA_5.txt", "./Obs_Duration/Obs_VPA_10.txt", "./Obs_Duration/Obs_VPA_20.txt", "./Obs_Duration/Obs_VPA_30.txt", "./Obs_Duration/Obs_VPA_50.txt"]
+        ]
 #models each subarray corresponds to
-models = ["CBZ", "LEV", "VPA", "LTG"]
+models = ["Big4", "SANAD", "VPA"]
 #colour for each model
 colours = [:blue, :green, :red, :purple]
 #quantity of interest
-quant = "regularities of PK measurements"
+quant = "observation duration"
 #corresponding values of interest
-values = [0.75, 1, 3.75, 7, 7.25]
+values = [5, 10, 20, 30, 50]
 #Legend setting for plotting
 legendcolumns = 2
 #set variable of interest below
 
-upper_plotting_bound = [2.0 for model in models]
-upper_outlier_bound = [100.0 for model in models]
+upper_plotting_bound = [50.0 for model in models]
+upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 
 estimates_all = [[] for model in files]

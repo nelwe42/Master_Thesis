@@ -117,16 +117,17 @@ function distribution(m::SeizureMult, sol::ODESolution, n::AbstractFloat; person
     return distribution
 end
 
-@with_kw struct SeizureNegativeBinomial{T<:ComponentArray, T2<:Tuple} <: SeizureModelNonrandom
-    θ::T=ComponentArray((a = log(2.0), o = 0.01, prev = 0.0, b = SA[0.0])) #a base rate, prev impact of previous day, o overdispersion, b coefficient of drug 
+@with_kw struct SeizureNegativeBinomial{T<:ComponentArray, T2<:Tuple, T3<:NamedTuple} <: SeizureModelNonrandom
+    θ::T=ComponentArray((a = log(2.0), o = 1.0, prev = 0.0, b = SA[0.0])) #a base rate, prev impact of previous day, o overdispersion, b coefficient of drug 
     cov::T2 = (:seizure_prev_day,) #depends on if seizure occured on previous day
     timeframe = (general_timeframe = false, inherent_timeframe = 1.0)
     autocorrelation = (true, 1.0)
+    bounds::T3 = (lb = ComponentArray((a = -10000, o = 0.0, prev = -2.0, b = SA[[-0.0001 for i in eachindex(θ.b)]...])), ub = ComponentArray((a = log(20.0), o = 5.0, prev = 10.0, b = SA[[1.0 for i in eachindex(θ.b)]...])))
 end
 
 #Outer Constructor to make default for N drugs
 function SeizureNegativeBinomial(N::Int64)
-    obj = SeizureNegativeBinomial(θ = ComponentArray((a = 2.0, o = 0.01, prev = 0.0, b = SA[[0 for i in 1:N]...])))
+    obj = SeizureNegativeBinomial(θ = ComponentArray((a = log(2.0), o = 0.01, prev = 0.0, b = SA[[0 for i in 1:N]...])))
     return obj
 end
 
@@ -338,7 +339,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom,
             multiple = Int(round(interval/m.timeframe.inherent_timeframe)) #how many timeframes of model occur in interval
             if count isa Bool
                 #calculate likelihood of no seizures occuring in timeframe multiple
-                seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = zero(eltype(θ))) for j in 1:multiple]
+                seizures = [(time = (start+(j-1)*m.timeframe.inherent_timeframe, start+j*m.timeframe.inherent_timeframe), count = zero(eltype(θ))) for j in 1:multiple]
                 log_prob_none = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ = θ)
                 if !isfinite(log_prob_none)
                     return -Inf
@@ -351,7 +352,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom,
             else
                 count_sum = zero(eltype(θ)) #storing sum over combinations for this count (sum outside log)
                 for counts in multiexponents(multiple, count) #sum over possible combinations for this count over multiple timeframes
-                    seizures = [(time = start+(j-1)*m.timeframe.inherent_timeframe, count = counts[j]) for j in 1:multiple]
+                    seizures = [(time = (start+(j-1)*m.timeframe.inherent_timeframe, start+j*m.timeframe.inherent_timeframe), count = counts[j]) for j in 1:multiple]
                     log_interval_prob = log_Seizure_prob_instance(m, sol, person = person, seizures = seizures, names = names, θ=θ)
                     if !isfinite(log_interval_prob)
                         return -Inf
@@ -390,16 +391,16 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom,
             a = collect(per_timeframe[i])
             if i == 1 
                 for j in eachindex(a)
-                    current = [(time = start_current+(k-1)*m.timeframe.inherent_timeframe, count = a[j][k]) for k in eachindex(a[j])]
+                    current = [(time = (start_current+(k-1)*m.timeframe.inherent_timeframe, start_current+k*m.timeframe.inherent_timeframe), count = a[j][k]) for k in eachindex(a[j])]
                     sums[j] = log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = current, names = names, θ=θ)
                 end
                 prev_seizures = a
             else
                 for prev in eachindex(prev_seizures)
-                    previous = [(time = start+(k-1)*m.timeframe.inherent_timeframe, count = prev_seizures[prev][k]) for k in eachindex(prev_seizures[prev])]
+                    previous = [(time = (start+(k-1)*m.timeframe.inherent_timeframe, start+k*m.timeframe.inherent_timeframe), count = prev_seizures[prev][k]) for k in eachindex(prev_seizures[prev])]
                     for j in eachindex(a)
-                        current = [(time = start_current+(k-1)*m.timeframe.inherent_timeframe, count = a[j][k]) for k in eachindex(a[j])]
-                        sums[(1-prev)*length(a)+j] = sums_prev[prev] + log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = vcat(previous,current), names = names, θ=θ)
+                        current = [(time = (start_current+(k-1)*m.timeframe.inherent_timeframe, start_current+k*m.timeframe.inherent_timeframe), count = a[j][k]) for k in eachindex(a[j])]
+                        sums[(prev-1)*length(a)+j] = sums_prev[prev] + log_Seizure_prob_instance(m, sol, person = person, seizures = current, prev_seizures = vcat(previous,current), names = names, θ=θ)
                     end
                 end
                 prev_seizures = [(previous...,option...) for previous in prev_seizures for option in a]

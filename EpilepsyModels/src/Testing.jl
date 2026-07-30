@@ -68,7 +68,7 @@ wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #TODO Change this back later
-Seizure_timepoints = 0.0:5.0:Obs_Duration
+Seizure_timepoints = 0.0:2.0:Obs_Duration
 max_events = nothing
 no_counts_seizure = false
 #logscale = ("σ",)
@@ -142,7 +142,7 @@ end
 
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
 if (typeof(pk_model).name.wrapper in [PKBigFour])
