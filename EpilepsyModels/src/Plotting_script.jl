@@ -4,23 +4,23 @@ using StatsPlots
 using Distributions
 
 #files to read data from, relative to 
-files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt"], 
-        ["./Obs_Duration/Obs_SANAD_5.txt", "./Obs_Duration/Obs_SANAD_10.txt", "./Obs_Duration/Obs_SANAD_20.txt", "./Obs_Duration/Obs_SANAD_30.txt", "./Obs_Duration/Obs_SANAD_50.txt"], 
-        ["./Obs_Duration/Obs_VPA_5.txt", "./Obs_Duration/Obs_VPA_10.txt", "./Obs_Duration/Obs_VPA_20.txt", "./Obs_Duration/Obs_VPA_30.txt", "./Obs_Duration/Obs_VPA_50.txt"]
+files = [["./Pop_Size/PopSize_Big4_2.txt", "./Pop_Size/PopSize_Big4_5.txt", "./Pop_Size/PopSize_Big4_10.txt", "./Pop_Size/PopSize_Big4_20.txt", "./Pop_Size/PopSize_Big4_50.txt"], 
+        ["./Pop_Size/PopSize_SANAD_2.txt", "./Pop_Size/PopSize_SANAD_5.txt", "./Pop_Size/PopSize_SANAD_10.txt", "./Pop_Size/PopSize_SANAD_20.txt", "./Pop_Size/PopSize_SANAD_50.txt"], 
+        ["./Pop_Size/PopSize_VPA_2.txt", "./Pop_Size/PopSize_VPA_5.txt", "./Pop_Size/PopSize_VPA_10.txt", "./Pop_Size/PopSize_VPA_20.txt", "./Pop_Size/PopSize_VPA_50.txt"]
         ]
 #models each subarray corresponds to
 models = ["Big4", "SANAD", "VPA"]
 #colour for each model
 colours = [:blue, :green, :red, :purple]
 #quantity of interest
-quant = "observation duration"
+quant = "population size"
 #corresponding values of interest
-values = [5, 10, 20, 30, 50]
+values = [2, 5, 10, 20, 50]
 #Legend setting for plotting
 legendcolumns = 2
 #set variable of interest below
 
-upper_plotting_bound = [50.0 for model in models]
+upper_plotting_bound = [50.0, 200.0, 50.0]
 upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 

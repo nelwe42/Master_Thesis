@@ -122,12 +122,12 @@ end
     cov::T2 = (:seizure_prev_day,) #depends on if seizure occured on previous day
     timeframe = (general_timeframe = false, inherent_timeframe = 1.0)
     autocorrelation = (true, 1.0)
-    bounds::T3 = (lb = ComponentArray((a = -10000, o = 0.0, prev = -2.0, b = SA[[-0.0001 for i in eachindex(θ.b)]...])), ub = ComponentArray((a = log(20.0), o = 5.0, prev = 10.0, b = SA[[1.0 for i in eachindex(θ.b)]...])))
+    bounds::T3 = (lb = ComponentArray((a = -10, o = 0.01, prev = -2.0, b = SA[[-0.0001 for i in eachindex(θ.b)]...])), ub = ComponentArray((a = log(20.0), o = 5.0, prev = 10.0, b = SA[[1.0 for i in eachindex(θ.b)]...])))
 end
 
 #Outer Constructor to make default for N drugs
 function SeizureNegativeBinomial(N::Int64)
-    obj = SeizureNegativeBinomial(θ = ComponentArray((a = log(2.0), o = 0.01, prev = 0.0, b = SA[[0 for i in 1:N]...])))
+    obj = SeizureNegativeBinomial(θ = ComponentArray((a = log(2.0), o = 1.0, prev = 0.0, b = SA[[0 for i in 1:N]...])))
     return obj
 end
 

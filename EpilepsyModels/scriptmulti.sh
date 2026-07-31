@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --array=1-10
+#SBATCH --array=1-800
 #SBATCH --partition=intelsr_long
 #SBATCH --account=ag_irumls_hasenauer
-#SBATCH --time=60:00:00
+#SBATCH --time=120:00:00
 #SBATCH --ntasks=5
 #SBATCH --chdir=~
 #SBATCH --output=slurm_%a.out
