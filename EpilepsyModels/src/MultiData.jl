@@ -236,14 +236,14 @@ elseif sampling
                         prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed, 
                         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, printing = false, 
                         run_CI = run_CI, confidence = confidence, sampler = sampler, sampling_options = sampling_options) 
-    eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
+    eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, max_threads = max_threads_simul, ODE_options = ODE_options)
 else
     estimate(new_mod, data) = optimise(new_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
         bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = false,
         multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
         multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds, printing = false,
         run_CI = run_CI, confidence = confidence, finite_not_forward = finite_diff_hessian, sandwich = sandwich)
-    eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options)
+    eval(data) = get_negloglikelihood_evaluated(Input_θ, mod, data, logscale = logscale, max_threads = max_threads_simul, ODE_options = ODE_options)
 end
 
 try

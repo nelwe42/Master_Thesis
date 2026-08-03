@@ -112,10 +112,10 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-#pk_model = PKLEV(θ=Input_θ_PKLEV)
+pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
@@ -142,7 +142,7 @@ end
 
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
 if (typeof(pk_model).name.wrapper in [PKBigFour])
@@ -215,9 +215,10 @@ test_mod = FullModel(typeof(pk_model).name.wrapper(), typeof(seizure_model).name
 println("PK start: ", test_mod.pk_model.θ)
 if hierarchical_optimisation
     #Hierarchical optimisation
-    estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, logscale = logscale, 
-                        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
-                        solver_optim = solver_optim, ODE_options = ODE_options)
+    estimate = optimise_hierarchical(test_mod, data, maxiters = Maxiters_optimiser, maxtime = Max_Time, logscale = logscale, solver_optim = solver_optim, ODE_options = ODE_options,
+        bound_abs = bound_abs, lower_upper = lower_upper_bounds, objective_fail_hard=fail_hard, store_trace = optimisation_trace,
+        multistart = Multistart_nstarts, prefilter = prefilter, custom_starts = custom_starts, max_threads = max_threads_simul, multistart_seed = Multistart_seed,
+        multistart_include_initial = Multistart_include_initial, multistart_bounds = Multistart_bounds)
     println("True Objective Value: ", get_negloglikelihood_evaluated_hierarchical(Input_θ, mod, data, logscale = logscale, ODE_options = ODE_options))
 elseif sampling
     estimate = optimise_sampled(test_mod, data, per_chain=Samples_per_chain, nadapts = Adaptation_steps, bound_abs = bound_abs, 
