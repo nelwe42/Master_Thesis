@@ -32,6 +32,7 @@ considered = [(1.0, false), (1.0, true), (2.0, false), (2.0, true), (5.0, false)
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
+#path = "."
 file_name = "SeizureFreq_NB_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
@@ -265,6 +266,7 @@ for a in keys(results)
         println("Estimates:")
         for estimate in results.estimates
             println(estimate.u)
+            #println(estimate.raw.original.trace)
             if hasproperty(estimate, :multistart_best_start)
                 println("Best start: ", estimate.multistart_best_start)
             end

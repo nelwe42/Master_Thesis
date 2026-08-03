@@ -387,7 +387,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom,
             end
             len = len * length(per_timeframe[i])
             sums_prev = sums
-            sums = Array{AbstractFloat}(undef, len)
+            sums = Array{Union{Float64, ForwardDiff.Dual}}(undef, len)
             a = collect(per_timeframe[i])
             if i == 1 
                 for j in eachindex(a)
