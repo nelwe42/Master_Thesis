@@ -99,7 +99,7 @@ optim_lower_bounds = nothing
 optim_upper_bounds = nothing
 Variance_bound = nothing #log(1.0) #upper bounds will be reset accordingly after Input_θ is created below
 Multistart_bounds = nothing #25.0
-fail_hard = false
+fail_hard = true
 
 run_hessian = false
 sandwich = true
@@ -142,7 +142,7 @@ end
 
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
 if (typeof(pk_model).name.wrapper in [PKBigFour])

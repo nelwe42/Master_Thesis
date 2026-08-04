@@ -374,7 +374,7 @@ function get_seizure_loglikelihood(θ::ComponentArray, m::SeizureModelNonrandom,
             per_timeframe = Tuple(multiexponents(Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)), entry.count) for entry in person.seizure_counts)
         else
             #Same for boolean input
-            per_timeframe = Tuple(entry.count ? filter(any, collect(Iterators.product(fill((true, false),Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)))...))) : [(fill(false,Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe))),)] for entry in person.seizure_counts)
+            per_timeframe = Tuple(entry.count ? filter(any, collect(Iterators.product(fill((true, false),Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe)))...))) : [Tuple(fill(false,Int(round((entry.time[2]-entry.time[1])/m.timeframe.inherent_timeframe))))] for entry in person.seizure_counts)
         end
         start = person.seizure_counts[1].time[1]
         sums = []
