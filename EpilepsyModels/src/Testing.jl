@@ -63,9 +63,9 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 2*60.0 #14*60.0*60.0 
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 10 #5 #20 #10 #20
+Population_size = 1 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 30.0 #40.0
+Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 #TODO Change this back later
 Seizure_timepoints = 0.0:1.0:Obs_Duration
@@ -142,7 +142,7 @@ end
 
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
 if (typeof(pk_model).name.wrapper in [PKBigFour])

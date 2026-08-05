@@ -3,24 +3,29 @@ using Plots
 using StatsPlots
 using Distributions
 
+#save figures after running?
+saving = false
+save_path = "./Obs_Duration"
+
 #files to read data from, relative to 
-files = [["./Pop_Size/PopSize_Big4_2.txt", "./Pop_Size/PopSize_Big4_5.txt", "./Pop_Size/PopSize_Big4_10.txt", "./Pop_Size/PopSize_Big4_20.txt", "./Pop_Size/PopSize_Big4_50.txt"], 
-        ["./Pop_Size/PopSize_SANAD_2.txt", "./Pop_Size/PopSize_SANAD_5.txt", "./Pop_Size/PopSize_SANAD_10.txt", "./Pop_Size/PopSize_SANAD_20.txt", "./Pop_Size/PopSize_SANAD_50.txt"], 
-        ["./Pop_Size/PopSize_VPA_2.txt", "./Pop_Size/PopSize_VPA_5.txt", "./Pop_Size/PopSize_VPA_10.txt", "./Pop_Size/PopSize_VPA_20.txt", "./Pop_Size/PopSize_VPA_50.txt"]
+files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt"], 
+        ["./Obs_Duration/Obs_SANAD_5.txt", "./Obs_Duration/Obs_SANAD_10.txt", "./Obs_Duration/Obs_SANAD_20.txt", "./Obs_Duration/Obs_SANAD_30.txt", "./Obs_Duration/Obs_SANAD_50.txt"], 
+        ["./Obs_Duration/Obs_VPA_5.txt", "./Obs_Duration/Obs_VPA_10.txt", "./Obs_Duration/Obs_VPA_20.txt", "./Obs_Duration/Obs_VPA_30.txt", "./Obs_Duration/Obs_VPA_50.txt"]
         ]
 #models each subarray corresponds to
 models = ["Big4", "SANAD", "VPA"]
 #colour for each model
 colours = [:blue, :green, :red, :purple]
 #quantity of interest
-quant = "population size"
+quant = "observation duration"
+short_quant = "Obs_Dur"
 #corresponding values of interest
-values = [2, 5, 10, 20, 50]
+values = [5, 10, 20, 30, 50]
 #Legend setting for plotting
 legendcolumns = 2
 #set variable of interest below
 
-upper_plotting_bound = [50.0, 200.0, 50.0]
+upper_plotting_bound = [50.0 for model in models]
 upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 
@@ -88,7 +93,7 @@ end
 interests = rel_squared_errors_all
 #give name
 name = "relative squared errors"
-
+short_name = "RSE"
 
 if spaced_accordingly
     values2 = deepcopy(values)
@@ -157,3 +162,11 @@ for k in eachindex(models)
 end
 push!(overall_plots, pl3)
 display(pl3)
+
+if saving
+    for i in eachindex(per_model_plots)
+        savefig(per_model_plots[i][1], joinpath(save_path,"$(models[i])_$(short_quant)_$(short_name).png"))
+    end
+    savefig(overall_plots[1], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name).png"))
+    savefig(overall_plots[2], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name).png"))
+end

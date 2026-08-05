@@ -28,12 +28,12 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-considered = [(1.0, false), (1.0, true), (2.0, false), (2.0, true), (5.0, false), (5.0, true), (10.0, false), (10.0, true)]
+considered = [30.0, 15.0, 5.0, 2.0, 1.0]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "SeizureFreq_NB_$(considered[parsed2]).txt"
+file_name = "UpdateReg_Basic_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -66,17 +66,18 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 40*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 10 #5 #20 #10 #20
+Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-Seizure_timepoints = 0.0:considered[parsed2][1]:Obs_Duration
-no_counts_seizure = considered[parsed2][2]
+Seizure_timepoints = 0.0:3.75:Obs_Duration
+no_counts_seizure = false
+update_reg = considered[parsed2]
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ", "k_abs", "c1", "v1")
-#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
+#logscale = ("σ", "k_abs", "c1", "v1")
+logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -126,11 +127,11 @@ lock_path_output = joinpath("./", file_name * ".lock")
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-#=
+
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -150,10 +151,10 @@ else
         end
     end
 end
-=#
+
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
 if (typeof(pk_model).name.wrapper in [PKBigFour])
@@ -177,14 +178,15 @@ person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
-#dose_gen = BigFourDoses()
-if seizure_model isa SeizureVPA
+#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+dose_gen = BigFourDoses()
+if seizure_model isa SeizureVPA && !(dose_gen isa BigFourDoses)
     dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
     distr_first = (d_VPA = 1.0, d_CBZ = 0.0)
     distr_second = (d_VPA = 0.0, d_CBZ = 1.0)
     dose_gen = PolyDosesRandom(dose_distr, distr_first, distr_second; prob_second=0.5, times_per_day_first=2, times_per_day_second=2, assign_not_supported = true)
-    #dose_gen = BigFourDoses(order_male = ((:d_VPA,:d_CBZ), (:d_VPA,:d_CBZ)), order_female = ((:d_VPA,:d_CBZ), (:d_VPA,:d_CBZ)), prob_second = 1.0)
+elseif seizure_model isa SeizureVPA
+    dose_gen = BigFourDoses(order_male = ((:d_VPA,:d_CBZ), (:d_VPA,:d_CBZ)), order_female = ((:d_VPA,:d_CBZ), (:d_VPA,:d_CBZ)), prob_second = 0.5, prob_reassignment = 0.0)
 end
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
@@ -192,8 +194,8 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 #Set data generating function
 data() = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 #modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
-data_modified() = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-data_updating() = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data_modified() = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = update_reg, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+data_updating() = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = update_reg, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 
 
 #Set bounds on sigma, ensure both or neither of lower/upper bounds are nothing
@@ -248,7 +250,7 @@ end
 
 try
 
-results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
+results = multi_data_run(mod, data_updating, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
 
 
 #create lockfile to ensure no multiwriting

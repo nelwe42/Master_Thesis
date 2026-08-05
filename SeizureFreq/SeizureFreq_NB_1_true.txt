@@ -3868,3 +3868,304 @@ Real[277.77902455923726]
 CIs:
 @NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])), Sandwich = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])))]
 
+My id is 75
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 97.95419077656712, c1 = 13.74280627882579, c2 = 0.5329907819870298, c3 = 0.8758539351149599, v1 = 0.27763249753383046, σ = 0.17939637161872327), Seizure = (a = 2.9957060032432983, o = 4.998525496551175, prev = -1.9937292257979373, b = [0.3069695906369058]))
+Best start: 1
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     -2.485190e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = 5.51e-08 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 2.22e-09 ≰ 0.0e+00
+    |g(x)|                 = 2.79e-02 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   4385  (vs limit 144000)
+    Iterations:    4
+    f(x) calls:    974
+    ∇f(x) calls:   290
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 53.314190776567116, c1 = 0.10519372117420822, c2 = 0.002009218012970271, c3 = 0.0008539351149599028, v1 = 0.0023675024661695687, σ = 0.020603628381276745), Seizure = (a = 1.6094116421234077, o = 3.870525496551175, prev = 2.724729225797937, b = [0.10696959063690581]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 1.194314309510912, c1 = 0.007596311465497417, c2 = 0.0037555476877948984, c3 = 0.0009759258456684604, v1 = 0.008455365950605602, σ = 0.10301814190638373), Seizure = (a = 1.1609450974202018, o = 3.431316929566645, prev = 3.7273997616934844, b = [0.534847953184529]))]
+mean_squared_errors:
+Real[286.7421204060394]
+rel_squared_errors:
+Real[2.8738444368048297]
+times:
+Real[4384.894017934799]
+obj_diffs:
+Real[-3.601412235303158]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (29.235706613079614, 328.1953680024767), c1 = (13.634375827113368, 13.852099048183527), c2 = (0.5297356286396302, 0.5362459353344293), c3 = (0.8744980512453996, 0.8772098189845202), v1 = (0.275451351862363, 0.2798309144817248), σ = (0.15501329069470918, 0.20761483099759467)), Seizure = (a = (-8.117184737514805, 14.1085967440014), o = (-56.69502760140827, 66.69207859451062), prev = (-80.89764070321344, 76.91018225161757), b = [(-0.36980998203448484, 0.9837491633082964)])), Sandwich = (PK = (k_abs = (1.8824801217575665e-89, 5.097011851436533e92), c1 = (2.8750453782834033, 65.69104120718211), c2 = (0.19989062606786, 0.8660909379061995), c3 = (0.5405055794332063, 1.2112022907967135), v1 = (0.07693799682152365, 1.0018431317581313), σ = (0.0, Inf)), Seizure = (a = (-0.6577455250100055, 6.649157531496602), o = (1.978462571628686, 8.018588421473664), prev = (-13.27533495079259, 9.287876499196717), b = [(-0.5862433820226274, 1.2001825632964391)])))]
+
+My id is 93
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 46.70567497473779, c1 = 39.21021610062249, c2 = 0.7124226842381948, c3 = 1.7401941969586618, v1 = 0.10606576455796402, σ = 7.401040023699535), Seizure = (a = 0.9745149031097533, o = 3.5936797356983834, prev = 6.352918275993156, b = [0.13284953522281773]))
+Best start: 2
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     2.488335e+03
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = NaN ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = NaN ≰ 0.0e+00
+    |g(x)|                 = 1.10e+01 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   429  (vs limit 144000)
+    Iterations:    1
+    f(x) calls:    1
+    ∇f(x) calls:   1
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 2.0656749747377887, c1 = 25.36221610062249, c2 = 0.17742268423819474, c3 = 0.8651941969586618, v1 = 0.173934235442036, σ = 7.201040023699535), Seizure = (a = 0.41177945801013727, o = 2.4656797356983837, prev = 5.621918275993156, b = [0.06715046477718228]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.046274080975308884, c1 = 1.831471411079036, c2 = 0.33163118549195275, c3 = 0.9887933679527564, v1 = 0.6211936980072714, σ = 36.00520011849767), Seizure = (a = 0.2970360910055851, o = 2.1858862905127516, prev = 7.690722675777232, b = [0.3357523238859114]))]
+mean_squared_errors:
+Real[73.80339021523858]
+rel_squared_errors:
+Real[136.53307117844972]
+times:
+Real[428.8813970088959]
+obj_diffs:
+Real[2508.8768605728646]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])), Sandwich = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])))]
+
+My id is 50
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 50.85117426584712, c1 = 13.760272702410687, c2 = 0.5284100228291728, c3 = 0.8781842482799493, v1 = 0.2812521326829868, σ = 0.29696745547656805), Seizure = (a = 1.3042778442299001, o = 1.6829932068975966, prev = 5.9364701047586586, b = [0.4724007244049775]))
+Best start: 1
+ * Status: failure
+
+ * Candidate solution
+    Final objective value:     3.516176e+00
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = 7.05e-02 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 2.05e-02 ≰ 0.0e+00
+    |g(x)|                 = NaN ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   1178  (vs limit 144000)
+    Iterations:    2
+    f(x) calls:    82
+    ∇f(x) calls:   48
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 6.21117426584712, c1 = 0.08772729758931241, c2 = 0.00658997717082721, c3 = 0.003184248279949342, v1 = 0.0012521326829867951, σ = 0.09696745547656804), Seizure = (a = 0.08201651688999045, o = 0.5549932068975967, prev = 5.205470104758659, b = [0.2724007244049775]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.1391392084643172, c1 = 0.00633501571268865, c2 = 0.012317714337994785, c3 = 0.003639140891370677, v1 = 0.004471902439238553, σ = 0.4848372773828402), Seizure = (a = 0.05916241109408757, o = 0.49201525434184107, prev = 7.121026135100764, b = [1.3620036220248872]))]
+mean_squared_errors:
+Real[6.608170499689564]
+rel_squared_errors:
+Real[5.3064298289229095]
+times:
+Real[1178.068312883377]
+obj_diffs:
+Real[18.91008300886496]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])), Sandwich = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])))]
+
+My id is 41
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 57.18116773722985, c1 = 8.898089945068891, c2 = 0.19442481746537071, c3 = 0.676452340221432, v1 = 0.39109260670573426, σ = 18.85344431250267), Seizure = (a = -3.4724862268509935, o = 0.10538831957032407, prev = 0.20919497058829795, b = [0.5713157711891462]))
+Best start: 1
+ * Status: failure
+
+ * Candidate solution
+    Final objective value:     5.775392e+02
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = 2.67e-02 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 4.63e-05 ≰ 0.0e+00
+    |g(x)|                 = NaN ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   513  (vs limit 144000)
+    Iterations:    2
+    f(x) calls:    14
+    ∇f(x) calls:   10
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 12.541167737229848, c1 = 4.949910054931108, c2 = 0.3405751825346293, c3 = 0.19854765977856803, v1 = 0.11109260670573423, σ = 18.65344431250267), Seizure = (a = 4.858780587970884, o = 1.0226116804296759, prev = 0.521805029411702, b = [0.3713157711891462]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.2809401374827475, c1 = 0.3574458445213105, c2 = 0.6365891262329519, c3 = 0.22691161117550632, v1 = 0.3967593096633365, σ = 93.26722156251336), Seizure = (a = 3.5048693295165783, o = 0.9065706386787907, prev = 0.7138235696466513, b = [1.856578855945731]))]
+mean_squared_errors:
+Real[55.4964876021955]
+rel_squared_errors:
+Real[871.6657873905126]
+times:
+Real[512.9052011966705]
+obj_diffs:
+Real[598.1282309413796]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])), Sandwich = (PK = (k_abs = (0.0, Inf), c1 = (0.0, Inf), c2 = (-Inf, Inf), c3 = (-Inf, Inf), v1 = (0.0, Inf), σ = (0.0, Inf)), Seizure = (a = (-Inf, Inf), o = (-Inf, Inf), prev = (-Inf, Inf), b = [(-Inf, Inf)])))]
+
+My id is 84
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 42.087804863818455, c1 = 13.866872104333597, c2 = 0.5372301425638742, c3 = 0.8755114708773125, v1 = 0.2815015542939672, σ = 0.19344798311416533), Seizure = (a = 2.9824078748955674, o = 4.457121194674912, prev = -1.318033262066956, b = [0.3101068499643433]))
+Best start: 1
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     -1.897203e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = 2.13e-14 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 1.12e-15 ≰ 0.0e+00
+    |g(x)|                 = 1.40e+00 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   5205  (vs limit 144000)
+    Iterations:    6
+    f(x) calls:    693
+    ∇f(x) calls:   171
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 2.5521951361815454, c1 = 0.01887210433359776, c2 = 0.0022301425638742156, c3 = 0.0005114708773125143, v1 = 0.0015015542939672, σ = 0.006552016885834677), Seizure = (a = 1.5961135137756768, o = 3.3291211946749115, prev = 2.049033262066956, b = [0.11010684996434328]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.057172830111593756, c1 = 0.001362803605834616, c2 = 0.0041684907735966645, c3 = 0.0005845381455000163, v1 = 0.005362693907025714, σ = 0.032760084429173386), Seizure = (a = 1.1513525255100137, o = 2.951348576839461, prev = 2.803055078066971, b = [0.5505342498217164]))]
+mean_squared_errors:
+Real[2.4355393693356464]
+rel_squared_errors:
+Real[1.820066708026895]
+times:
+Real[5204.5286111831665]
+obj_diffs:
+Real[-3.792609262590032]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (29.975378837145993, 59.09460987561337), c1 = (13.802517425273725, 13.931526839143395), c2 = (0.5338904205018757, 0.5405698646258728), c3 = (0.8738465088816112, 0.8771764328730138), v1 = (0.27975978935419715, 0.28325416334079223), σ = (0.1671690643486056, 0.22385793876850482)), Seizure = (a = (-5.451276695272778, 11.416092445063914), o = (-25.573886325917314, 34.48812871526714), prev = (-27.245224815309214, 24.609158291175305), b = [(-0.22485521356168275, 0.8450689134903693)])), Sandwich = (PK = (k_abs = (5.291897946431864e-8, 3.3473497338497307e10), c1 = (10.856493555057572, 17.711993378227135), c2 = (0.4791106319576319, 0.5953496531701166), c3 = (0.8092298536757698, 0.9417930880788552), v1 = (0.2519476671590804, 0.3145221623341528), σ = (0.0, Inf)), Seizure = (a = (-11.950057163236833, 17.914872913027967), o = (-0.41457425627457845, 9.328816645624402), prev = (-14.530605884271305, 11.894539360137392), b = [(-1.0554834995704998, 1.6756971994991865)])))]
+
+My id is 98
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 70.52663391999062, c1 = 13.775731811612184, c2 = 0.533066544745846, c3 = 0.8760749719459658, v1 = 0.2789147678601522, σ = 0.17999831453510262), Seizure = (a = 2.9957235397582354, o = 4.999710094936367, prev = -1.9993584707726675, b = [0.26370016342165814]))
+Best start: 1
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     -2.370767e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = 5.39e-08 ≰ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 2.27e-09 ≰ 0.0e+00
+    |g(x)|                 = 6.12e-02 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   6718  (vs limit 144000)
+    Iterations:    4
+    f(x) calls:    781
+    ∇f(x) calls:   274
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 25.886633919990615, c1 = 0.0722681883878149, c2 = 0.001933455254154004, c3 = 0.0010749719459658413, v1 = 0.001085232139847847, σ = 0.02000168546489739), Seizure = (a = 1.6094291786383448, o = 3.8717100949363665, prev = 2.7303584707726674, b = [0.06370016342165813]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.5798977132614385, c1 = 0.005218673338230424, c2 = 0.0036139350544934653, c3 = 0.0012285393668181044, v1 = 0.003875829070885168, σ = 0.10000842732448695), Seizure = (a = 1.160957747341769, o = 3.4323671054400418, prev = 3.7351005072129513, b = [0.31850081710829065]))]
+mean_squared_errors:
+Real[69.51627609676503]
+rel_squared_errors:
+Real[2.7527725276920534]
+times:
+Real[6717.786807060242]
+obj_diffs:
+Real[-4.0575471462794255]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (39.89761445995843, 124.66926054128676), c1 = (13.70209137562, 13.849768020312668), c2 = (0.5298556082738864, 0.5362774812178056), c3 = (0.8746186569368999, 0.8775312869550318), v1 = (0.2771762839782868, 0.2806641557276115), σ = (0.15553343533780314, 0.20831143583442027)), Seizure = (a = (-4.462481767270588, 10.453928846787058), o = (-25.379327692774154, 35.37874788264689), prev = (-30.578955690306426, 26.580238748761094), b = [(-0.16871408295484763, 0.696114409798164)])), Sandwich = (PK = (k_abs = (2.465745322212858e-10, 2.0172424326533812e13), c1 = (11.315536746735685, 16.77081619660765), c2 = (-0.26539506575708693, 1.331528155248779), c3 = (0.49851100798667275, 1.2536389359052589), v1 = (0.18384130283113737, 0.42315544185376947), σ = (0.0, Inf)), Seizure = (a = (-8.41977034493194, 14.41121742444841), o = (-9.542088968273667, 19.5415091581464), prev = (-5.0973705004689, 1.0986535589235649), b = [(-0.452675029356684, 0.9800753562000003)])))]
+
+My id is 63
+
+True θ: (PK = (k_abs = 44.64, c1 = 13.847999999999999, c2 = 0.535, c3 = 0.875, v1 = 0.28, σ = 0.2), Seizure = (a = 1.3862943611198906, o = 1.128, prev = 0.731, b = [0.2]))
+
+Estimates:
+(PK = (k_abs = 49.977497597846586, c1 = 13.8310176014645, c2 = 0.5312831542568981, c3 = 0.8739612285288936, v1 = 0.2794132218572164, σ = 0.18467700812129167), Seizure = (a = 2.995732273297292, o = 0.4363224665174413, prev = -1.9999999932543253, b = [0.2863525764612345]))
+Best start: 1
+ * Status: success
+
+ * Candidate solution
+    Final objective value:     -2.195439e+01
+
+ * Found with
+    Algorithm:     Fminbox with L-BFGS
+
+ * Convergence measures
+    |x - x'|               = 0.00e+00 ≤ 0.0e+00
+    |x - x'|/|x'|          = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|         = 0.00e+00 ≤ 0.0e+00
+    |f(x) - f(x')|/|f(x')| = 0.00e+00 ≤ 0.0e+00
+    |g(x)|                 = 2.48e-02 ≰ 1.0e-08
+
+ * Work counters
+    Seconds run:   11746  (vs limit 144000)
+    Iterations:    9
+    f(x) calls:    1567
+    ∇f(x) calls:   389
+
+abs_errors:
+ComponentArray[(PK = (k_abs = 5.3374975978465855, c1 = 0.016982398535498433, c2 = 0.0037168457431019375, c3 = 0.0010387714711064255, v1 = 0.0005867781427836283, σ = 0.015322991878708336), Seizure = (a = 1.6094379121774016, o = 0.6916775334825587, prev = 2.730999993254325, b = [0.08635257646123451]))]
+rel_errors:
+ComponentArray[(PK = (k_abs = 0.11956759851806867, c1 = 0.0012263430484906438, c2 = 0.006947375220751285, c3 = 0.0011871673955502007, v1 = 0.0020956362242272437, σ = 0.07661495939354168), Seizure = (a = 1.160964047258512, o = 0.6131893027327648, prev = 3.7359781029470933, b = [0.43176288230617255]))]
+mean_squared_errors:
+Real[3.9023944975350324]
+rel_squared_errors:
+Real[1.5888012045865847]
+times:
+Real[11746.25472998619]
+obj_diffs:
+Real[-6.463637695656093]
+CIs:
+@NamedTuple{InverseHessian::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}, Sandwich::ComponentVector{Tuple{Float64, Float64}, Vector{Tuple{Float64, Float64}}, Tuple{Axis{(PK = ViewAxis(1:6, Axis(k_abs = 1, c1 = 2, c2 = 3, c3 = 4, v1 = 5, σ = 6)), Seizure = ViewAxis(7:10, Axis(a = 1, o = 2, prev = 3, b = ViewAxis(4:4, Shaped1DAxis((1,))))))}}}}[(InverseHessian = (PK = (k_abs = (36.1335543380955, 69.12550707776319), c1 = (13.770640514366749, 13.891659410645628), c2 = (0.5287185708497179, 0.5338477376640783), c3 = (0.8728421445581478, 0.8750803124996394), v1 = (0.27776820962925625, 0.28106797625557733), σ = (0.15957615850941834, 0.2137261458554204)), Seizure = (a = (-12.312212420797643, 18.303676967392228), o = (-5.092067573471299, 5.9647125065061815), prev = (-73.82883807620448, 69.82883808969584), b = [(-0.490167570244804, 1.062872723167273)])), Sandwich = (PK = (k_abs = (4.724923239357505e-91, 5.286329829312611e93), c1 = (0.890239020200648, 214.88279389158308), c2 = (-0.2411324271791856, 1.303698735692982), c3 = (0.48279986927877455, 1.2651225877790127), v1 = (0.037869239326705786, 2.0616138569641933), σ = (0.0, Inf)), Seizure = (a = (-95.82555325330519, 101.81701779989977), o = (-23.090289308663323, 23.962934241698207), prev = (-71.88530856078017, 67.88530857427153), b = [(-6.076844365805408, 6.649549518727876)])))]
+
