@@ -376,27 +376,21 @@ end
 
 function create_dosing_callbacks(dosing::AbstractVector, ode_system::ODESystem; names::NamedTuple, set_daily_doses::Tuple = ())
     #save_positions = (false, false) so no two values at timepoint possible, bad for likelihood calculation/measurement generator
-    #callbacks to inject doses
-    @inbounds callbacks = [
-        PresetTimeCallback(
-            dosing[i].t,
-            integrator -> dose_affect!(
-                integrator,
-                idx_d = ModelingToolkit.variable_index(ode_system, dosing[i].state),
-                dose_amount = dosing[i].dose
-            ), save_positions = (false, false),
-            initialize = (cb, t, u, integrator) -> begin
-                if cb.condition(t, u, integrator)
-                    dose_affect!(
-                        integrator;
-                        idx_d = ModelingToolkit.variable_index(ode_system, dosing[i].state),
-                        dose_amount = dosing[i].dose
-                    )
-                end
-            end
-        )
-        for i in eachindex(dosing) if dosing[i].state in names.d #check PK model supports this drug
-    ]
+    #one single callback for all doses, not one per dose: CallbackSet stores its callbacks in a tuple,
+    #so one callback per dose gives a tuple type with one element per dose and Julia's compiler recurses
+    #over that tuple (SciMLBase.split_callbacks, then inference of solve) until it overflows its stack
+    #once the observation duration gets long. PresetTimeCallback also handles a dose at tspan[1] itself.
+    doses = sort!([(t = Float64(dose.t), idx = ModelingToolkit.variable_index(ode_system, dose.state), amount = Float64(dose.dose))
+                   for dose in dosing if dose.state in names.d], by = dose -> dose.t) #check PK model supports this drug
+    dose_times = [dose.t for dose in doses]
+    #condition of PresetTimeCallback is insorted(t, dose_times), so integrator.t is exactly a dose time
+    #here and searchsorted picks out every dose (i.e. every drug) scheduled for that time
+    function all_doses_affect!(integrator)
+        @inbounds for i in searchsorted(dose_times, integrator.t)
+            dose_affect!(integrator, idx_d = doses[i].idx, dose_amount = doses[i].amount)
+        end
+    end
+    callbacks = (PresetTimeCallback(dose_times, all_doses_affect!, save_positions = (false, false)),)
 
     #callbacks to set daily dose parameter where necessary
     callbacks_daily_doses = [PeriodicCallback( 
