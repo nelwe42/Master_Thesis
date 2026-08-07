@@ -4,32 +4,31 @@ using StatsPlots
 using Distributions
 
 #save figures after running?
-saving = true
-save_path = "./test"
+saving = false
+save_path = "./SeizureFreq"
 
 #files to read data from, relative to 
-files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt"], 
-        ["./Obs_Duration/Obs_SANAD_5.txt", "./Obs_Duration/Obs_SANAD_10.txt", "./Obs_Duration/Obs_SANAD_20.txt", "./Obs_Duration/Obs_SANAD_30.txt", "./Obs_Duration/Obs_SANAD_50.txt"], 
-        ["./Obs_Duration/Obs_VPA_5.txt", "./Obs_Duration/Obs_VPA_10.txt", "./Obs_Duration/Obs_VPA_20.txt", "./Obs_Duration/Obs_VPA_30.txt", "./Obs_Duration/Obs_VPA_50.txt"]
+files = [["./SeizureFreq/SeizureFreq_Basic_1_false.txt", "./SeizureFreq/SeizureFreq_Basic_2_false.txt", "./SeizureFreq/SeizureFreq_Basic_5_false.txt", "./SeizureFreq/SeizureFreq_Basic_10_false.txt"], 
+        ["./SeizureFreq/SeizureFreq_NB_1_false.txt", "./SeizureFreq/SeizureFreq_NB_2_false.txt", "./SeizureFreq/SeizureFreq_NB_5_false.txt", "./SeizureFreq/SeizureFreq_NB_10_false.txt"], 
         ]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Big4", "SANAD", "VPA"]
+models = ["Basic", "Negative Binomial"]
 #colour for each model
 colours = [[:blue, :green, :red, :purple], [:lightblue, :lightgreen, :orange, :pink]]
 #quantity of interest
-quant = "observation duration"
-short_quant = "Obs_Dur"
+quant = "seizure measurement frequency"
+short_quant = "Seizure_Freq"
 #corresponding values of interest
-values = [5, 10, 20, 30, 50]
+values = [1,2,5,10]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50.0 for model in models]
-upper_outlier_bound = [500.0 for model in models]
+upper_plotting_bound = [2.0, 40.0]
+upper_outlier_bound = [150.0, 300.0]
 spaced_accordingly = false
 plot_separate = true
 
