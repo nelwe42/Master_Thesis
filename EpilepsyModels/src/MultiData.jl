@@ -28,12 +28,12 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-considered = [30.0, 15.0, 5.0, 2.0, 1.0]
+considered = [5.0, 10.0, 20.0, 30.0, 50.0]
 
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "UpdateReg_Basic_$(considered[parsed2]).txt"
+file_name = "Obs_Big4_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -68,7 +68,7 @@ Max_Time = 40*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 30.0 #40.0
+Obs_Duration = wo_treatment + considered[parsed2]
 PK_timepoints = wo_treatment:3.75:Obs_Duration
 Seizure_timepoints = 0.0:3.75:Obs_Duration
 no_counts_seizure = false
@@ -178,8 +178,8 @@ person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
-dose_gen = BigFourDoses()
+dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+#dose_gen = BigFourDoses()
 if seizure_model isa SeizureVPA && !(dose_gen isa BigFourDoses)
     dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
     distr_first = (d_VPA = 1.0, d_CBZ = 0.0)
@@ -250,7 +250,7 @@ end
 
 try
 
-results = multi_data_run(mod, data_updating, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
+results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
 
 
 #create lockfile to ensure no multiwriting

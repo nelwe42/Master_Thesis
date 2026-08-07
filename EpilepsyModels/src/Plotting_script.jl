@@ -11,24 +11,27 @@ save_path = "./SeizureFreq"
 files = [["./SeizureFreq/SeizureFreq_Basic_1_false.txt", "./SeizureFreq/SeizureFreq_Basic_2_false.txt", "./SeizureFreq/SeizureFreq_Basic_5_false.txt", "./SeizureFreq/SeizureFreq_Basic_10_false.txt"], 
         ["./SeizureFreq/SeizureFreq_NB_1_false.txt", "./SeizureFreq/SeizureFreq_NB_2_false.txt", "./SeizureFreq/SeizureFreq_NB_5_false.txt", "./SeizureFreq/SeizureFreq_NB_10_false.txt"], 
         ]
-files2 = []
+files2 = [["./SeizureFreq/SeizureFreq_Basic_1_true.txt", "./SeizureFreq/SeizureFreq_Basic_2_true.txt", "./SeizureFreq/SeizureFreq_Basic_5_true.txt", "./SeizureFreq/SeizureFreq_Basic_10_true.txt"], 
+        ["./SeizureFreq/SeizureFreq_NB_1_true.txt", "./SeizureFreq/SeizureFreq_NB_2_true.txt", "./SeizureFreq/SeizureFreq_NB_5_true.txt", "./SeizureFreq/SeizureFreq_NB_10_true.txt"], 
+        ["./SeizureFreq/SeizureFreq_VPA_5.txt", "./SeizureFreq/SeizureFreq_VPA_10.txt", "./SeizureFreq/SeizureFreq_VPA_15.txt", "./SeizureFreq/SeizureFreq_VPA_20.txt"], 
+        ]
 #Do space before name if not empty, else empty string
-names_distinction = ("", " just Bool")
+names_distinction = (" seizure counts", " just Bool")
 #models each subarray corresponds to
-models = ["Basic", "Negative Binomial"]
+models = ["Basic", "Negative Binomial", "VPA"]
 #colour for each model
 colours = [[:blue, :green, :red, :purple], [:lightblue, :lightgreen, :orange, :pink]]
 #quantity of interest
 quant = "seizure measurement frequency"
 short_quant = "Seizure_Freq"
-#corresponding values of interest
-values = [1,2,5,10]
+#corresponding values of interest for each model
+values = [[1,2,5,10], [1,2,5,10],[5,10,15,20]]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [2.0, 40.0]
-upper_outlier_bound = [150.0, 300.0]
+upper_plotting_bound = [2.0, 40.0, 50.0]
+upper_outlier_bound = [150.0, 300.0, 500.0]
 spaced_accordingly = false
 plot_separate = true
 
@@ -105,7 +108,7 @@ short_name = "RSE"
 if spaced_accordingly
     values2 = deepcopy(values)
 else
-    values2 = String.(Symbol.(values))
+    values2 = [String.(Symbol.(value)) for value in values]
 end
 
 #per model plots
@@ -138,35 +141,35 @@ for k in eachindex(models)
             for i in eachindex(interest3)
                 interest3[i] = [rel for rel in interest3[i] if rel <= upper_outlier_bound[k]]
                 #print outliers
-                println("Outliers for $(values[i]) in model "*models[k]*" $(names_distinction[n]) by outlier bound: ", [rel for rel in interest[i] if rel > upper_outlier_bound[k]])
-                println("Outliers for $(values[i]) in model "*models[k]*" $(names_distinction[n]) by plotting bound: ", [rel for rel in interest[i] if rel > upper_plotting_bound[k]])
+                println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by outlier bound: ", [rel for rel in interest_list[n][i] if rel > upper_outlier_bound[k]])
+                println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by plotting bound: ", [rel for rel in interest_list[n][i] if rel > upper_plotting_bound[k]])
             end
             for i in eachindex(interest2)
                 if n==1 && !isnothing(interest_list[2]) && (i ≤ length(interest_list[2])) && !isempty(interest_list[2][i]) 
                     label = (label_set[n]) ? "" : names_distinction[n]
-                    violin!([values2[i]], interest2[i], side = :left, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
+                    violin!([values2[k][i]], interest2[i], side = :left, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
                     label_set[n] = true
                 elseif n==2 && !isnothing(interest_list[1]) && (i ≤ length(interest_list[1])) && !isempty(interest_list[1][i]) 
                     label = (label_set[n]) ? "" : names_distinction[n]
-                    violin!([values2[i]], interest2[i], side = :right, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
+                    violin!([values2[k][i]], interest2[i], side = :right, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
                     label_set[n] = true
                 else
-                    violin!([values2[i]], interest2[i], outliers=false, label = "", alpha = 0.5, color = colours[n][k])
+                    violin!([values2[k][i]], interest2[i], outliers=false, label = "", alpha = 0.5, color = colours[n][k])
                 end
             end
             #Calculate means and store for later
-            means = [(i ≤ length(interest3) && !isempty(interest3[i])) ? mean(interest3[i]) : NaN for i in eachindex(values2)]
-            means2 = [(i ≤ length(interest2) && !isempty(interest2[i])) ? mean(interest2[i]) : NaN for i in eachindex(values2)]
+            means = [(i ≤ length(interest3) && !isempty(interest3[i])) ? mean(interest3[i]) : NaN for i in eachindex(values2[k])]
+            means2 = [(i ≤ length(interest2) && !isempty(interest2[i])) ? mean(interest2[i]) : NaN for i in eachindex(values2[k])]
             push!(means_truncated[n][k], means2)
             push!(means_full[n][k], means)
 
             #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
-            scatter!(values2, means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
-            scatter!(values2, means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
+            scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
             #Plot untruncated means only in full one?
             #plot!(values2, means2, linecolor = :blue, linewidth = 2, label = "means")
             if spaced_accordingly
-                plot!(xticks = values2, xrotation = 90)
+                plot!(xticks = values2[k], xrotation = 90)
             end
         end
     end
@@ -181,10 +184,10 @@ pl2 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("
 for k in eachindex(models)
     for n in 1:2
         if !isempty(means_truncated[n][k])
-            plot!(values, means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
         end
     end
-    plot!(xticks = values, xrotation = 75)
+    plot!(xticks = values[k], xrotation = 75)
     plot!(legend=:outerbottom, legendcolumns=legendcolumns)
 end
 push!(overall_plots, pl2)
@@ -195,11 +198,11 @@ if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_
         pl25 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
         for k in eachindex(models)
             if !isempty(means_truncated[n][k])
-                plot!(values, means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+                plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
             end
-        end
-            plot!(xticks = values, xrotation = 75)
+            plot!(xticks = values[k], xrotation = 75)
             plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+        end
         push!(overall_plots, pl25)
         display(pl25)
     end
@@ -209,10 +212,10 @@ pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of "*lowercasefirst(n
 for k in eachindex(models)
     for n in 1:2
         if !isempty(means_truncated[n][k])
-            plot!(values, means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+            plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
         end
     end
-    plot!(xticks = values, xrotation = 75)
+    plot!(xticks = values[k], xrotation = 75)
     plot!(legend=:outerbottom, legendcolumns=legendcolumns)
 end
 push!(overall_plots, pl3)
@@ -223,11 +226,11 @@ if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[
         pl35 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
         for k in eachindex(models)
             if !isempty(means_full[n][k])
-                plot!(values, means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
             end
-        end
-            plot!(xticks = values, xrotation = 75)
+            plot!(xticks = values[k], xrotation = 75)
             plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+        end
         push!(overall_plots, pl35)
         display(pl35)
     end

@@ -621,7 +621,7 @@ end
 
 #functions for plotting fit, with or without true or estimated parameters given, solutions given
 function plot_fit(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, sols_modified::Union{AbstractVector, Nothing} = nothing,
-    individuals::Vector{Int} = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true)
+    individuals::Vector{Int} = [1],  time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true, colours::Union{NamedTuple, Nothing} = nothing)
     if !isnothing(sols_true)
         endpoint = sols_true[1].t[end]
     elseif !isnothing(sols_estimated)
@@ -661,18 +661,18 @@ function plot_fit(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; sols_true:
             pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s) for person $(i)", tspan = time)
             #true plot if param specified
             if !isnothing(sols)
-                plot!(sols[i], idxs = s, label="Concentration $(s)", tspan = time)
+                plot!(sols[i], idxs = s, label="Concentration $(s)", tspan = time, linecolour = (!isnothing(colours)&&hasproperty(colours, :true_param) ? colours.true_param : :blue))
             end
             if !isnothing(sols_modified)
-                plot!(sols_modified[i], idxs = s, label="Concentration $(s) with random effects", linecolor = :green, tspan = time)
+                plot!(sols_modified[i], idxs = s, label="Concentration $(s) with random effects", linecolor = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green), tspan = time)
             end
             #add scattered measurements
             x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
             y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
-            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "", tspan = time)
+            plot!(x_values, y_values, seriestype = :scatter, mc = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :purple), label = "", tspan = time)
             #add estimate plot if specified
             if !isnothing(sols2)
-                plot!(sols2[i], idxs = s, label="Estimated concentration $(s)", linecolor = :red, tspan = time)
+                plot!(sols2[i], idxs = s, label="Estimated concentration $(s)", linecolor = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :red), tspan = time)
             end
             #add to output
             append!(output, [pl])
@@ -687,27 +687,27 @@ function plot_fit(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; sols_true:
     for s in names.s
         pl = plot(xlabel="Time", ylabel="Amount", title="PK Trajectory of $(s)", tspan = time)
         if !isnothing(sols)
-            plot!(sols[1], idxs = s, label="Concentration $(s)", linecolor = :blue, tspan = time)
+            plot!(sols[1], idxs = s, label="Concentration $(s)", linecolor = (!isnothing(colours)&&hasproperty(colours, :true_param) ? colours.true_param : :blue), tspan = time)
             for i in 2:Population_size
-                plot!(sols[i], idxs = s, label = "", linecolor = :blue, tspan = time)
+                plot!(sols[i], idxs = s, label = "", linecolor = (!isnothing(colours)&&hasproperty(colours, :true_param) ? colours.true_param : :blue), tspan = time)
             end
         end
         if !isnothing(sols_modified)
-            plot!(sols_modified[1], idxs = s, label="Concentration $(s) with random effects", linecolor = :green, tspan = time)
+            plot!(sols_modified[1], idxs = s, label="Concentration $(s) with random effects", linecolor = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green), tspan = time)
             for i in 2:Population_size
-                plot!(sols_modified[i], idxs = s, label = "", linecolor = :green, tspan = time)
+                plot!(sols_modified[i], idxs = s, label = "", linecolor = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green), tspan = time)
             end
         end
         for i in 1:Population_size
             x_values = [measurement.timepoint for measurement in data[i].measurements if (measurement.state[2] == s)]
             y_values = [measurement.measurement for measurement in data[i].measurements if (measurement.state[2] == s)]
-            plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "", tspan = time)
+            plot!(x_values, y_values, seriestype = :scatter, mc = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :purple), label = "", tspan = time)
         end
         #add estimate plots
         if !isnothing(sols2)
-            plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = :red, tspan = time)
+            plot!(sols2[1], idxs = s, label="Estimated concentration $(s)", linecolor = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :red), tspan = time)
             for i in 2:Population_size
-                plot!(sols2[i], idxs = s, label = "", linecolor = :red, tspan = time)
+                plot!(sols2[i], idxs = s, label = "", linecolor = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :red), tspan = time)
             end
         end
         plot!(legend=:outerbottom, legendcolumns=2)
@@ -723,7 +723,7 @@ end
 
 #function above for solutions not given
 function plot_fit_param(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, individuals::Vector{Int} = [1], 
-    endpoint::Union{Nothing, AbstractFloat} = nothing, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true, options::Tuple = (AutoTsit5(Rosenbrock23()),))
+    endpoint::Union{Nothing, AbstractFloat} = nothing, time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, display_plot::Bool = true, colours::Union{NamedTuple, Nothing} = nothing, options::Tuple = (AutoTsit5(Rosenbrock23()),))
     
     if isnothing(endpoint)
         measurements_ends = Tuple(person.measurements[end].timepoint for person in data)
@@ -757,6 +757,6 @@ function plot_fit_param(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; true
     else 
         sols2 = nothing
     end
-    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, individuals = individuals, time = time, display_plot = display_plot)
+    output = plot_fit(mod, data, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, individuals = individuals, time = time, display_plot = display_plot, colours = colours)
     return output
 end

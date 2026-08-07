@@ -1,6 +1,6 @@
 name = "EpilepsyModels"
 uuid = "177c6d38-058d-41a9-80be-05a491155458"
-authors = ["nelwe42 <nelewellesen@web.de>"]
+authors = ["Nele Wellesen"]
 version = "0.1.0"
 
 [deps]

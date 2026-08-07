@@ -1555,9 +1555,10 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
     return Tuple(data)
 end
 
+#attribute colours expected in the form: (PK=(...), Seizure=(...)), each nothing or NamedTuple with attributes true_param, estimate, modified, values (and censored for hazards)
 function plot_fit(mod::FullModel, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = ComponentArray(PK = mod.pk_model.θ, Seizure = mod.seizure_model.θ), estimate_param::Union{ComponentArray, Nothing} = nothing,
     individuals::Vector{Int} = [1], endpoint::Union{AbstractFloat, Nothing} = nothing, time_pk::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int, Nothing} = nothing, 
-    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true, options::Tuple = (AutoTsit5(Rosenbrock23()),))
+    time_seizures::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, samples_seizures::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true, colours::Union{NamedTuple, Nothing} = nothing, options::Tuple = (AutoTsit5(Rosenbrock23()),))
 
     output = Plots.Plot[]
     if isnothing(endpoint)
@@ -1567,6 +1568,9 @@ function plot_fit(mod::FullModel, data::Tuple{Vararg{Person}}; true_param::Union
     end
     if isnothing(time_pk)
         time_pk = (0.0, endpoint)
+    end
+    if isnothing(colours)
+        colours = (PK = nothing, Seizure = nothing)
     end
     if !isnothing(true_param)
         sols = [solve_PK(mod.pk_model, true_param.PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]
@@ -1591,7 +1595,7 @@ function plot_fit(mod::FullModel, data::Tuple{Vararg{Person}}; true_param::Union
         sols2 = nothing
     end
 
-    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, individuals = individuals, time = time_pk, display_plot = display_plot)
+    pk_output = plot_fit(mod.pk_model, data, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, individuals = individuals, time = time_pk, display_plot = display_plot, colours=colours.PK)
     append!(output, pk_output)
     if isnothing(estimate_param)
         estimate_seizure = nothing
@@ -1604,9 +1608,9 @@ function plot_fit(mod::FullModel, data::Tuple{Vararg{Person}}; true_param::Union
         true_seizure = true_param.Seizure
     end
     if mod.seizure_model isa CoxTypeModels
-        seizure_output = plot_fit(mod.seizure_model, data, true_param = true_seizure, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, reference_covariates_index = reference_covariates_index, display_plot = display_plot)
+        seizure_output = plot_fit(mod.seizure_model, data, true_param = true_seizure, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, reference_covariates_index = reference_covariates_index, display_plot = display_plot, colours=colours.Seizure)
     else
-        seizure_output = plot_fit(mod.seizure_model, data, true_param = true_seizure, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot)
+        seizure_output = plot_fit(mod.seizure_model, data, true_param = true_seizure, estimate_param = estimate_seizure, sols_true = sols, sols_estimated = sols2, sols_modified = sols_mod, length_PK = length(true_param.PK), names = mod.pk_model.keys, individuals = individuals, time = time_seizures, sample_nr = samples_seizures, display_plot = display_plot, colours=colours.Seizure)
     end
     append!(output, seizure_output)
     return output

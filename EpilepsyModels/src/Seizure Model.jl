@@ -599,7 +599,7 @@ end
 #If solutions modified with random effects are passed get additional plots modified and estimate (violin can only plot 2 at once)
 function plot_fit(mod::SeizureModelNonrandom, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
-    names::NamedTuple, individuals::Vector{Int} = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true)
+    names::NamedTuple, individuals::Vector{Int} = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, display_plot::Bool = true, colours::Union{NamedTuple, Nothing}=nothing)
     
     output = Plots.Plot[]
     if !isnothing(sols_true)
@@ -669,7 +669,7 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple{Vararg{Person}}; true_
         #Get timepoints and corresponding indices for plotting from seizure data
         indices = [index for index in eachindex(data[i].seizure_counts) if data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]]
         intervals = [data[i].seizure_counts[index].time for index in indices]
-        pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
+        pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) \n for intervals from $(time[1]) to $(time[2])")
         if !isnothing(sols)
             samples_true = [draw_data_samples(mod, sols[i], person=data[i], interval=interval,names=names, θ = true_param, sample_nr=sample_nr) for interval in intervals]
             if any(isnothing.(samples_true))
@@ -693,63 +693,63 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple{Vararg{Person}}; true_
         end
         #Plot distributions, first day separate so label only once, only on separate sides if not both plotted
         if !isnothing(estimate_param) && !isnothing(sols)
-            violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = :dodgerblue)
-            violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), side = :right, label = "estimate", colour = :firebrick2)
+            violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
+            violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), side = :right, label = "estimate", colour = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :firebrick2))
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = :dodgerblue)
-                    violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = "", colour = :firebrick2)
+                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
+                    violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = "", colour = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :firebrick2))
                 end
             end
         elseif !isnothing(estimate_param)
             if !isnothing(sols_modified)
-                violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :left, label = "modified", colour = :green)
-                violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), side = :right, label = "estimate", colour = :firebrick2)
+                violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :left, label = "modified", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
+                violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), side = :right, label = "estimate", colour = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :firebrick2))
                 for j in eachindex(intervals)
                     if j>1
-                        violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :left, label = "", colour = :green)
-                        violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = "", colour = :firebrick2)
+                        violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :left, label = "", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
+                        violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = "", colour = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :firebrick2))
                     end
                 end
             else
-                violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), label = "estimate", colour = :firebrick2)
+                violin!(["$(intervals[1])"], Float64.(samples_estimate[1]), label = "estimate", colour = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :firebrick2))
                 for j in eachindex(intervals)
                     if j>1
-                        violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = "", colour = :firebrick2)
+                        violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = "", colour = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :firebrick2))
                     end
                 end
             end
         elseif !isnothing(sols)
             if !isnothing(sols_modified)
-                violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = :dodgerblue)
-                violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :right, label = "modified", colour = :green)
+                violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
+                violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :right, label = "modified", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
                 for j in eachindex(intervals)
                     if j>1
-                        violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = :dodgerblue)
-                        violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :right, label = "", colour = :green)
+                        violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
+                        violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :right, label = "", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
                     end
                 end
             else
-                violin!(["$(intervals[1])"], Float64.(samples_true[1]), label = "true", colour = :dodgerblue)
+                violin!(["$(intervals[1])"], Float64.(samples_true[1]), label = "true", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
                 for j in eachindex(intervals)
                     if j>1
-                        violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = "", colour = :dodgerblue)
+                        violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = "", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
                     end
                 end
             end
         elseif !isnothing(sols_modified)
-            violin!(["$(intervals[1])"], Float64.(samples_mod[1]), label = "modified", colour = :green)
+            violin!(["$(intervals[1])"], Float64.(samples_mod[1]), label = "modified", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(samples_mod[j]), label = "", colour = :green)
+                    violin!(["$(intervals[j])"], Float64.(samples_mod[j]), label = "", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
                 end
             end
         end
         #Add where data is
-        boxplot!(["$(intervals[1])"], [Float64(data[i].seizure_counts[indices[1]].count)], label = "Data values", colour = :grey, linewidth = 3)
+        boxplot!(["$(intervals[1])"], [Float64(data[i].seizure_counts[indices[1]].count)], label = "Data values", colour = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :grey), linewidth = 3)
         for j in eachindex(intervals)
             if j>1
-                boxplot!(["$(intervals[j])"], [Float64(data[i].seizure_counts[indices[j]].count)], label = "", colour = :grey, linewidth = 3)
+                boxplot!(["$(intervals[j])"], [Float64(data[i].seizure_counts[indices[j]].count)], label = "", colour = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :grey), linewidth = 3)
             end
         end
         plot!(legend=:outerbottom, legendcolumns=2)
@@ -760,20 +760,20 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple{Vararg{Person}}; true_
         end
         #if all three solutions are passed, do extra plot for that
         if !isnothing(sols_modified) && !isnothing(sols) && !isnothing(estimate_param)
-            pl3 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) for intervals from $(time[1]) to $(time[2])")
-            violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = :dodgerblue)
-            violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :right, label = "modified", colour = :green)
+            pl3 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Seizure probabilities for person $(i) \n for intervals from $(time[1]) to $(time[2])")
+            violin!(["$(intervals[1])"], Float64.(samples_true[1]), side = :left, label = "true", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
+            violin!(["$(intervals[1])"], Float64.(samples_mod[1]), side = :right, label = "modified", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
             for j in eachindex(intervals)
                 if j>1
-                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = :dodgerblue)
-                    violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :right, label = "", colour = :green)
+                    violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = "", colour = (!isnothing(colours) && hasproperty(colours, :true_param) ? colours.true_param : :dodgerblue))
+                    violin!(["$(intervals[j])"], Float64.(samples_mod[j]), side = :right, label = "", colour = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
                 end
             end
             #Add where data is
-            boxplot!(["$(intervals[1])"], [Float64(data[i].seizure_counts[indices[1]].count)], label = "Data values", colour = :grey, linewidth = 3)
+            boxplot!(["$(intervals[1])"], [Float64(data[i].seizure_counts[indices[1]].count)], label = "Data values", colour = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :grey), linewidth = 3)
             for j in eachindex(intervals)
                 if j>1
-                    boxplot!(["$(intervals[j])"], [Float64(data[i].seizure_counts[indices[j]].count)], label = "", colour = :grey, linewidth = 3)
+                    boxplot!(["$(intervals[j])"], [Float64(data[i].seizure_counts[indices[j]].count)], label = "", colour = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :grey), linewidth = 3)
                 end
             end
             plot!(legend=:outerbottom, legendcolumns=2)
@@ -879,7 +879,7 @@ end
 
 function plot_fit(mod::CoxTypeModels, data::Tuple{Vararg{Person}}; true_param::Union{ComponentArray, Nothing} = mod.θ, estimate_param::Union{ComponentArray, Nothing} = nothing, sols_true::Union{AbstractVector, Nothing} = nothing, sols_estimated::Union{AbstractVector, Nothing} = nothing, 
     sols_modified::Union{AbstractVector, Nothing} = nothing, length_PK::Union{Int, Nothing} = nothing, 
-    names::NamedTuple, individuals::Vector{Int} = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true)
+    names::NamedTuple, individuals::Vector{Int} = [1], time::Union{Tuple{Union{Int, AbstractFloat}, Union{Int, AbstractFloat}}, AbstractFloat, Int} = 10, sample_nr::Int = 1000, reference_covariates_index::Union{Nothing,Int} = length(data), display_plot::Bool = true, colours::Union{NamedTuple, Nothing} = nothing)
     
     output = Plots.Plot[]
     if !isnothing(sols_true)
@@ -950,9 +950,9 @@ function plot_fit(mod::CoxTypeModels, data::Tuple{Vararg{Person}}; true_param::U
         indices = [index for index in eachindex(data[i].seizure_counts) if ((data[i].seizure_counts[index].time isa Tuple) && data[i].seizure_counts[index].time[1] >= time[1] && data[i].seizure_counts[index].time[2] <= time[2]) || 
                                                                             (!(data[i].seizure_counts[index].time isa Tuple) && data[i].seizure_counts[index].time >= time[1] && data[i].seizure_counts[index].time <= time[2])]
         if isnothing(reference_covariates_index)
-            pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard", title = "Seizure Hazards for person $(i) from $(time[1]) to $(time[2])")
+            pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard", title = "Seizure Hazards for person $(i) \n from $(time[1]) to $(time[2])")
         else
-            pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard normalised by reference covariates", title = "Seizure Hazards for person $(i) from $(time[1]) to $(time[2])")
+            pl2 = plot(xlabel = "time", ylabel = "Seizure Hazard normalised by reference covariates", title = "Seizure Hazards for person $(i) \nfrom $(time[1]) to $(time[2])")
             ref_person = Person(covariates = data[reference_covariates_index].covariates, dosing=deepcopy(data[i].dosing), seizure_counts = deepcopy(data[i].seizure_counts), measurements = deepcopy(data[i].measurements))
             if !isnothing(sols)
                 ref_sol = sols[reference_covariates_index]
@@ -1016,23 +1016,23 @@ function plot_fit(mod::CoxTypeModels, data::Tuple{Vararg{Person}}; true_param::U
         times = collect(time[1]:(1/sample_nr):time[2])
         #true plot if param specified
         if !isnothing(sols)
-            plot!(times, samples_true, label="True hazard")
+            plot!(times, samples_true, label="True hazard", linecolour = (!isnothing(colours)&&hasproperty(colours, :true_param) ? colours.true_param : :blue))
         end
         if !isnothing(sols_modified)
-            plot!(times, samples_mod, label="True hazard with random effects", linecolor = :green)
+            plot!(times, samples_mod, label="True hazard with random effects", linecolor = (!isnothing(colours)&&hasproperty(colours, :modified) ? colours.modified : :green))
         end
         #add estimate plot if specified
         if !isnothing(estimate_param)
-            plot!(times, samples_estimate, label="Estimated hazard", linecolor = :red)
+            plot!(times, samples_estimate, label="Estimated hazard", linecolor = (!isnothing(colours)&&hasproperty(colours, :estimate) ? colours.estimate : :red))
         end
         #add event times
         times_event = [data[i].seizure_counts[j].time for j in indices if data[i].seizure_counts[j].count]
-        vline!(times_event, linecolor = :black, label = "Event times", linewidth=2)
+        vline!(times_event, linecolor = (!isnothing(colours)&&hasproperty(colours, :values) ? colours.values : :black), label = "Event times", linewidth=2)
         censoring_ends = [data[i].seizure_counts[j].time for j in indices if (!data[i].seizure_counts[j].count && !(data[i].seizure_counts[j].time isa Tuple))]
-        vline!(censoring_ends, linecolor = :purple, label = "Censoring times", linewidth=2)
+        vline!(censoring_ends, linecolor = (!isnothing(colours)&&hasproperty(colours, :censored) ? colours.censored : :purple), label = "Censoring times", linewidth=2)
         censoring_middle = [data[i].seizure_counts[j].time for j in indices if (!data[i].seizure_counts[j].count && (data[i].seizure_counts[j].time isa Tuple))]
         for interval in censoring_middle
-            vspan!(collect(interval), color=:purple, alpha=0.3, label = "")
+            vspan!(collect(interval), color=(!isnothing(colours)&&hasproperty(colours, :censored) ? colours.censored : :purple), alpha=0.3, label = "")
         end
         plot!(legend=:outerbottom, legendcolumns=2)
         #add to output
