@@ -390,7 +390,11 @@ function create_dosing_callbacks(dosing::AbstractVector, ode_system::ODESystem; 
             dose_affect!(integrator, idx_d = doses[i].idx, dose_amount = doses[i].amount)
         end
     end
-    callbacks = (PresetTimeCallback(dose_times, all_doses_affect!, save_positions = (false, false)),)
+    callbacks = (PresetTimeCallback(dose_times, all_doses_affect!, save_positions = (false, false), initialize = (cb, t, u, integrator) -> begin
+                                    if cb.condition(t, u, integrator)
+                                        dose_affect!(integrator;idx_d = ModelingToolkit.variable_index(ode_system, dosing[i].state), dose_amount = dosing[i].dose)
+                                    end
+                end),)
 
     #callbacks to set daily dose parameter where necessary
     callbacks_daily_doses = [PeriodicCallback( 

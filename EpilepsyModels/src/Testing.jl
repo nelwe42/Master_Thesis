@@ -288,13 +288,12 @@ if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #Plot fit for specified individuals
     individuals = [1]
     ref = length(data)
-    time_seizures = (0,7.0)
+    time_seizures = (0.0,10.0)
     time_pk = (0.0, Obs_Duration)
     #estimate = (u = deepcopy(Input_θ),)
     #estimate.u.Seizure.b[1] = 7.0/29.0
-    colours = (PK = (true_param = :purple, values = :grey, estimate = :orange, modified = :black), Seizure = (true_param = :purple, values = :blue, estimate = :orange, modified = :black))
-    #colours = nothing
-    plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = Input_θ, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options,
+    colours = nothing
+    plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options,
     reference_covariates_index = ref, colours = colours)
 end
 

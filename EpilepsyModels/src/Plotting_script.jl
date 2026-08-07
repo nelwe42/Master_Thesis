@@ -4,7 +4,7 @@ using StatsPlots
 using Distributions
 
 #save figures after running?
-saving = false
+saving = true
 save_path = "./SeizureFreq"
 
 #files to read data from, relative to 
@@ -20,7 +20,7 @@ names_distinction = (" seizure counts", " just Bool")
 #models each subarray corresponds to
 models = ["Basic", "Negative Binomial", "VPA"]
 #colour for each model
-colours = [[:blue, :green, :red, :purple], [:lightblue, :lightgreen, :orange, :pink]]
+colours = [[:teal, :violet], [:cyan, :fuchsia, :orange]]
 #quantity of interest
 quant = "seizure measurement frequency"
 short_quant = "Seizure_Freq"
