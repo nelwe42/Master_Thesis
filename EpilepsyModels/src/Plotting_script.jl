@@ -5,12 +5,12 @@ using Distributions
 
 #save figures after running?
 saving = false
-save_path = "./Obs_Duration"
+save_path = "./Pop_Size"
 
 #files to read data from, relative to 
-files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt"],
-        ["./Obs_Duration/Obs_VPA_5.txt", "./Obs_Duration/Obs_VPA_10.txt", "./Obs_Duration/Obs_VPA_20.txt", "./Obs_Duration/Obs_VPA_30.txt", "./Obs_Duration/Obs_VPA_50.txt"],
-        ["./Obs_Duration/Obs_SANAD_5.txt", "./Obs_Duration/Obs_SANAD_10.txt", "./Obs_Duration/Obs_SANAD_20.txt", "./Obs_Duration/Obs_SANAD_30.txt", "./Obs_Duration/Obs_SANAD_50.txt"]
+files = [["./Pop_Size/PopSize_Big4_2.txt", "./Pop_Size/PopSize_Big4_5.txt", "./Pop_Size/PopSize_Big4_10.txt", "./Pop_Size/PopSize_Big4_20.txt", "./Pop_Size/PopSize_Big4_50.txt"],
+        ["./Pop_Size/PopSize_VPA_2.txt", "./Pop_Size/PopSize_VPA_5.txt", "./Pop_Size/PopSize_VPA_10.txt", "./Pop_Size/PopSize_VPA_20.txt", "./Pop_Size/PopSize_VPA_50.txt"],
+        ["./Pop_Size/PopSize_SANAD_2.txt", "./Pop_Size/PopSize_SANAD_5.txt", "./Pop_Size/PopSize_SANAD_10.txt", "./Pop_Size/PopSize_SANAD_20.txt", "./Pop_Size/PopSize_SANAD_50.txt"]
         ]
 files2 = []
 #Do space before name if not empty, else empty string
@@ -20,15 +20,15 @@ models = ["Big4", "VPA", "SANAD"]
 #colour for each model
 colours = [[:magenta, :orange, :brown], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "observation duration"
-short_quant = "Obs_Dur"
+quant = "population size"
+short_quant = "Pop_Size"
 #corresponding values of interest for each model
-values = [[5,10,20,30,50] for model in models]
+values = [[2,5,10,20,50] for model in models]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50.0 for model in models]
+upper_plotting_bound = [50.0,50.0,200.0]
 upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
