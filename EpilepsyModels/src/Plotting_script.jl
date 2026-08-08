@@ -4,34 +4,32 @@ using StatsPlots
 using Distributions
 
 #save figures after running?
-saving = true
-save_path = "./SeizureFreq"
+saving = false
+save_path = "./Obs_Duration"
 
 #files to read data from, relative to 
-files = [["./SeizureFreq/SeizureFreq_Basic_1_false.txt", "./SeizureFreq/SeizureFreq_Basic_2_false.txt", "./SeizureFreq/SeizureFreq_Basic_5_false.txt", "./SeizureFreq/SeizureFreq_Basic_10_false.txt"], 
-        ["./SeizureFreq/SeizureFreq_NB_1_false.txt", "./SeizureFreq/SeizureFreq_NB_2_false.txt", "./SeizureFreq/SeizureFreq_NB_5_false.txt", "./SeizureFreq/SeizureFreq_NB_10_false.txt"], 
+files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt"],
+        ["./Obs_Duration/Obs_VPA_5.txt", "./Obs_Duration/Obs_VPA_10.txt", "./Obs_Duration/Obs_VPA_20.txt", "./Obs_Duration/Obs_VPA_30.txt", "./Obs_Duration/Obs_VPA_50.txt"],
+        ["./Obs_Duration/Obs_SANAD_5.txt", "./Obs_Duration/Obs_SANAD_10.txt", "./Obs_Duration/Obs_SANAD_20.txt", "./Obs_Duration/Obs_SANAD_30.txt", "./Obs_Duration/Obs_SANAD_50.txt"]
         ]
-files2 = [["./SeizureFreq/SeizureFreq_Basic_1_true.txt", "./SeizureFreq/SeizureFreq_Basic_2_true.txt", "./SeizureFreq/SeizureFreq_Basic_5_true.txt", "./SeizureFreq/SeizureFreq_Basic_10_true.txt"], 
-        ["./SeizureFreq/SeizureFreq_NB_1_true.txt", "./SeizureFreq/SeizureFreq_NB_2_true.txt", "./SeizureFreq/SeizureFreq_NB_5_true.txt", "./SeizureFreq/SeizureFreq_NB_10_true.txt"], 
-        ["./SeizureFreq/SeizureFreq_VPA_5.txt", "./SeizureFreq/SeizureFreq_VPA_10.txt", "./SeizureFreq/SeizureFreq_VPA_15.txt", "./SeizureFreq/SeizureFreq_VPA_20.txt"], 
-        ]
+files2 = []
 #Do space before name if not empty, else empty string
-names_distinction = (" seizure counts", " just Bool")
+names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Basic", "Negative Binomial", "VPA"]
+models = ["Big4", "VPA", "SANAD"]
 #colour for each model
-colours = [[:teal, :violet], [:cyan, :fuchsia, :orange]]
+colours = [[:magenta, :orange, :brown], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "seizure measurement frequency"
-short_quant = "Seizure_Freq"
+quant = "observation duration"
+short_quant = "Obs_Dur"
 #corresponding values of interest for each model
-values = [[1,2,5,10], [1,2,5,10],[5,10,15,20]]
+values = [[5,10,20,30,50] for model in models]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [2.0, 40.0, 50.0]
-upper_outlier_bound = [150.0, 300.0, 500.0]
+upper_plotting_bound = [50.0 for model in models]
+upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
 
