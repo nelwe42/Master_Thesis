@@ -33,7 +33,7 @@ considered = [30.0, 15.0, 5.0, 2.0, 1.0]
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "UpdateReg_VPA_$(considered[parsed2]).txt"
+file_name = "UpdateReg_Basic_$(considered[parsed2]).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 #set seed
@@ -70,14 +70,14 @@ Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 30.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-Seizure_timepoints = 0.0:5.0:Obs_Duration
+Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 update_reg = considered[parsed2]
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ", "k_abs", "c1", "v1")
-#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
+#logscale = ("σ", "k_abs", "c1", "v1")
+logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -127,11 +127,11 @@ lock_path_output = joinpath("./", file_name * ".lock")
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-#=
+
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -151,9 +151,9 @@ else
         end
     end
 end
-=#
+
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=

@@ -112,11 +112,11 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
-#pk_model = PKLTG(θ=Input_θ_PKLTG)
+pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 
@@ -159,6 +159,7 @@ else
             Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[4]]
         end
     end
+    base_rate = (1.0, 1.5, 2.0, 2.5, 3.0)
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
 =#
@@ -180,7 +181,7 @@ mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_events = max_events, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 #modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
 #data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-#data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+#data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 0.5, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
 
@@ -292,6 +293,7 @@ if plotting && SciMLBase.successful_retcode(estimate.retcode)
     time_pk = (0.0, Obs_Duration)
     #estimate = (u = deepcopy(Input_θ),)
     #estimate.u.Seizure.b[1] = 7.0/29.0
+    #colours = (PK=nothing, Seizure = (true_param = :brown,))
     colours = nothing
     plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options,
     reference_covariates_index = ref, colours = colours)

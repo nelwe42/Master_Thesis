@@ -1493,7 +1493,7 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
                 current_timepoints_PK = [t for t in timepoints_PK if (passed_time-increment)<= t < passed_time] #filter timepoints in this interval
                 current_timepoints_seizure = [timepoints_seizure[i] for i in eachindex(timepoints_seizure) 
                                                     if ((passed_time-increment)<= timepoints_seizure[i] < passed_time || (passed_time-increment)<= timepoints_seizure[min(i+1, length(timepoints_seizure))] <= passed_time)] #capture interval overlap
-                start_solution = min(passed_time-increment, current_timepoints_seizure[1])
+                start_solution = min(passed_time-increment, (isempty(current_timepoints_seizure) ? Inf : current_timepoints_seizure[1]))
                 assign_dose!(m.dose_gen, data[i], names=names, timeframe = increment)
                 sol = generate_measurements!(m.pk_model, sys, data[i], timepoints = current_timepoints_PK, endpoint = passed_time, start = (start_solution, sol_prev(start_solution)), options = ODE_options)
                 if m.seizure_model isa SeizureModelDiscrete

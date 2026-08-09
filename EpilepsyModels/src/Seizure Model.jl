@@ -533,7 +533,7 @@ end
 
 #Get hazard at each particular timepoint for person and event S
 function get_hazard_for_s(m::CoxTypeModels, sol::ODESolution; person::Person, t::AbstractFloat, event::Int, names::NamedTuple)
-    if m.baseline isa Vector
+    if m.baseline isa Tuple
         baseline = m.baseline[min(event, length(m.baseline))]
     else
         baseline = m.baseline
@@ -1057,7 +1057,7 @@ function get_hazard(m::CoxTypeModels, sol::ODESolution; person::Person, t::Abstr
         return zero(eltype(θ))
     end
     #Else evaluate hazard at t
-    if m.baseline isa Vector
+    if m.baseline isa Tuple
         baseline = m.baseline[min(s, length(m.baseline))]
     else
         baseline = m.baseline
