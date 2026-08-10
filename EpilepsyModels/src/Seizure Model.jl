@@ -559,7 +559,7 @@ function cox_integral(m::CoxTypeModels, sol::ODESolution, person::Person; endpoi
     return sol
 end
 
-function generate_seizures!(m::CoxTypeModels, sol::ODESolution, person::Person; endpoint::AbstractFloat, start::AbstractFloat = zero(typeof(endpoint)), max_events::Union{Int, Nothing} = nothing, names::NamedTuple)
+function generate_seizures!(m::CoxTypeModels, sol::ODESolution, person::Person; endpoint::AbstractFloat, final_endpoint::Bool = true, start::AbstractFloat = zero(typeof(endpoint)), max_events::Union{Int, Nothing} = nothing, names::NamedTuple)
     if isnothing(max_events)
         S = Inf
     else
@@ -587,7 +587,9 @@ function generate_seizures!(m::CoxTypeModels, sol::ODESolution, person::Person; 
         end
     end
     #add censoring at endpoint
-    push!(person.seizure_counts, (time = endpoint, count = false))
+    if final_endpoint
+        push!(person.seizure_counts, (time = endpoint, count = false))
+    end
 end
 
 #4) Functions for visualisation

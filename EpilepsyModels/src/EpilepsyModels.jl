@@ -1484,7 +1484,7 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
                 current_timepoints_seizure = [t for t in timepoints_seizure if 0.0 <= t < passed_time]
                 generate_seizures!(m.seizure_model, sol, data[i], timepoints=current_timepoints_seizure, just_Bool = just_Bool, generate_in_lumps = generate_in_lumps, names=names)
             else
-                generate_seizures!(m.seizure_model, sol, data[i], endpoint=passed_time, max_events=max_events, names=names)
+                generate_seizures!(m.seizure_model, sol, data[i], endpoint=passed_time, final_endpoint = (passed_time>=time), max_events=max_events, names=names)
             end
             while passed_time < time
                 sol_prev = sol
@@ -1505,7 +1505,7 @@ function generate_data_updating(m::FullModel, n::Int = 10, time::AbstractFloat =
                     else
                         events_left = max_events - length(data[i].seizure_counts)
                     end
-                    generate_seizures!(m.seizure_model, sol, data[i], endpoint=passed_time, start = (passed_time - increment), max_events=events_left, names=names)
+                    generate_seizures!(m.seizure_model, sol, data[i], endpoint=passed_time, start = (passed_time - increment), final_endpoint = (passed_time>=time), max_events=events_left, names=names)
                 end
             end
             if m.seizure_model isa SeizureModelDiscrete
@@ -1541,6 +1541,27 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
             new_θ = ComponentArray(PK = m.pk_model.θ, Seizure = m.seizure_model.θ)
             for mod in modifiers_person
                 new_θ[mod[1]] = mod[2]
+            end
+            #if model bounds passed ensure are satisfied (e.g. to prevent negative variance)
+            if hasproperty(m.pk_model, :bounds) || hasproperty(m.seizure_model, :bounds)
+                if !hasproperty(m.pk_model, :bounds)
+                    lb_model = ComponentArray(PK = ComponentArray([-Inf for e in m.pk_model.θ], getaxes(m.pk_model.θ)), Seizure = m.seizure_model.bounds.lb)
+                    ub_model = ComponentArray(PK = ComponentArray([Inf for e in m.pk_model.θ], getaxes(m.pk_model.θ)), Seizure = m.seizure_model.bounds.ub)
+                elseif !hasproperty(m.seizure_model, :bounds)
+                    lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = ComponentArray([-Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
+                    ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = ComponentArray([Inf for e in m.seizure_model.θ], getaxes(m.seizure_model.θ)))
+                else
+                    lb_model = ComponentArray(PK = m.pk_model.bounds.lb, Seizure = m.seizure_model.bounds.lb)
+                    ub_model = ComponentArray(PK = m.pk_model.bounds.ub, Seizure = m.seizure_model.bounds.ub)
+                end
+                d = length(new_θ)
+                if length(ub_model) != d || length(lb_model) != d
+                    error("Upper and lower model bounds must match parameter dimension $d")
+                end
+                if any(ub_model .< lb_model)
+                    error("Upper Model bounds strictly smaller than lower ones")
+                end
+                new_θ .= clamp.(new_θ, lb_model, ub_model)
             end
             new_model = deepcopy(m) #create model with modified θ here
             new_model.pk_model.θ .= new_θ.PK
