@@ -124,7 +124,7 @@ pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-
+#=
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -144,10 +144,13 @@ else
         end
     end
 end
-
+=#
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-#seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+if pk_model isa PKVPA
+    Input_θ_SeizureNegativeBinomial.b[1] = 0.05
+end
+seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
 #=
 if (typeof(pk_model).name.wrapper in [PKBigFour])
@@ -196,7 +199,7 @@ considered = [(),
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "Modifiers_Basic_$(parsed2).txt"
+file_name = "Modifiers_NB_$(parsed2).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 
