@@ -1563,6 +1563,7 @@ function generate_data_modified(m::FullModel, n::Int = 10, time::AbstractFloat =
                 end
                 new_θ .= clamp.(new_θ, lb_model, ub_model)
             end
+            modifiers_person = [(mod[1], new_θ[mod[1]]) for mod in modifiers_person]
             new_model = deepcopy(m) #create model with modified θ here
             new_model.pk_model.θ .= new_θ.PK
             new_model.seizure_model.θ .= new_θ.Seizure
@@ -1599,7 +1600,7 @@ function plot_fit(mod::FullModel, data::Tuple{Vararg{Person}}; true_param::Union
             person_param = [deepcopy(true_param) for person in data]
             for i in eachindex(data)
                 for mod in data[i].random_effects
-                    person_param[i][mod[1]] += mod[2]
+                    person_param[i][mod[1]] = mod[2]
                 end
             end
             sols_mod = [solve_PK(mod.pk_model, person_param[i].PK, data[i], endpoint = endpoint, options = options) for i in eachindex(data)]

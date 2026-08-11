@@ -744,7 +744,7 @@ function plot_fit_param(mod::PKModelNonrandom, data::Tuple{Vararg{Person}}; true
             for i in eachindex(data)
                 for mod in data[i].random_effects
                     if mod[1] <= length(true_param)
-                        person_param[i][mod[1]] += mod[2]
+                        person_param[i][mod[1]] = mod[2]
                     end
                 end
             end

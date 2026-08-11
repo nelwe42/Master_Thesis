@@ -659,7 +659,7 @@ function plot_fit(mod::SeizureModelNonrandom, data::Tuple{Vararg{Person}}; true_
             for i in eachindex(data)
                 for mod in data[i].random_effects
                     if mod[1] > length_PK
-                        person_param[i][mod[1]-length_PK] += mod[2]
+                        person_param[i][mod[1]-length_PK] = mod[2]
                     end
                 end
             end
@@ -939,7 +939,7 @@ function plot_fit(mod::CoxTypeModels, data::Tuple{Vararg{Person}}; true_param::U
             for i in eachindex(data)
                 for mod in data[i].random_effects
                     if mod[1] > length_PK
-                        person_param[i][mod[1]-length_PK] += mod[2]
+                        person_param[i][mod[1]-length_PK] = mod[2]
                     end
                 end
             end
