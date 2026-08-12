@@ -5,31 +5,29 @@ using Distributions
 
 #save figures after running?
 saving = true
-save_path = "./UpdateReg"
+save_path = "./Modifiers"
 
 #files to read data from, relative to 
-files = [["./UpdateReg/UpdateReg_Basic_1.txt", "./UpdateReg/UpdateReg_Basic_2.txt", "./UpdateReg/UpdateReg_Basic_5.txt", "./UpdateReg/UpdateReg_Basic_15.txt", "./UpdateReg/UpdateReg_Basic_30.txt"],
-        ["./UpdateReg/UpdateReg_VPA_1.txt", "./UpdateReg/UpdateReg_VPA_2.txt", "./UpdateReg/UpdateReg_VPA_5.txt", "./UpdateReg/UpdateReg_VPA_15.txt", "./UpdateReg/UpdateReg_VPA_30.txt"],
-        ["./UpdateReg/UpdateReg_SANAD_1.txt", "./UpdateReg/UpdateReg_SANAD_2.txt", "./UpdateReg/UpdateReg_SANAD_5.txt", "./UpdateReg/UpdateReg_SANAD_15.txt", "./UpdateReg/UpdateReg_SANAD_30.txt"]
+files = [["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,8,9,10]],
+        ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,8,9,10]]
         ]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Basic", "VPA", "SANAD"]
+models = ["Basic, 1", "Basic, 2", "Basic, 3", "Negative Binomial, 1", "Negative Binomial, 2", "Negative Binomial, 3"]
 #colour for each model
-colours = [[:teal, :orange, :brown], [:cyan, :fuchsia, :orange]]
+colours = [[:teal, :mediumturquoise, :cyan, :violet, :fuchsia, :darkorchid], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "update regularity"
-short_quant = "UpdateReg"
+quant = "modifiers"
+short_quant = "Modifiers"
 #corresponding values of interest for each model
-values = [[1,2,5,15,30] for model in models]
-#Legend setting for plotting
+values = [["none", "small", "medium", "wide"] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [500.0, 50.0, 50.0]
-upper_outlier_bound = [500.0 for model in models]
+upper_plotting_bound = [100.0, 300.0, 300.0, 1000.0, 1000.0, 1000.0]
+upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
 plot_separate = true
 
@@ -185,7 +183,9 @@ for k in eachindex(models)
             plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
         end
     end
-    plot!(xticks = values[k], xrotation = 75)
+    if eltype(values[k]) <: Number
+        plot!(xticks = values[k], xrotation = 75)
+    end
     plot!(legend=:outerbottom, legendcolumns=legendcolumns)
 end
 push!(overall_plots, pl2)
@@ -198,7 +198,9 @@ if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_
             if !isempty(means_truncated[n][k])
                 plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
             end
-            plot!(xticks = values[k], xrotation = 75)
+            if eltype(values[k]) <: Number
+                plot!(xticks = values[k], xrotation = 75)
+            end
             plot!(legend=:outerbottom, legendcolumns=legendcolumns)
         end
         push!(overall_plots, pl25)
@@ -213,7 +215,9 @@ for k in eachindex(models)
             plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
         end
     end
-    plot!(xticks = values[k], xrotation = 75)
+    if eltype(values[k]) <: Number
+        plot!(xticks = values[k], xrotation = 75)
+    end
     plot!(legend=:outerbottom, legendcolumns=legendcolumns)
 end
 push!(overall_plots, pl3)
@@ -226,7 +230,9 @@ if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[
             if !isempty(means_full[n][k])
                 plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
             end
-            plot!(xticks = values[k], xrotation = 75)
+            if eltype(values[k]) <: Number
+                plot!(xticks = values[k], xrotation = 75)
+            end
             plot!(legend=:outerbottom, legendcolumns=legendcolumns)
         end
         push!(overall_plots, pl35)
