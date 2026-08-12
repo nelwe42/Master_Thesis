@@ -215,6 +215,7 @@ for j in eachindex(normals)
         current_pdf(x) = normal_pdf(normals[j][i][1], normals[j][i][2],x)
         plot!(current_pdf, fillrange = 0, fc=colours[i], label = "", alpha = 0.5)
         plot!(current_pdf, label="Parameter $(i)", linewidth = 1.5, colour = colours[i])
+        vline!([normals[j][i][1]], linecolor = colours[i], label = "", linewidth=2)
     end
     display(pl)
     push!(output, pl)

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-1000
+#SBATCH --array=1-300
 #SBATCH --partition=intelsr_long
 #SBATCH --account=ag_irumls_hasenauer
 #SBATCH --time=120:00:00

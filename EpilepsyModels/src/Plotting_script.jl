@@ -4,31 +4,31 @@ using StatsPlots
 using Distributions
 
 #save figures after running?
-saving = false
-save_path = "./Pop_Size"
+saving = true
+save_path = "./UpdateReg"
 
 #files to read data from, relative to 
-files = [["./Pop_Size/PopSize_Big4_2.txt", "./Pop_Size/PopSize_Big4_5.txt", "./Pop_Size/PopSize_Big4_10.txt", "./Pop_Size/PopSize_Big4_20.txt", "./Pop_Size/PopSize_Big4_50.txt"],
-        ["./Pop_Size/PopSize_VPA_2.txt", "./Pop_Size/PopSize_VPA_5.txt", "./Pop_Size/PopSize_VPA_10.txt", "./Pop_Size/PopSize_VPA_20.txt", "./Pop_Size/PopSize_VPA_50.txt"],
-        ["./Pop_Size/PopSize_SANAD_2.txt", "./Pop_Size/PopSize_SANAD_5.txt", "./Pop_Size/PopSize_SANAD_10.txt", "./Pop_Size/PopSize_SANAD_20.txt", "./Pop_Size/PopSize_SANAD_50.txt"]
+files = [["./UpdateReg/UpdateReg_Basic_1.txt", "./UpdateReg/UpdateReg_Basic_2.txt", "./UpdateReg/UpdateReg_Basic_5.txt", "./UpdateReg/UpdateReg_Basic_15.txt", "./UpdateReg/UpdateReg_Basic_30.txt"],
+        ["./UpdateReg/UpdateReg_VPA_1.txt", "./UpdateReg/UpdateReg_VPA_2.txt", "./UpdateReg/UpdateReg_VPA_5.txt", "./UpdateReg/UpdateReg_VPA_15.txt", "./UpdateReg/UpdateReg_VPA_30.txt"],
+        ["./UpdateReg/UpdateReg_SANAD_1.txt", "./UpdateReg/UpdateReg_SANAD_2.txt", "./UpdateReg/UpdateReg_SANAD_5.txt", "./UpdateReg/UpdateReg_SANAD_15.txt", "./UpdateReg/UpdateReg_SANAD_30.txt"]
         ]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Big4", "VPA", "SANAD"]
+models = ["Basic", "VPA", "SANAD"]
 #colour for each model
-colours = [[:magenta, :orange, :brown], [:cyan, :fuchsia, :orange]]
+colours = [[:teal, :orange, :brown], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "population size"
-short_quant = "Pop_Size"
+quant = "update regularity"
+short_quant = "UpdateReg"
 #corresponding values of interest for each model
-values = [[2,5,10,20,50] for model in models]
+values = [[1,2,5,15,30] for model in models]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50.0,50.0,200.0]
+upper_plotting_bound = [500.0, 50.0, 50.0]
 upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 plot_separate = true

@@ -1055,7 +1055,7 @@ LogDensityProblems.capabilities(::LogTargetDensity) = LogDensityProblems.LogDens
 function optimise_sampled(m::FullModel, data::Tuple{Vararg{Person}}; per_chain::Int64 = 10^4, nadapts::Int64 = 0, bound_abs::Union{Nothing, AbstractFloat} = nothing, lower_upper::Union{Nothing, Tuple{ComponentArray, ComponentArray}} = nothing,
     objective_fail_hard::Bool = false, objective_warn::Bool = true, multistart::Int = 1, max_threads::Int = multistart, multistart_seed::Union{Nothing, Int} = nothing, multistart_include_initial::Bool = true, multistart_bounds::Union{Nothing, Tuple{AbstractVector, AbstractVector}, AbstractFloat} = nothing, 
     use_model_bounds::Bool = true, prefilter::Union{Int, Nothing} = nothing, custom_starts::Union{AbstractVector,Nothing} = nothing, noise_params::Tuple{Vararg{Tuple{Int, AbstractFloat}}} = (), printing::Bool = true, run_CI::Bool = false, confidence::AbstractFloat = 0.95,
-    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options::Tuple = (), sampling_rng::AbstractRNG = Xoshiro(42), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
+    sampler = nothing, prior::Union{Distribution, Function, Nothing} = nothing, sampling_options::Union{NamedTuple,Tuple} = (), sampling_rng::AbstractRNG = Xoshiro(42), ODE_options::Tuple = (AutoTsit5(Rosenbrock23()),))
     
     names = get_keys_PK(m.pk_model)
     #create ODE problem for each person in data
