@@ -28,7 +28,8 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-
+#just rerunning third one bc switched models there
+parsed2 = 3
 #set seed
 Random.seed!(parsed)
 
@@ -132,7 +133,7 @@ end
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-if parsed2 == 1
+if parsed2 in [1,3]
     if (typeof(pk_model).name.wrapper in [PKVPA])
         Input_θ_SeizureBasic_one.b = SA[0.05]
     end
@@ -152,7 +153,7 @@ if parsed2 == 1
             end
         end
     end
-elseif parsed2 in [2,3]
+elseif parsed2 == 2
     if (typeof(pk_model).name.wrapper in [PKVPA])
         Input_θ_SeizureBasic_one.b = SA[0.05]
     end
@@ -175,7 +176,7 @@ elseif parsed2 in [2,3]
 end
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 if parsed2 == 3
-    seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
+    seizure_model2 = SeizureVPA(θ = Input_θ_SeizureVPA)
 end
 if pk_model isa PKVPA
     Input_θ_SeizureNegativeBinomial.b[1] = 0.05
@@ -210,7 +211,7 @@ person_gen = BigFourPersonGenerator()
 #Create appropriate dose generator based on which pk_model was chosen
 dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
 #dose_gen = BigFourDoses()
-if seizure_model isa SeizureVPA && !(dose_gen isa BigFourDoses)
+if (seizure_model isa SeizureVPA || seizure_model2 isa SeizureVPA) && !(dose_gen isa BigFourDoses)
     dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
     distr_first = (d_VPA = 1.0, d_CBZ = 0.0)
     distr_second = (d_VPA = 0.0, d_CBZ = 1.0)
@@ -236,9 +237,10 @@ modifications = ()
 if parsed2 in [1,2]
     data() = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 elseif parsed2 == 3
-    #Somewhat handle seizurevpa records success and seizurebasic records failures
-    invert_seizures(x::NamedTuple) = (time = x.time, count = !x.count)
+    #Handle seizurevpa records success and seizurebasic records failures
+    invert_seizures(x::NamedTuple) = (time = x.time, count = (x.count <= 10))
     function data()
+        #For each 5 day interval check if less than expected baseline of 10 seizures halved
         dataset = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
         for person in dataset
             person.seizure_counts .= invert_seizures.(person.seizure_counts)

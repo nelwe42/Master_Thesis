@@ -5,12 +5,10 @@ using Distributions
 
 #save figures after running?
 saving = true
-save_path = "./Modifiers"
+save_path = "./WrongModel"
 
 #files to read data from, relative to 
-files = [["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,8,9,10]],
-        ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,8,9,10]]
-        ]
+files = [["./WrongModel/WrongModel_SeizureBasic_to_SeizureNegativeBinomial.txt"], ["./WrongModel/WrongModel_SeizureNegativeBinomial_to_SeizureBasic.txt"], ["./WrongModel/WrongModel_SeizureBasic_to_SeizureVPA.txt"]]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
@@ -101,6 +99,232 @@ interests = rel_squared_errors_all
 name = "relative squared errors"
 short_name = "RSE"
 
+
+#Do plots for wrong model
+model_colours = [:teal, :violet, :orange]
+model_colours_other = [:violet, :teal, :teal]
+model_names = ["Basic", "Negative Binomial", "VPA"]
+model_names_other = ["Negative Binomial", "Basic", "Basic"]
+plots = [Plots.Plot[] for model in models]
+comp_plots = Plots.Plot[]
+estimates = [ComponentArray(PK = ComponentArray(estimates_all[1][k][1][1].PK), Seizure = ComponentArray(estimates_all[1][k][1][1].Seizure)) for k in eachindex(files)]
+for k in eachindex(files)
+    for j in eachindex(estimates_all[1][k][1][1].Seizure)
+        pl = plot(title = "Distribution of $(j)", ylabel = "Parameter")
+        param_estimates = [(j == :b ? estimate.Seizure[j][1] : estimate.Seizure[j]) for estimate in estimates_all[1][k][1]]
+        if !(j== :b)
+            estimates[k].Seizure[j] = mean(param_estimates)
+        else
+            estimates[k].Seizure[j] = [mean(param_estimates)]
+        end
+        violin!([String(j)], param_estimates, outliers=false, label = "", alpha = 0.5, color = model_colours[k])
+        display(pl)
+        push!(plots[k], pl)
+        if saving
+            savefig(pl, joinpath(save_path,"$(model_names[k])_on_$(model_names_other[k])_param_$(j).png"))
+        end
+    end
+end
+
+#Comparison plots
+using Pkg
+include("EpilepsyModels.jl")
+
+using .EpilepsyModels
+using ComponentArrays
+using OptimizationOptimJL
+using OptimizationBBO
+using LineSearches
+using DifferentialEquations
+using Plots
+using StatsPlots
+using StaticArrays
+using Random
+using Distributions
+using BenchmarkTools
+using ModelingToolkit
+using MCMCChains
+using AdvancedHMC
+
+Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
+Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ=0.2))
+Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ=0.2))
+Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*0.577), c2 = 0.535, c3 = 0.875, v1 = 0.28, σ=0.2))
+Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 110*0.00328, c4 = 0.34, v1 = 2.14, σ=0.2))
+Input_θ_PKBigFour = ComponentArray((k_abs_LTG = (24*1.96), c1_LTG = (24*2.4), c2_LTG = 0.938, c3_LTG = 110*0.00328, c4_LTG = 0.34, c_Inh_LTG = (1-0.579), c_Ind_LTG = (1+0.546), v1_LTG = 2.14, σ_LTG=0.2,
+            k_abs_VPA = (24*1.86), c1_VPA = (24*0.577), c2_VPA = 0.535, c3_VPA = 0.875, c_Ind_VPA = 1.22, v1_VPA = 0.28, σ_VPA=0.2,
+            k_abs_CBZ = (24*0.45), c1_CBZ = (24*1.96), c2_CBZ = 1.73, c3_CBZ = 24*1.36, v1_CBZ = 164.0/75.0, σ_CBZ=0.2,
+            k_abs_LEV = (24*3.5), c1_LEV = (24*4.0), c2_LEV = 0.25, c3_LEV = 0.122, c_Inh_LEV = 0.812, c_Ind_LEV = 1.09, v1_LEV = 29.7, v2_LEV = 2.85, σ_LEV=0.2))
+#Seizure Models
+base_rate = 4.0
+Input_θ_SeizureBasic_one = ComponentArray((a = base_rate, b = SA[0.2]))
+Input_θ_SeizureBasic_four = ComponentArray((a = base_rate, b = SA[base_rate/7, base_rate/25, base_rate/20, base_rate/120]))
+Input_θ_SeizureNegativeBinomial = ComponentArray((a = log(4.0), o = 1.128, prev = 0.731, b = SA[0.2]))
+Input_θ_SeizureVPA = ComponentArray((a = 6.1, a1 = 1.0, a2 = 1.8, b1 = 13.3, b2 = 2.4))
+Input_θ_SeizureSANAD_one = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[7/30])) 
+Input_θ_SeizureSANAD_four = ComponentArray((a1 = log(1.09), a2 = log(0.87), a3 = log(1.15), b = SA[6.75/9, 7.5/29, 7.25/8, 7.25/75]))
+
+Population_size = 1
+wo_treatment = 0.0 #10.0
+Obs_Duration = wo_treatment + 20.0
+PK_timepoints = wo_treatment:3.75:Obs_Duration
+drug_appropriate_dosing = true
+max_threads_simul = Threads.nthreads()
+ODE_options = (AutoTsit5(Rosenbrock23()),)
+time = [(0.0, 10.0), (0.0, 10.0), (0.0, 20.0)]
+
+for k in eachindex(files)
+    Random.seed!(42)
+    parsed2 = k
+
+    if parsed2 in [1,2]
+        Seizure_timepoints = 0.0:1.0:Obs_Duration
+    else
+        Seizure_timepoints = 0.0:5.0:Obs_Duration
+    end
+    no_counts_seizure = false
+    update_reg = Obs_Duration
+    if parsed2 in [1,2]
+        pk_model = PKLEV(θ=Input_θ_PKLEV)
+    end
+    if parsed2 == 3
+        pk_model = PKVPA(θ=Input_θ_PKVPA)
+    end
+    if parsed2 in [1,3]
+        if (typeof(pk_model).name.wrapper in [PKVPA])
+            Input_θ_SeizureBasic_one.b = SA[0.05]
+        end
+        if (typeof(pk_model).name.wrapper in [PKBigFour])
+            seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_four)
+        else
+            seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
+            if drug_appropriate_dosing
+                if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[2]]
+                elseif (typeof(pk_model).name.wrapper in [PKLTG])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[1]]
+                elseif (typeof(pk_model).name.wrapper in [PKCBZ])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[3]]
+                elseif (typeof(pk_model).name.wrapper in [PKVPA])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[4]]
+                end
+            end
+        end
+    elseif parsed2 == 2
+        if (typeof(pk_model).name.wrapper in [PKVPA])
+            Input_θ_SeizureBasic_one.b = SA[0.05]
+        end
+        if (typeof(pk_model).name.wrapper in [PKBigFour])
+            seizure_model2 = SeizureBasic(θ = Input_θ_SeizureBasic_four)
+        else
+            seizure_model2 = SeizureBasic(θ = Input_θ_SeizureBasic_one)
+            if drug_appropriate_dosing
+                if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[2]]
+                elseif (typeof(pk_model).name.wrapper in [PKLTG])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[1]]
+                elseif (typeof(pk_model).name.wrapper in [PKCBZ])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[3]]
+                elseif (typeof(pk_model).name.wrapper in [PKVPA])
+                    Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[4]]
+                end
+            end
+        end
+    end
+    if parsed2 == 3
+        seizure_model2 = SeizureVPA(θ = Input_θ_SeizureVPA)
+    end
+    if pk_model isa PKVPA
+        Input_θ_SeizureNegativeBinomial.b[1] = 0.05
+    end
+    if parsed2 == 2
+        seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+    elseif parsed2 == 1
+        seizure_model2 = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
+    end
+
+    person_gen = BigFourPersonGenerator()
+    dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+    if (seizure_model isa SeizureVPA || seizure_model2 isa SeizureVPA) && !(dose_gen isa BigFourDoses)
+        dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
+        distr_first = (d_VPA = 1.0, d_CBZ = 0.0)
+        distr_second = (d_VPA = 0.0, d_CBZ = 1.0)
+        dose_gen = PolyDosesRandom(dose_distr, distr_first, distr_second; prob_second=0.5, times_per_day_first=2, times_per_day_second=2, assign_not_supported = true)
+    elseif seizure_model isa SeizureVPA
+        dose_gen = BigFourDoses(order_male = ((:d_VPA,:d_CBZ), (:d_VPA,:d_CBZ)), order_female = ((:d_VPA,:d_CBZ), (:d_VPA,:d_CBZ)), prob_second = 0.5, prob_reassignment = 0.0)
+    end
+    mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
+    #reset PK estimate to true values
+    estimates[k].PK = mod.pk_model.θ
+    mod2 = FullModel(pk_model, seizure_model2, person_gen, dose_gen)
+
+    if parsed2 in [1,2]
+        data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+    elseif parsed2 == 3
+        #Handle seizurevpa records success and seizurebasic records failures
+        invert_seizures(x::NamedTuple) = (time = x.time, count = (x.count <= 10))
+        #For each 5 day interval check if less than expected baseline of 10 seizures halved
+        data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+        for person in data
+            person.seizure_counts .= invert_seizures.(person.seizure_counts)
+        end
+    end
+
+    #Now plot for both, sols use true parameters for both
+    sols = [EpilepsyModels.solve_PK(mod.pk_model,mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options) for i in eachindex(data)]
+    i = 1
+
+    indices = [index for index in eachindex(data[i].seizure_counts) if data[i].seizure_counts[index].time[1] >= time[parsed2][1] && data[i].seizure_counts[index].time[2] <= time[parsed2][2]]
+    intervals = [data[i].seizure_counts[index].time for index in indices]
+    pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Comparison for $(model_names[parsed2]) estimated on \n true model $(model_names_other[parsed2]) for example person")
+    data2 = deepcopy(data[i])
+    if parsed2 == 3
+        to_Int(x::NamedTuple) = (time = x.time, count = Int(x.count))
+        for i in eachindex(data2.seizure_counts)
+            data2.seizure_counts[1] = to_Int(data2.seizure_counts[i])
+        end
+    end
+    samples_true = [EpilepsyModels.draw_data_samples(mod.seizure_model, sols[i], person=data2, interval=interval,names=pk_model.keys, θ = mod.seizure_model.θ, sample_nr=1000) for interval in intervals]
+    samples_estimate = [EpilepsyModels.draw_data_samples(mod2.seizure_model, sols[i], person=data[i], interval=interval,names=pk_model.keys, θ = estimates[k].Seizure, sample_nr=1000) for interval in intervals]
+    #Plot the violins
+    if !(eltype(samples_true[1]) <: Bool || eltype(samples_estimate[1]) <: Bool)
+        for j in eachindex(intervals)
+            violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = (j==1 ? "True model and parameters" : ""), colour = model_colours[parsed2])
+            violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = (j==1 ? "Wrong model estimate" : ""), colour = model_colours_other[parsed2])
+        end  
+    elseif eltype(samples_true[1]) <: Bool && !(eltype(samples_estimate[1]) <: Bool)
+        samples_true_means = [mean(samples) for samples in samples_true]
+        stringed = ["$(interval)" for interval in intervals]
+        for j in eachindex(intervals)
+            violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = (j==1 ? "Wrong model estimate" : ""), colour = model_colours_other[parsed2])
+        end
+        plot!(twinx(), samples_true_means, label = "Mean success probability of \n true model and parameters", colour = model_colours[parsed2], linewidth = 5, grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5])
+    elseif eltype(samples_estimate[1]) <: Bool && !(eltype(samples_true[1]) <: Bool)
+        samples_estimate_means = [mean(samples) for samples in samples_estimate]
+        stringed = ["$(interval)" for interval in intervals]
+        for j in eachindex(intervals)
+            violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = (j==1 ? "True model and parameters" : ""), colour = model_colours[parsed2], ylims = [0.0, 30.0])
+        end
+        if parsed2 == 3
+            plot!(stringed, [10 for string in stringed], label = "50% reduction threshold \n compared to baseline", linecolour = :black, linewidth = 3, legend = :topleft)
+        end
+        plot!(twinx(), stringed, samples_estimate_means, label = "Mean success probability of \n wrong model estimate", colour = model_colours_other[parsed2], linewidth = 5,  grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5], legend = :topright)
+    else
+        samples_true_means = [mean(samples) for samples in samples_true]
+        samples_estimate_means = [mean(samples) for samples in samples_estimate]
+        stringed = ["$(interval)" for interval in intervals]
+        plot!(stringed, samples_true_means, label = "Mean success probability of \n true model and parameters", ylabel = "Success probability")
+        plot!(stringed, samples_estimate_means, label = "Mean success probability of \n wrong model estimate")
+    end
+    display(pl2)
+    push!(comp_plots, pl2)   
+    if saving
+        savefig(pl2, joinpath(save_path,"Comparison_$(model_names[k])_on_$(model_names_other[k]).png"))
+    end         
+end
+
+#=
 if spaced_accordingly
     values2 = deepcopy(values)
 else
@@ -259,3 +483,4 @@ if saving
         i+=2
     end
 end
+=#
