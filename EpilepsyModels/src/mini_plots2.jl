@@ -112,12 +112,12 @@ optimisation_trace = true
 show_trace = true
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-pk_model = PKLEV(θ=Input_θ_PKLEV)
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 
 if (typeof(pk_model).name.wrapper in [PKVPA])
@@ -185,15 +185,28 @@ data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_time
 println("Generated")
 
 thickness = 2
-endpoint = Obs_Duration
+endpoint = 21.0
+empty!(data[1].dosing)
+next_doses = [(t = i+1 + j/2, dose = 500.0, state = :d_CBZ) for i in -1:20 for j in 0:(2-1)]
+append!(data[1].dosing, next_doses)
+#=
+next_doses = [(t = i+1 + j/2, dose = 750.0, state = :d_LEV) for i in 7:13 for j in 0:(2-1)]
+append!(data[1].dosing, next_doses)
+next_doses = [(t = i+1 + j/2, dose = 200.0, state = :d_LTG) for i in 14:20 for j in 0:(2-1)]
+append!(data[1].dosing, next_doses)
+=#
 sol = EpilepsyModels.solve_PK(pk_model, pk_model.θ, data[1], endpoint=endpoint)
 pl = plot(xlabel="Time", ylabel="Concentration", tspan = (0, endpoint), ticks = false, thickness_scaling=thickness)
-plot!(sol, idxs = pk_model.keys.s[1], label="", tspan = (0,endpoint), linewidth = 3, colour = :royalblue2)
+#plot!(sol, idxs = :s_LEV, label="", tspan = (0,endpoint), linewidth = 2, colour = :green)
+plot!(sol, idxs = :s_CBZ, label="", tspan = (0,endpoint), linewidth = 2, colour = :blue, ylims = (0,20))
+#plot!(sol, idxs = :s_LTG, label="", tspan = (0,endpoint), linewidth = 2, colour = :purple)
+display(pl)
+#=
 x_values = [measurement.timepoint for measurement in data[1].measurements if (measurement.state[2] == pk_model.keys.s[1])]
 y_values = [measurement.measurement for measurement in data[1].measurements if (measurement.state[2] == pk_model.keys.s[1])]
 plot!(x_values, y_values, seriestype = :scatter, mc = :purple, markersize = 5, label = "", tspan = (0,endpoint))
 display(pl)
-
+=#
 
 #Bell curves for Modifiers
 function normal_pdf(μ, σ, x)

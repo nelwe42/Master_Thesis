@@ -4,7 +4,7 @@ using StatsPlots
 using Distributions
 
 #save figures after running?
-saving = true
+saving = false
 save_path = "./WrongModel"
 
 #files to read data from, relative to 
@@ -101,10 +101,10 @@ short_name = "RSE"
 
 
 #Do plots for wrong model
-model_colours = [:teal, :violet, :orange]
-model_colours_other = [:violet, :teal, :teal]
-model_names = ["Basic", "Negative Binomial", "VPA"]
-model_names_other = ["Negative Binomial", "Basic", "Basic"]
+model_colours = [:violet, :teal, :orange]
+model_colours_other = [:teal, :violet, :teal]
+model_names = ["NegativeBinomial", "Basic", "VPA"]
+model_names_other = ["Basic", "NegativeBinomial", "Basic"]
 plots = [Plots.Plot[] for model in models]
 comp_plots = Plots.Plot[]
 estimates = [ComponentArray(PK = ComponentArray(estimates_all[1][k][1][1].PK), Seizure = ComponentArray(estimates_all[1][k][1][1].Seizure)) for k in eachindex(files)]
@@ -271,6 +271,12 @@ for k in eachindex(files)
         end
     end
 
+    println("Covariates: ", data[1].covariates)
+    println("Dosing: ")
+    for k in 1:5
+        println(data[1].dosing[k])
+    end
+
     #Now plot for both, sols use true parameters for both
     sols = [EpilepsyModels.solve_PK(mod.pk_model,mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options) for i in eachindex(data)]
     i = 1
@@ -290,26 +296,26 @@ for k in eachindex(files)
     #Plot the violins
     if !(eltype(samples_true[1]) <: Bool || eltype(samples_estimate[1]) <: Bool)
         for j in eachindex(intervals)
-            violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = (j==1 ? "True model and parameters" : ""), colour = model_colours[parsed2])
-            violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = (j==1 ? "Wrong model estimate" : ""), colour = model_colours_other[parsed2])
+            violin!(["$(intervals[j])"], Float64.(samples_true[j]), side = :left, label = (j==1 ? "True model and parameters" : ""), colour = model_colours_other[parsed2])
+            violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), side = :right, label = (j==1 ? "Wrong model estimate" : ""), colour = model_colours[parsed2])
         end  
     elseif eltype(samples_true[1]) <: Bool && !(eltype(samples_estimate[1]) <: Bool)
         samples_true_means = [mean(samples) for samples in samples_true]
         stringed = ["$(interval)" for interval in intervals]
         for j in eachindex(intervals)
-            violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = (j==1 ? "Wrong model estimate" : ""), colour = model_colours_other[parsed2])
+            violin!(["$(intervals[j])"], Float64.(samples_estimate[j]), label = (j==1 ? "Wrong model estimate" : ""), colour = model_colours[parsed2])
         end
-        plot!(twinx(), samples_true_means, label = "Mean success probability of \n true model and parameters", colour = model_colours[parsed2], linewidth = 5, grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5])
+        plot!(twinx(), samples_true_means, label = "Mean success probability of \n true model and parameters", colour = model_colours_other[parsed2], linewidth = 5, grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5])
     elseif eltype(samples_estimate[1]) <: Bool && !(eltype(samples_true[1]) <: Bool)
         samples_estimate_means = [mean(samples) for samples in samples_estimate]
         stringed = ["$(interval)" for interval in intervals]
         for j in eachindex(intervals)
-            violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = (j==1 ? "True model and parameters" : ""), colour = model_colours[parsed2], ylims = [0.0, 30.0])
+            violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = (j==1 ? "True model and parameters" : ""), colour = model_colours_other[parsed2], ylims = [0.0, 30.0])
         end
         if parsed2 == 3
             plot!(stringed, [10 for string in stringed], label = "50% reduction threshold \n compared to baseline", linecolour = :black, linewidth = 3, legend = :topleft)
         end
-        plot!(twinx(), stringed, samples_estimate_means, label = "Mean success probability of \n wrong model estimate", colour = model_colours_other[parsed2], linewidth = 5,  grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5], legend = :topright)
+        plot!(twinx(), stringed, samples_estimate_means, label = "Mean success probability of \n wrong model estimate", colour = model_colours[parsed2], linewidth = 5,  grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5], legend = :topright)
     else
         samples_true_means = [mean(samples) for samples in samples_true]
         samples_estimate_means = [mean(samples) for samples in samples_estimate]
