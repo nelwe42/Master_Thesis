@@ -5,27 +5,27 @@ using Distributions
 
 #save figures after running?
 saving = false
-save_path = "./WrongModel"
+save_path = "./Obs_Duration"
 
 #files to read data from, relative to 
-files = [["./WrongModel/WrongModel_SeizureBasic_to_SeizureNegativeBinomial.txt"], ["./WrongModel/WrongModel_SeizureNegativeBinomial_to_SeizureBasic.txt"], ["./WrongModel/WrongModel_SeizureBasic_to_SeizureVPA.txt"]]
+files = [["./Obs_Duration/Obs_Big4_$(i).txt" for i in [5,10,20,30,50,70]]]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Basic, 1", "Basic, 2", "Basic, 3", "Negative Binomial, 1", "Negative Binomial, 2", "Negative Binomial, 3"]
+models = ["Big4"]
 #colour for each model
-colours = [[:teal, :mediumturquoise, :cyan, :violet, :fuchsia, :darkorchid], [:cyan, :fuchsia, :orange]]
+colours = [[:magenta], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "modifiers"
-short_quant = "Modifiers"
+quant = "observation duration"
+short_quant = "Obs"
 #corresponding values of interest for each model
-values = [["none", "small", "medium", "wide"] for model in models]#Legend setting for plotting
+values = [[5.0, 10.0, 20.0, 30.0, 50.0, 70.0] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [100.0, 300.0, 300.0, 1000.0, 1000.0, 1000.0]
-upper_outlier_bound = [Inf for model in models]
+upper_plotting_bound = [50.0]
+upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
 
@@ -99,7 +99,167 @@ interests = rel_squared_errors_all
 name = "relative squared errors"
 short_name = "RSE"
 
+if spaced_accordingly
+    values2 = deepcopy(values)
+else
+    values2 = [String.(Symbol.(value)) for value in values]
+end
 
+#per model plots
+per_model_plots = [Plots.Plot[] for model in models]
+#store means somewhere
+means_full = [[[] for model in models], [[] for model in models]]
+means_truncated = [[[] for model in models],[[] for model in models]]
+for k in eachindex(models)
+    if k ≤ length(interests[1]) && !isempty(interests[1][k])
+        interest = interests[1][k]
+    else
+        interest = nothing
+    end
+    if k ≤ length(interests[2]) && !isempty(interests[2][k])
+        interest_second = interests[2][k]
+    else
+        interest_second = nothing
+    end
+    interest_list = (interest, interest_second)
+    label_set = [false,false]
+    pl = plot(xlabel = uppercasefirst(quant), ylabel = uppercasefirst(name), title = (uppercasefirst(name)*" for different \n "*lowercasefirst(quant)*" in "*models[k]))
+    for n in eachindex(interest_list)
+        if !isnothing(interest_list[n])
+            #Mention how handle outliers
+            interest2 = deepcopy(interest_list[n])
+            for i in eachindex(interest2)
+                interest2[i] = [rel for rel in interest2[i] if rel <= upper_plotting_bound[k]]
+            end
+            interest3 = deepcopy(interest_list[n])
+            for i in eachindex(interest3)
+                interest3[i] = [rel for rel in interest3[i] if rel <= upper_outlier_bound[k]]
+                #print outliers
+                println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by outlier bound: ", [rel for rel in interest_list[n][i] if rel > upper_outlier_bound[k]])
+                println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by plotting bound: ", [rel for rel in interest_list[n][i] if rel > upper_plotting_bound[k]])
+            end
+            for i in eachindex(interest2)
+                if n==1 && !isnothing(interest_list[2]) && (i ≤ length(interest_list[2])) && !isempty(interest_list[2][i]) 
+                    label = (label_set[n]) ? "" : names_distinction[n]
+                    violin!([values2[k][i]], interest2[i], side = :left, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
+                    label_set[n] = true
+                elseif n==2 && !isnothing(interest_list[1]) && (i ≤ length(interest_list[1])) && !isempty(interest_list[1][i]) 
+                    label = (label_set[n]) ? "" : names_distinction[n]
+                    violin!([values2[k][i]], interest2[i], side = :right, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
+                    label_set[n] = true
+                else
+                    violin!([values2[k][i]], interest2[i], outliers=false, label = "", alpha = 0.5, color = colours[n][k])
+                end
+            end
+            #Calculate means and store for later
+            means = [(i ≤ length(interest3) && !isempty(interest3[i])) ? mean(interest3[i]) : NaN for i in eachindex(values2[k])]
+            means2 = [(i ≤ length(interest2) && !isempty(interest2[i])) ? mean(interest2[i]) : NaN for i in eachindex(values2[k])]
+            push!(means_truncated[n][k], means2)
+            push!(means_full[n][k], means)
+
+            #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
+            scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
+            scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            #Plot untruncated means only in full one?
+            #plot!(values2, means2, linecolor = :blue, linewidth = 2, label = "means")
+            if spaced_accordingly
+                plot!(xticks = values2[k], xrotation = 90)
+            end
+        end
+    end
+    plot!(legend=:outerbottom, legendcolumns=1)
+    push!(per_model_plots[k],pl)
+    display(pl)
+end
+
+#Overall means plots
+overall_plots = Plots.Plot[]
+pl2 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)))
+for k in eachindex(models)
+    for n in 1:2
+        if !isempty(means_truncated[n][k])
+            plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+        end
+    end
+    if eltype(values[k]) <: Number
+        plot!(xticks = values[k], xrotation = 75)
+    end
+    plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+end
+push!(overall_plots, pl2)
+display(pl2)
+
+if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_truncated[2]))
+    for n in 1:2
+        pl25 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
+        for k in eachindex(models)
+            if !isempty(means_truncated[n][k])
+                plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            end
+            if eltype(values[k]) <: Number
+                plot!(xticks = values[k], xrotation = 75)
+            end
+            plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+        end
+        push!(overall_plots, pl25)
+        display(pl25)
+    end
+end
+
+pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)))
+for k in eachindex(models)
+    for n in 1:2
+        if !isempty(means_truncated[n][k])
+            plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+        end
+    end
+    if eltype(values[k]) <: Number
+        plot!(xticks = values[k], xrotation = 75)
+    end
+    plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+end
+push!(overall_plots, pl3)
+display(pl3)
+
+if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[2]))
+    for n in 1:2
+        pl35 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
+        for k in eachindex(models)
+            if !isempty(means_full[n][k])
+                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+            end
+            if eltype(values[k]) <: Number
+                plot!(xticks = values[k], xrotation = 75)
+            end
+            plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+        end
+        push!(overall_plots, pl35)
+        display(pl35)
+    end
+end
+
+if saving
+    for i in eachindex(per_model_plots)
+        savefig(per_model_plots[i][1], joinpath(save_path,"$(models[i])_$(short_quant)_$(short_name).png"))
+    end
+    savefig(overall_plots[1], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name).png"))
+    i=1
+    if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_truncated[2]))
+        savefig(overall_plots[i+1], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name)$(names_distinction[1]).png"))
+        savefig(overall_plots[i+2], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name)$(names_distinction[2]).png"))
+        i+=2
+    end
+    savefig(overall_plots[i+1], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name).png"))
+    i+=1
+    if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[2]))
+        savefig(overall_plots[i+1], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name)$(names_distinction[1]).png"))
+        savefig(overall_plots[i+2], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name)$(names_distinction[2]).png"))
+        i+=2
+    end
+end
+
+
+#=
 #Do plots for wrong model
 model_colours = [:violet, :teal, :orange]
 model_colours_other = [:teal, :violet, :teal]
@@ -328,165 +488,5 @@ for k in eachindex(files)
     if saving
         savefig(pl2, joinpath(save_path,"Comparison_$(model_names[k])_on_$(model_names_other[k]).png"))
     end         
-end
-
-#=
-if spaced_accordingly
-    values2 = deepcopy(values)
-else
-    values2 = [String.(Symbol.(value)) for value in values]
-end
-
-#per model plots
-per_model_plots = [Plots.Plot[] for model in models]
-#store means somewhere
-means_full = [[[] for model in models], [[] for model in models]]
-means_truncated = [[[] for model in models],[[] for model in models]]
-for k in eachindex(models)
-    if k ≤ length(interests[1]) && !isempty(interests[1][k])
-        interest = interests[1][k]
-    else
-        interest = nothing
-    end
-    if k ≤ length(interests[2]) && !isempty(interests[2][k])
-        interest_second = interests[2][k]
-    else
-        interest_second = nothing
-    end
-    interest_list = (interest, interest_second)
-    label_set = [false,false]
-    pl = plot(xlabel = uppercasefirst(quant), ylabel = uppercasefirst(name), title = (uppercasefirst(name)*" for different \n "*lowercasefirst(quant)*" in "*models[k]))
-    for n in eachindex(interest_list)
-        if !isnothing(interest_list[n])
-            #Mention how handle outliers
-            interest2 = deepcopy(interest_list[n])
-            for i in eachindex(interest2)
-                interest2[i] = [rel for rel in interest2[i] if rel <= upper_plotting_bound[k]]
-            end
-            interest3 = deepcopy(interest_list[n])
-            for i in eachindex(interest3)
-                interest3[i] = [rel for rel in interest3[i] if rel <= upper_outlier_bound[k]]
-                #print outliers
-                println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by outlier bound: ", [rel for rel in interest_list[n][i] if rel > upper_outlier_bound[k]])
-                println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by plotting bound: ", [rel for rel in interest_list[n][i] if rel > upper_plotting_bound[k]])
-            end
-            for i in eachindex(interest2)
-                if n==1 && !isnothing(interest_list[2]) && (i ≤ length(interest_list[2])) && !isempty(interest_list[2][i]) 
-                    label = (label_set[n]) ? "" : names_distinction[n]
-                    violin!([values2[k][i]], interest2[i], side = :left, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
-                    label_set[n] = true
-                elseif n==2 && !isnothing(interest_list[1]) && (i ≤ length(interest_list[1])) && !isempty(interest_list[1][i]) 
-                    label = (label_set[n]) ? "" : names_distinction[n]
-                    violin!([values2[k][i]], interest2[i], side = :right, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
-                    label_set[n] = true
-                else
-                    violin!([values2[k][i]], interest2[i], outliers=false, label = "", alpha = 0.5, color = colours[n][k])
-                end
-            end
-            #Calculate means and store for later
-            means = [(i ≤ length(interest3) && !isempty(interest3[i])) ? mean(interest3[i]) : NaN for i in eachindex(values2[k])]
-            means2 = [(i ≤ length(interest2) && !isempty(interest2[i])) ? mean(interest2[i]) : NaN for i in eachindex(values2[k])]
-            push!(means_truncated[n][k], means2)
-            push!(means_full[n][k], means)
-
-            #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
-            scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
-            scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
-            #Plot untruncated means only in full one?
-            #plot!(values2, means2, linecolor = :blue, linewidth = 2, label = "means")
-            if spaced_accordingly
-                plot!(xticks = values2[k], xrotation = 90)
-            end
-        end
-    end
-    plot!(legend=:outerbottom, legendcolumns=1)
-    push!(per_model_plots[k],pl)
-    display(pl)
-end
-
-#Overall means plots
-overall_plots = Plots.Plot[]
-pl2 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)))
-for k in eachindex(models)
-    for n in 1:2
-        if !isempty(means_truncated[n][k])
-            plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
-        end
-    end
-    if eltype(values[k]) <: Number
-        plot!(xticks = values[k], xrotation = 75)
-    end
-    plot!(legend=:outerbottom, legendcolumns=legendcolumns)
-end
-push!(overall_plots, pl2)
-display(pl2)
-
-if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_truncated[2]))
-    for n in 1:2
-        pl25 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
-        for k in eachindex(models)
-            if !isempty(means_truncated[n][k])
-                plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
-            end
-            if eltype(values[k]) <: Number
-                plot!(xticks = values[k], xrotation = 75)
-            end
-            plot!(legend=:outerbottom, legendcolumns=legendcolumns)
-        end
-        push!(overall_plots, pl25)
-        display(pl25)
-    end
-end
-
-pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)))
-for k in eachindex(models)
-    for n in 1:2
-        if !isempty(means_truncated[n][k])
-            plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
-        end
-    end
-    if eltype(values[k]) <: Number
-        plot!(xticks = values[k], xrotation = 75)
-    end
-    plot!(legend=:outerbottom, legendcolumns=legendcolumns)
-end
-push!(overall_plots, pl3)
-display(pl3)
-
-if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[2]))
-    for n in 1:2
-        pl35 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
-        for k in eachindex(models)
-            if !isempty(means_full[n][k])
-                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
-            end
-            if eltype(values[k]) <: Number
-                plot!(xticks = values[k], xrotation = 75)
-            end
-            plot!(legend=:outerbottom, legendcolumns=legendcolumns)
-        end
-        push!(overall_plots, pl35)
-        display(pl35)
-    end
-end
-
-if saving
-    for i in eachindex(per_model_plots)
-        savefig(per_model_plots[i][1], joinpath(save_path,"$(models[i])_$(short_quant)_$(short_name).png"))
-    end
-    savefig(overall_plots[1], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name).png"))
-    i=1
-    if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_truncated[2]))
-        savefig(overall_plots[i+1], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name)$(names_distinction[1]).png"))
-        savefig(overall_plots[i+2], joinpath(save_path,"Truncated_means_$(short_quant)_$(short_name)$(names_distinction[2]).png"))
-        i+=2
-    end
-    savefig(overall_plots[i+1], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name).png"))
-    i+=1
-    if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[2]))
-        savefig(overall_plots[i+1], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name)$(names_distinction[1]).png"))
-        savefig(overall_plots[i+2], joinpath(save_path,"Overall_means_$(short_quant)_$(short_name)$(names_distinction[2]).png"))
-        i+=2
-    end
 end
 =#
