@@ -28,7 +28,6 @@ end
 #Check which id and which value of considered ones we are at
 parsed2 = Int(ceil(parsed/100))
 parsed = (parsed % 100)
-parsed2 = 2
 
 #set seed
 Random.seed!(parsed)
@@ -62,23 +61,16 @@ Max_Time = 40*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 20.0
+Obs_Duration = wo_treatment + 30.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
-if parsed2 in [2,3]
-    Seizure_timepoints = 0.0:1.0:Obs_Duration
-else
-    Seizure_timepoints = 0.0:5.0:Obs_Duration
-end
+Seizure_timepoints = 0.0:1.0:Obs_Duration
 no_counts_seizure = false
 update_reg = Obs_Duration
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-if parsed2 in [1,3]
-    logscale = ("σ", "k_abs", "c1", "v1")
-else
-    logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
-end
+logscale = ("σ", "k_abs", "c1", "v1")
+#logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
 solver_optim = LBFGS(linesearch = LineSearches.BackTracking())
@@ -111,7 +103,7 @@ sandwich = true
 finite_diff_hessian = false
 drug_appropriate_dosing = true
 hierarchical_optimisation = false
-sampling = true
+sampling = false
 plotting = false
 show_original = true
 
@@ -125,73 +117,64 @@ lock_path_output = joinpath("./", file_name * ".lock")
 =#
 
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
-if parsed2 == 3
-    pk_model = PKLEV(θ=Input_θ_PKLEV)
-end
+#pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-if parsed2 == 1
-    pk_model = PKVPA(θ=Input_θ_PKVPA)
-end
+pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-if parsed2 == 2
-    pk_model = PKBigFour(θ = Input_θ_PKBigFour)
-end
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-if parsed2 == 2
-    if (typeof(pk_model).name.wrapper in [PKVPA])
-        Input_θ_SeizureBasic_one.b = SA[0.05]
-    end
-    if (typeof(pk_model).name.wrapper in [PKBigFour])
-        seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_four)
-    else
-        seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
-        if drug_appropriate_dosing
-            if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
-                Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[2]]
-            elseif (typeof(pk_model).name.wrapper in [PKLTG])
-                Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[1]]
-            elseif (typeof(pk_model).name.wrapper in [PKCBZ])
-                Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[3]]
-            elseif (typeof(pk_model).name.wrapper in [PKVPA])
-                Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[4]]
-            end
+
+if (typeof(pk_model).name.wrapper in [PKVPA])
+    Input_θ_SeizureBasic_one.b = SA[0.05]
+end
+if (typeof(pk_model).name.wrapper in [PKBigFour])
+    seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_four)
+else
+    seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
+    if drug_appropriate_dosing
+        if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
+            Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[2]]
+        elseif (typeof(pk_model).name.wrapper in [PKLTG])
+            Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[1]]
+        elseif (typeof(pk_model).name.wrapper in [PKCBZ])
+            Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[3]]
+        elseif (typeof(pk_model).name.wrapper in [PKVPA])
+            Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[4]]
         end
     end
 end
+
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
-if parsed2 == 1
-    seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
-end
-if pk_model isa PKVPA
-    Input_θ_SeizureNegativeBinomial.b[1] = 0.05
-end
+#seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
-if parsed2 == 3
-    if (typeof(pk_model).name.wrapper in [PKBigFour])
-        seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
-    else
-        if drug_appropriate_dosing
-            if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
-                Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[2]]
-            elseif (typeof(pk_model).name.wrapper in [PKLTG])
-                Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[1]]
-            elseif (typeof(pk_model).name.wrapper in [PKCBZ])
-                Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[3]]
-            elseif (typeof(pk_model).name.wrapper in [PKVPA])
-                Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[4]]
-            end
+#=
+if (typeof(pk_model).name.wrapper in [PKBigFour])
+    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
+else
+    if drug_appropriate_dosing
+        if (typeof(pk_model).name.wrapper in [PKLEV, PKLEVNoAbsorption])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[2]]
+        elseif (typeof(pk_model).name.wrapper in [PKLTG])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[1]]
+        elseif (typeof(pk_model).name.wrapper in [PKCBZ])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[3]]
+        elseif (typeof(pk_model).name.wrapper in [PKVPA])
+            Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[4]]
         end
-        seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
     end
+    seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
+=#
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
 #dose_gen = BigFourDoses()
+order = (pk_model.keys.d[1],)
+dose_gen = BigFourDoses(order_male = (order, order), order_female = (order, order), prob_second = 0.0, prob_reassignment = 0.0)
 if seizure_model isa SeizureVPA && !(dose_gen isa BigFourDoses)
     dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
     distr_first = (d_VPA = 1.0, d_CBZ = 0.0)
@@ -204,14 +187,24 @@ Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
 
 
+considered = [(((label2index(Input_θ,"Seizure.a")[1], Normal(Input_θ.Seizure.a,Input_θ.Seizure.a/2)),), Obs_Duration), 
+            (((label2index(Input_θ,"Seizure.a")[1], Normal(Input_θ.Seizure.a,Input_θ.Seizure.a/2)),), 5.0), 
+            (((label2index(Input_θ,"Seizure.a")[1], Normal(Input_θ.Seizure.a,Input_θ.Seizure.a/2)),(label2index(Input_θ,"PK.c1")[1], Normal(Input_θ.PK.c1,Input_θ.PK.c1/2))), Obs_Duration),
+            (((label2index(Input_θ,"Seizure.a")[1], Normal(Input_θ.Seizure.a,Input_θ.Seizure.a/2)),(label2index(Input_θ,"PK.c1")[1], Normal(Input_θ.PK.c1,Input_θ.PK.c1/2))), 5.0),
+            (((label2index(Input_θ,"Seizure.a")[1], Normal(Input_θ.Seizure.a,Input_θ.Seizure.a/2)),(label2index(Input_θ,"PK.c1")[1], Normal(Input_θ.PK.c1,Input_θ.PK.c1/2)), (label2index(Input_θ,"Seizure.b[1]")[1], Normal(Input_θ.Seizure.b[1],Input_θ.Seizure.b[1]/2))), Obs_Duration),
+            (((label2index(Input_θ,"Seizure.a")[1], Normal(Input_θ.Seizure.a,Input_θ.Seizure.a/2)),(label2index(Input_θ,"PK.c1")[1], Normal(Input_θ.PK.c1,Input_θ.PK.c1/2)), (label2index(Input_θ,"Seizure.b[1]")[1], Normal(Input_θ.Seizure.b[1],Input_θ.Seizure.b[1]/2))), 5.0)
+            ]
+
+modifications = considered[parsed2][1]
+update_reg = considered[parsed2][2]
+
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "Sampling_$(typeof(pk_model).name.wrapper).txt"
+file_name = "UpdatedModifiers_$(typeof(pk_model).name.wrapper)_$(length(modifications))_$(update_reg == Obs_Duration).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 
-modifications = ()
 #Set data generating function
 data() = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 data_modified() = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = update_reg, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
@@ -270,7 +263,7 @@ end
 
 try
 
-results = multi_data_run(mod, data, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
+results = multi_data_run(mod, data_modified, estimate, eval, run_count=run_count, max_threads_runs=max_threads_runs)
 
 
 #create lockfile to ensure no multiwriting

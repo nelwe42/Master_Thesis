@@ -4,30 +4,30 @@ using StatsPlots
 using Distributions
 
 #save figures after running?
-saving = false
-save_path = "./Obs_Duration"
+saving = true
+save_path = "./UpdatedModifiers"
 
 #files to read data from, relative to 
-files = [["./Obs_Duration/Obs_Big4_$(i).txt" for i in [5,10,20,30,50,70]]]
-files2 = []
+files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
+files2 = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
 #Do space before name if not empty, else empty string
-names_distinction = ("", " just Bool")
+names_distinction = (" no updates", " updates")
 #models each subarray corresponds to
-models = ["Big4"]
+models = ["CBZ", "VPA"]
 #colour for each model
-colours = [[:magenta], [:cyan, :fuchsia, :orange]]
+colours = [[:blue, :red], [:dodgerblue, :salmon]]
 #quantity of interest
-quant = "observation duration"
-short_quant = "Obs"
+quant = "modifiers with updates"
+short_quant = "UpdatedModifiers"
 #corresponding values of interest for each model
-values = [[5.0, 10.0, 20.0, 30.0, 50.0, 70.0] for model in models]#Legend setting for plotting
+values = [[1,2,3] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50.0]
-upper_outlier_bound = [500.0 for model in models]
+upper_plotting_bound = [Inf for model in models]
+upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
-plot_separate = true
+plot_separate = false
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -94,10 +94,10 @@ end
 
 
 #pick variable of interest
-interests = rel_squared_errors_all
+interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
 #give name
-name = "relative squared errors"
-short_name = "RSE"
+name = "dose parameter relative error"
+short_name = "dose_param"
 
 if spaced_accordingly
     values2 = deepcopy(values)
@@ -159,7 +159,9 @@ for k in eachindex(models)
 
             #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
             scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
-            scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            if isfinite(upper_plotting_bound[k])
+                scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            end
             #Plot untruncated means only in full one?
             #plot!(values2, means2, linecolor = :blue, linewidth = 2, label = "means")
             if spaced_accordingly
