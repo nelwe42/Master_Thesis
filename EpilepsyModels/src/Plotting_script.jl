@@ -2,10 +2,15 @@ using ComponentArrays
 using Plots
 using StatsPlots
 using Distributions
+using Random
 
 #save figures after running?
 saving = true
 save_path = "./UpdatedModifiers"
+confidence = 0.95
+q = quantile(Normal(), (1-(1-confidence)/2))
+default(guidefontsize = 12, legendfontsize = 11)
+verbose = false
 
 #files to read data from, relative to 
 files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
@@ -80,6 +85,7 @@ for k in eachindex(to_read)
                     append!(CIs, eval(Meta.parse(text)))
                 end
             end
+            estimates = [ComponentArray(PK = ComponentArray(est.PK), Seizure = ComponentArray(est.Seizure)) for est in estimates]
             push!(estimates_all[k][j], estimates)
             push!(abs_errors_all[k][j], abs_errors)
             push!(rel_errors_all[k][j], rel_errors)
@@ -92,12 +98,95 @@ for k in eachindex(to_read)
     end
 end
 
-
 #pick variable of interest
 interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
 #give name
 name = "dose parameter relative error"
+shorter_name = "relative error"
 short_name = "dose_param"
+
+function in_interval(x, y)
+    if x isa Number 
+        return (y[1] ≤ x ≤ y[2])
+    else
+        ins = Vector{Bool}(undef, length(x))
+        for i in eachindex(x)
+            ins[i] = (y[i][1] ≤ x[i] ≤ y[i][2])
+        end
+        return ins
+    end
+end
+
+function perm_test(A, B, tries::Int = 1000)
+    m_A = mean(A)
+    m_B = mean(B)
+    diff = m_A - m_B
+    full = [deepcopy(A)..., deepcopy(B)...]
+    assigner = [zeros(length(A))..., ones(length(B))...]
+    new_diffs = Vector{Float64}(undef, tries)
+    #ensures p>0
+    new_diffs[1] = diff
+    for t in 2:tries
+        perm = randperm(length(assigner))
+        new_A = [full[j] for j in eachindex(full) if assigner[perm[j]] == 0]
+        new_B = [full[j] for j in eachindex(full) if assigner[j] == 1]
+        new_diffs[t] = mean(new_A) - mean(new_B)
+    end
+    p_different_mean = length([new_diffs[t] for t in 1:tries if abs(new_diffs[t])>=abs(diff)])/tries
+    return p_different_mean
+end
+
+#Calculate coverage
+coverage_full = [[[] for model in models], [[] for model in models]]
+for k in eachindex(models)
+    for n in eachindex(to_read)
+        if !isempty(estimates_all[n][k])
+            for point in eachindex(estimates_all[n][k])
+                coverages = []
+                for inst in eachindex(estimates_all[n][k][point])
+                    axes = getaxes(estimates_all[n][k][point][inst])
+                    coverage = []
+                    for key in keys(CIs_all[n][k][point][inst])
+                        covered = ComponentArray(PK = ComponentArray([in_interval(estimates_all[n][k][point][inst].PK[key2], CIs_all[n][k][point][inst][key].PK[key2]) for key2 in keys(CIs_all[n][k][point][inst][key].PK)], getaxes(estimates_all[n][k][point][inst].PK)), 
+                                    Seizure = ComponentArray([a for key2 in keys(CIs_all[n][k][point][inst][key].Seizure) for a in in_interval(estimates_all[n][k][point][inst].Seizure[key2],CIs_all[n][k][point][inst][key].Seizure[key2])], getaxes(estimates_all[n][k][point][inst].Seizure)))
+                        push!(coverage, covered)
+                    end
+                    coverage = NamedTuple{keys(CIs_all[n][k][point][inst])}(coverage)
+                    push!(coverages, coverage)
+                end
+                push!(coverage_full[n][k], coverages)
+            end
+        end
+    end
+end
+
+println("Coverage overall: ")
+for k in eachindex(models)
+    for n in eachindex(to_read)
+        if !isempty(estimates_all[n][k])
+            for point in eachindex(estimates_all[n][k])
+                for key in keys(coverage_full[n][k][point][1])
+                    coverages = [all([entry for entry in inst[key]]) for inst in coverage_full[n][k][point]]
+                    println("Coverage for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key): ", sum(coverages)/length(coverages))
+                end
+            end
+        end
+    end
+end
+
+println("Infinite CIs:")
+for k in eachindex(models)
+    for n in eachindex(to_read)
+        if !isempty(estimates_all[n][k])
+            for point in eachindex(estimates_all[n][k])
+                for key in keys(coverage_full[n][k][point][1])
+                    coverages = [any([!isfinite(entry) for entry in inst[key]]) for inst in coverage_full[n][k][point]]
+                    println("Infinite CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key): ", sum(coverages)/length(coverages))
+                end
+            end
+        end
+    end
+end
 
 if spaced_accordingly
     values2 = deepcopy(values)
@@ -109,6 +198,7 @@ end
 per_model_plots = [Plots.Plot[] for model in models]
 #store means somewhere
 means_full = [[[] for model in models], [[] for model in models]]
+CI_means_full = [[[] for model in models], [[] for model in models]]
 means_truncated = [[[] for model in models],[[] for model in models]]
 for k in eachindex(models)
     if k ≤ length(interests[1]) && !isempty(interests[1][k])
@@ -123,7 +213,8 @@ for k in eachindex(models)
     end
     interest_list = (interest, interest_second)
     label_set = [false,false]
-    pl = plot(xlabel = uppercasefirst(quant), ylabel = uppercasefirst(name), title = (uppercasefirst(name)*" for different \n "*lowercasefirst(quant)*" in "*models[k]))
+    pl = plot(xlabel = uppercasefirst(quant), ylabel = (verbose ? uppercasefirst(name) : uppercasefirst(shorter_name)), title = (verbose ? (uppercasefirst(name)*" for different \n "*lowercasefirst(quant)*" in "*models[k]) : ""))
+    interest_for_perm = Vector{Any}(undef, 2)
     for n in eachindex(interest_list)
         if !isnothing(interest_list[n])
             #Mention how handle outliers
@@ -138,6 +229,7 @@ for k in eachindex(models)
                 println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by outlier bound: ", [rel for rel in interest_list[n][i] if rel > upper_outlier_bound[k]])
                 println("Outliers for $(values[k][i]) in model "*models[k]*" $(names_distinction[n]) by plotting bound: ", [rel for rel in interest_list[n][i] if rel > upper_plotting_bound[k]])
             end
+            interest_for_perm[n] = interest3
             for i in eachindex(interest2)
                 if n==1 && !isnothing(interest_list[2]) && (i ≤ length(interest_list[2])) && !isempty(interest_list[2][i]) 
                     label = (label_set[n]) ? "" : names_distinction[n]
@@ -153,9 +245,11 @@ for k in eachindex(models)
             end
             #Calculate means and store for later
             means = [(i ≤ length(interest3) && !isempty(interest3[i])) ? mean(interest3[i]) : NaN for i in eachindex(values2[k])]
+            CI_means = [(i ≤ length(interest3) && !isempty(interest3[i])) ? (mean(interest3[i]) - q*std(interest[i])/sqrt(length(interest[i])), mean(interest3[i]) + std(interest[i])/sqrt(length(interest[i]))) : (-Inf, Inf) for i in eachindex(values2[k])]
             means2 = [(i ≤ length(interest2) && !isempty(interest2[i])) ? mean(interest2[i]) : NaN for i in eachindex(values2[k])]
             push!(means_truncated[n][k], means2)
             push!(means_full[n][k], means)
+            push!(CI_means_full[n][k], CI_means)
 
             #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
             scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
@@ -169,6 +263,14 @@ for k in eachindex(models)
             end
         end
     end
+    #println(interest_for_perm, isassigned(interest_for_perm))
+    if all([isassigned(interest_for_perm,i) for i in eachindex(interest_for_perm)])
+        shorter = (length(interest_for_perm[1]) < length(interest_for_perm[2]) ? interest_for_perm[1] : interest_for_perm[2])
+        for i in eachindex(shorter)
+            p = perm_test(interest_for_perm[1][i], interest_for_perm[2][i])
+            println("P-value for mean difference for $(values[k][i]) in model "*models[k]*": ", p)
+        end
+    end
     plot!(legend=:outerbottom, legendcolumns=1)
     push!(per_model_plots[k],pl)
     display(pl)
@@ -176,7 +278,7 @@ end
 
 #Overall means plots
 overall_plots = Plots.Plot[]
-pl2 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)))
+pl2 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)) : "Truncated means"))
 for k in eachindex(models)
     for n in 1:2
         if !isempty(means_truncated[n][k])
@@ -193,7 +295,7 @@ display(pl2)
 
 if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_truncated[2]))
     for n in 1:2
-        pl25 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
+        pl25 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Truncated means"))
         for k in eachindex(models)
             if !isempty(means_truncated[n][k])
                 plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
@@ -208,11 +310,13 @@ if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_
     end
 end
 
-pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)))
+pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)) : "Overall means"))
 for k in eachindex(models)
     for n in 1:2
         if !isempty(means_truncated[n][k])
-            plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+            err_lower = means_full[n][k][1] .- [CI[1] for CI in CI_means_full[n][k][1]]
+            err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
+            plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
         end
     end
     if eltype(values[k]) <: Number
@@ -225,7 +329,7 @@ display(pl3)
 
 if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[2]))
     for n in 1:2
-        pl35 = plot(xlabel = quant, ylabel = "means of "*lowercasefirst(name), title = ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]))
+        pl35 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Overall means"))
         for k in eachindex(models)
             if !isempty(means_full[n][k])
                 plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
@@ -445,7 +549,7 @@ for k in eachindex(files)
 
     indices = [index for index in eachindex(data[i].seizure_counts) if data[i].seizure_counts[index].time[1] >= time[parsed2][1] && data[i].seizure_counts[index].time[2] <= time[parsed2][2]]
     intervals = [data[i].seizure_counts[index].time for index in indices]
-    pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = "Comparison for $(model_names[parsed2]) estimated on \n true model $(model_names_other[parsed2]) for example person")
+    pl2 = plot(xlabel = "day", ylabel = "Seizure Probability", title = (verbose ? "Comparison for $(model_names[parsed2]) estimated on \n true model $(model_names_other[parsed2]) for example person" : "Comparison"))
     data2 = deepcopy(data[i])
     if parsed2 == 3
         to_Int(x::NamedTuple) = (time = x.time, count = Int(x.count))
