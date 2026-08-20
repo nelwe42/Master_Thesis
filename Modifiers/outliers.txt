@@ -1,3 +1,101 @@
+Coverage overall: 
+Coverage for model Basic, 1 and point none, InverseHessian: 1.0
+Coverage for model Basic, 1 and point none, Sandwich: 1.0
+Coverage for model Basic, 1 and point small, InverseHessian: 1.0
+Coverage for model Basic, 1 and point small, Sandwich: 1.0
+Coverage for model Basic, 1 and point medium, InverseHessian: 1.0
+Coverage for model Basic, 1 and point medium, Sandwich: 1.0
+Coverage for model Basic, 1 and point wide, InverseHessian: 1.0
+Coverage for model Basic, 1 and point wide, Sandwich: 1.0
+Coverage for model Basic, 2 and point none, InverseHessian: 1.0
+Coverage for model Basic, 2 and point none, Sandwich: 1.0
+Coverage for model Basic, 2 and point small, InverseHessian: 1.0
+Coverage for model Basic, 2 and point small, Sandwich: 1.0
+Coverage for model Basic, 2 and point medium, InverseHessian: 1.0
+Coverage for model Basic, 2 and point medium, Sandwich: 1.0
+Coverage for model Basic, 2 and point wide, InverseHessian: 1.0
+Coverage for model Basic, 2 and point wide, Sandwich: 1.0
+Coverage for model Basic, 3 and point none, InverseHessian: 1.0
+Coverage for model Basic, 3 and point none, Sandwich: 1.0
+Coverage for model Basic, 3 and point small, InverseHessian: 1.0
+Coverage for model Basic, 3 and point small, Sandwich: 1.0
+Coverage for model Basic, 3 and point medium, InverseHessian: 1.0
+Coverage for model Basic, 3 and point medium, Sandwich: 1.0
+Coverage for model Basic, 3 and point wide, InverseHessian: 1.0
+Coverage for model Basic, 3 and point wide, Sandwich: 1.0
+Coverage for model NB, 1 and point none, InverseHessian: 1.0
+Coverage for model NB, 1 and point none, Sandwich: 1.0
+Coverage for model NB, 1 and point small, InverseHessian: 1.0
+Coverage for model NB, 1 and point small, Sandwich: 1.0
+Coverage for model NB, 1 and point medium, InverseHessian: 1.0
+Coverage for model NB, 1 and point medium, Sandwich: 1.0
+Coverage for model NB, 1 and point wide, InverseHessian: 1.0
+Coverage for model NB, 1 and point wide, Sandwich: 1.0
+Coverage for model NB, 2 and point none, InverseHessian: 1.0
+Coverage for model NB, 2 and point none, Sandwich: 1.0
+Coverage for model NB, 2 and point small, InverseHessian: 1.0
+Coverage for model NB, 2 and point small, Sandwich: 1.0
+Coverage for model NB, 2 and point medium, InverseHessian: 1.0
+Coverage for model NB, 2 and point medium, Sandwich: 1.0
+Coverage for model NB, 2 and point wide, InverseHessian: 1.0
+Coverage for model NB, 2 and point wide, Sandwich: 1.0
+Coverage for model NB, 3 and point none, InverseHessian: 1.0
+Coverage for model NB, 3 and point none, Sandwich: 1.0
+Coverage for model NB, 3 and point small, InverseHessian: 1.0
+Coverage for model NB, 3 and point small, Sandwich: 1.0
+Coverage for model NB, 3 and point medium, InverseHessian: 1.0
+Coverage for model NB, 3 and point medium, Sandwich: 1.0
+Coverage for model NB, 3 and point wide, InverseHessian: 1.0
+Coverage for model NB, 3 and point wide, Sandwich: 1.0
+Infinite CIs:
+Infinite CIs for model Basic, 1 and point none, InverseHessian: 0.0
+Infinite CIs for model Basic, 1 and point none, Sandwich: 0.0
+Infinite CIs for model Basic, 1 and point small, InverseHessian: 0.0
+Infinite CIs for model Basic, 1 and point small, Sandwich: 0.0
+Infinite CIs for model Basic, 1 and point medium, InverseHessian: 0.0
+Infinite CIs for model Basic, 1 and point medium, Sandwich: 0.0
+Infinite CIs for model Basic, 1 and point wide, InverseHessian: 0.0
+Infinite CIs for model Basic, 1 and point wide, Sandwich: 0.0
+Infinite CIs for model Basic, 2 and point none, InverseHessian: 0.0
+Infinite CIs for model Basic, 2 and point none, Sandwich: 0.0
+Infinite CIs for model Basic, 2 and point small, InverseHessian: 0.0
+Infinite CIs for model Basic, 2 and point small, Sandwich: 0.0
+Infinite CIs for model Basic, 2 and point medium, InverseHessian: 0.0
+Infinite CIs for model Basic, 2 and point medium, Sandwich: 0.0
+Infinite CIs for model Basic, 2 and point wide, InverseHessian: 0.0
+Infinite CIs for model Basic, 2 and point wide, Sandwich: 0.0
+Infinite CIs for model Basic, 3 and point none, InverseHessian: 0.0
+Infinite CIs for model Basic, 3 and point none, Sandwich: 0.0
+Infinite CIs for model Basic, 3 and point small, InverseHessian: 0.0
+Infinite CIs for model Basic, 3 and point small, Sandwich: 0.0
+Infinite CIs for model Basic, 3 and point medium, InverseHessian: 0.0
+Infinite CIs for model Basic, 3 and point medium, Sandwich: 0.0
+Infinite CIs for model Basic, 3 and point wide, InverseHessian: 0.0
+Infinite CIs for model Basic, 3 and point wide, Sandwich: 0.0
+Infinite CIs for model NB, 1 and point none, InverseHessian: 0.0
+Infinite CIs for model NB, 1 and point none, Sandwich: 0.0
+Infinite CIs for model NB, 1 and point small, InverseHessian: 0.0
+Infinite CIs for model NB, 1 and point small, Sandwich: 0.0
+Infinite CIs for model NB, 1 and point medium, InverseHessian: 0.0
+Infinite CIs for model NB, 1 and point medium, Sandwich: 0.0
+Infinite CIs for model NB, 1 and point wide, InverseHessian: 0.0
+Infinite CIs for model NB, 1 and point wide, Sandwich: 0.0
+Infinite CIs for model NB, 2 and point none, InverseHessian: 0.0
+Infinite CIs for model NB, 2 and point none, Sandwich: 0.0
+Infinite CIs for model NB, 2 and point small, InverseHessian: 0.0
+Infinite CIs for model NB, 2 and point small, Sandwich: 0.0
+Infinite CIs for model NB, 2 and point medium, InverseHessian: 0.0
+Infinite CIs for model NB, 2 and point medium, Sandwich: 0.0
+Infinite CIs for model NB, 2 and point wide, InverseHessian: 0.0
+Infinite CIs for model NB, 2 and point wide, Sandwich: 0.0
+Infinite CIs for model NB, 3 and point none, InverseHessian: 0.0
+Infinite CIs for model NB, 3 and point none, Sandwich: 0.0
+Infinite CIs for model NB, 3 and point small, InverseHessian: 0.0
+Infinite CIs for model NB, 3 and point small, Sandwich: 0.0
+Infinite CIs for model NB, 3 and point medium, InverseHessian: 0.0
+Infinite CIs for model NB, 3 and point medium, Sandwich: 0.0
+Infinite CIs for model NB, 3 and point wide, InverseHessian: 0.0
+Infinite CIs for model NB, 3 and point wide, Sandwich: 0.0
 Outliers for none in model Basic, 1  by outlier bound: Any[]
 Outliers for none in model Basic, 1  by plotting bound: [216.7071522063829]
 Outliers for small in model Basic, 1  by outlier bound: Any[]
@@ -22,27 +120,27 @@ Outliers for medium in model Basic, 3  by outlier bound: Any[]
 Outliers for medium in model Basic, 3  by plotting bound: [1225.4125247002512, 1225.22620947126, 1225.2370383398638, 1225.3962843227382, 1072.6369566453543, 1225.2211825593745, 1225.351299167427, 1225.355049330232, 1225.2493206660713, 1225.618538583946, 1225.3718319068425, 1225.3559552025563, 1168.0136355669727, 1225.3986110156509, 1225.3523307007674, 1225.35522336548, 1225.4601841563192, 1226.9197515329613, 1225.21547559107, 1225.3817159485056]
 Outliers for wide in model Basic, 3  by outlier bound: Any[]
 Outliers for wide in model Basic, 3  by plotting bound: [1225.6012720763251, 1225.4443864267796, 346.3156680661196, 1225.6692213349365, 1193.3905003628072, 1225.5524287402027, 1225.454603499633, 1225.358352288351, 1225.7689899659536, 1225.6153070848407, 1225.4400157274147, 1225.464257074322, 1225.551576846431, 1225.4268640743228, 1225.977509208192]
-Outliers for none in model Negative Binomial, 1  by outlier bound: Any[]
-Outliers for none in model Negative Binomial, 1  by plotting bound: Any[]
-Outliers for small in model Negative Binomial, 1  by outlier bound: Any[]
-Outliers for small in model Negative Binomial, 1  by plotting bound: Any[]
-Outliers for medium in model Negative Binomial, 1  by outlier bound: Any[]
-Outliers for medium in model Negative Binomial, 1  by plotting bound: Any[]
-Outliers for wide in model Negative Binomial, 1  by outlier bound: Any[]
-Outliers for wide in model Negative Binomial, 1  by plotting bound: Any[]
-Outliers for none in model Negative Binomial, 2  by outlier bound: Any[]
-Outliers for none in model Negative Binomial, 2  by plotting bound: Any[]
-Outliers for small in model Negative Binomial, 2  by outlier bound: Any[]
-Outliers for small in model Negative Binomial, 2  by plotting bound: Any[]
-Outliers for medium in model Negative Binomial, 2  by outlier bound: Any[]
-Outliers for medium in model Negative Binomial, 2  by plotting bound: Any[]
-Outliers for wide in model Negative Binomial, 2  by outlier bound: Any[]
-Outliers for wide in model Negative Binomial, 2  by plotting bound: Any[]
-Outliers for none in model Negative Binomial, 3  by outlier bound: Any[]
-Outliers for none in model Negative Binomial, 3  by plotting bound: Any[]
-Outliers for small in model Negative Binomial, 3  by outlier bound: Any[]
-Outliers for small in model Negative Binomial, 3  by plotting bound: Any[]
-Outliers for medium in model Negative Binomial, 3  by outlier bound: Any[]
-Outliers for medium in model Negative Binomial, 3  by plotting bound: Any[]
-Outliers for wide in model Negative Binomial, 3  by outlier bound: Any[]
-Outliers for wide in model Negative Binomial, 3  by plotting bound: Any[]
+Outliers for none in model NB, 1  by outlier bound: Any[]
+Outliers for none in model NB, 1  by plotting bound: Any[]
+Outliers for small in model NB, 1  by outlier bound: Any[]
+Outliers for small in model NB, 1  by plotting bound: Any[]
+Outliers for medium in model NB, 1  by outlier bound: Any[]
+Outliers for medium in model NB, 1  by plotting bound: Any[]
+Outliers for wide in model NB, 1  by outlier bound: Any[]
+Outliers for wide in model NB, 1  by plotting bound: Any[]
+Outliers for none in model NB, 2  by outlier bound: Any[]
+Outliers for none in model NB, 2  by plotting bound: Any[]
+Outliers for small in model NB, 2  by outlier bound: Any[]
+Outliers for small in model NB, 2  by plotting bound: Any[]
+Outliers for medium in model NB, 2  by outlier bound: Any[]
+Outliers for medium in model NB, 2  by plotting bound: Any[]
+Outliers for wide in model NB, 2  by outlier bound: Any[]
+Outliers for wide in model NB, 2  by plotting bound: Any[]
+Outliers for none in model NB, 3  by outlier bound: Any[]
+Outliers for none in model NB, 3  by plotting bound: Any[]
+Outliers for small in model NB, 3  by outlier bound: Any[]
+Outliers for small in model NB, 3  by plotting bound: Any[]
+Outliers for medium in model NB, 3  by outlier bound: Any[]
+Outliers for medium in model NB, 3  by plotting bound: Any[]
+Outliers for wide in model NB, 3  by outlier bound: Any[]
+Outliers for wide in model NB, 3  by plotting bound: Any[]

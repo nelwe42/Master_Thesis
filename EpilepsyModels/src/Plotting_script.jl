@@ -6,33 +6,35 @@ using Random
 
 #save figures after running?
 saving = true
-save_path = "./UpdatedModifiers"
+save_path = "./Modifiers"
+
+#files to read data from, relative to 
+files = [["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,8,9,10]],
+        ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,8,9,10]]
+        ]
+files2 = []
+#Do space before name if not empty, else empty string
+names_distinction = ("", " just Bool")
+#models each subarray corresponds to
+models = ["Basic, 1", "Basic, 2", "Basic, 3", "NB, 1", "NB, 2", "NB, 3"]
+#colour for each model
+colours = [[:teal, :mediumturquoise, :cyan, :violet, :fuchsia, :darkorchid], [:cyan, :fuchsia, :orange]]
+#quantity of interest
+quant = "modifiers"
+short_quant = "Modifiers"
+#corresponding values of interest for each model
+values = [["none", "small", "medium", "wide"] for model in models]#Legend setting for plotting
+legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
+#set variable of interest below
+
+upper_plotting_bound = [100.0, 300.0, 300.0, 1000.0, 1000.0, 1000.0]
+upper_outlier_bound = [Inf for model in models]
+spaced_accordingly = false
+plot_separate = true
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
 verbose = false
-
-#files to read data from, relative to 
-files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
-files2 = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
-#Do space before name if not empty, else empty string
-names_distinction = (" no updates", " updates")
-#models each subarray corresponds to
-models = ["CBZ", "VPA"]
-#colour for each model
-colours = [[:blue, :red], [:dodgerblue, :salmon]]
-#quantity of interest
-quant = "modifiers with updates"
-short_quant = "UpdatedModifiers"
-#corresponding values of interest for each model
-values = [[1,2,3] for model in models]#Legend setting for plotting
-legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
-#set variable of interest below
-
-upper_plotting_bound = [Inf for model in models]
-upper_outlier_bound = [Inf for model in models]
-spaced_accordingly = false
-plot_separate = false
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -99,11 +101,11 @@ for k in eachindex(to_read)
 end
 
 #pick variable of interest
-interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
+interests = rel_squared_errors_all
 #give name
-name = "dose parameter relative error"
-shorter_name = "relative error"
-short_name = "dose_param"
+name = "relative squared errors"
+shorter_name = "RSE"
+short_name = "RSE"
 
 function in_interval(x, y)
     if x isa Number 
@@ -140,7 +142,7 @@ end
 coverage_full = [[[] for model in models], [[] for model in models]]
 for k in eachindex(models)
     for n in eachindex(to_read)
-        if !isempty(estimates_all[n][k])
+        if isassigned(estimates_all[n],k) && !isempty(estimates_all[n][k])
             for point in eachindex(estimates_all[n][k])
                 coverages = []
                 for inst in eachindex(estimates_all[n][k][point])
@@ -163,7 +165,7 @@ end
 println("Coverage overall: ")
 for k in eachindex(models)
     for n in eachindex(to_read)
-        if !isempty(estimates_all[n][k])
+        if isassigned(estimates_all[n],k) && !isempty(estimates_all[n][k])
             for point in eachindex(estimates_all[n][k])
                 for key in keys(coverage_full[n][k][point][1])
                     coverages = [all([entry for entry in inst[key]]) for inst in coverage_full[n][k][point]]
@@ -177,7 +179,7 @@ end
 println("Infinite CIs:")
 for k in eachindex(models)
     for n in eachindex(to_read)
-        if !isempty(estimates_all[n][k])
+        if isassigned(estimates_all[n],k) && !isempty(estimates_all[n][k])
             for point in eachindex(estimates_all[n][k])
                 for key in keys(coverage_full[n][k][point][1])
                     coverages = [any([!isfinite(entry) for entry in inst[key]]) for inst in coverage_full[n][k][point]]
