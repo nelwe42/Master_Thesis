@@ -5,36 +5,42 @@ using Distributions
 using Random
 
 #save figures after running?
-saving = false
-save_path = "./UpdatedModifiers"
+saving = true
+save_path = "./SeizureFreq"
 
 #files to read data from, relative to 
-files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
-files2 = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
+files = [["./SeizureFreq/SeizureFreq_Basic_1_false.txt", "./SeizureFreq/SeizureFreq_Basic_2_false.txt", "./SeizureFreq/SeizureFreq_Basic_5_false.txt", "./SeizureFreq/SeizureFreq_Basic_10_false.txt"], 
+        ["./SeizureFreq/SeizureFreq_NB_1_false.txt", "./SeizureFreq/SeizureFreq_NB_2_false.txt", "./SeizureFreq/SeizureFreq_NB_5_false.txt", "./SeizureFreq/SeizureFreq_NB_10_false.txt"], 
+        ]
+files2 = [["./SeizureFreq/SeizureFreq_Basic_1_true.txt", "./SeizureFreq/SeizureFreq_Basic_2_true.txt", "./SeizureFreq/SeizureFreq_Basic_5_true.txt", "./SeizureFreq/SeizureFreq_Basic_10_true.txt"], 
+        ["./SeizureFreq/SeizureFreq_NB_1_true.txt", "./SeizureFreq/SeizureFreq_NB_2_true.txt", "./SeizureFreq/SeizureFreq_NB_5_true.txt", "./SeizureFreq/SeizureFreq_NB_10_true.txt"], 
+        ["./SeizureFreq/SeizureFreq_VPA_5.txt", "./SeizureFreq/SeizureFreq_VPA_10.txt", "./SeizureFreq/SeizureFreq_VPA_15.txt", "./SeizureFreq/SeizureFreq_VPA_20.txt"], 
+        ]
 #Do space before name if not empty, else empty string
-names_distinction = (" no updates", " updates")
+names_distinction = (" seizure counts", " just Bool")
 #models each subarray corresponds to
-models = ["CBZ", "VPA"]
+models = ["Basic", "Negative Binomial", "VPA"]
 #colour for each model
-colours = [[:blue, :red], [:dodgerblue, :salmon]]
+colours = [[:teal, :violet], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "modifiers with updates"
-short_quant = "UpdatedModifiers"
+quant = "seizure measurement frequency"
+short_quant = "Seizure_Freq"
 #corresponding values of interest for each model
-values = [[1,2,3] for model in models]#Legend setting for plotting
+values = [[1,2,5,10], [1,2,5,10],[5,10,15,20]]
+#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [Inf for model in models]
-upper_outlier_bound = [Inf for model in models]
+upper_plotting_bound = [2.0, 40.0, 50.0]
+upper_outlier_bound = [150.0, 300.0, 500.0]
 spaced_accordingly = false
-plot_separate = false
+plot_separate = true
 
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
 verbose = false
-CI_for_means = true
+CI_for_means = false
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -101,11 +107,11 @@ for k in eachindex(to_read)
 end
 
 #pick variable of interest
-interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
+interests = rel_squared_errors_all
 #give name
-name = "dose parameter relative error"
-shorter_name = "relative error"
-short_name = "dose_param"
+name = "relative squared errors"
+shorter_name = "RSE"
+short_name = "RSE"
 
 function in_interval(x, y)
     if x isa Number 
