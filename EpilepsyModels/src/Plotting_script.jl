@@ -5,30 +5,30 @@ using Distributions
 using Random
 
 #save figures after running?
-saving = false
-save_path = "./Obs_Duration"
+saving = true
+save_path = "./Modifiers"
 
 #files to read data from, relative to 
-files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt", "./Obs_Duration/Obs_Big4_70.txt"],
+files = [["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,8,9,10]],
+        ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,8,9,10]]
         ]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Big4"]
+models = ["Basic, 1", "Basic, 2", "Basic, 3", "NB, 1", "NB, 2", "NB, 3"]
 #colour for each model
-colours = [[:magenta, :orange, :brown], [:cyan, :fuchsia, :orange]]
+colours = [[:teal, :mediumturquoise, :cyan, :violet, :fuchsia, :darkorchid], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "observation duration"
-short_quant = "Obs_Dur"
+quant = "modifiers"
+short_quant = "Modifiers"
 #corresponding values of interest for each model
-values = [[5,10,20,30,50, 70] for model in models]
-#Legend setting for plotting
+values = [["none", "small", "medium", "wide"] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50.0 for model in models]
-upper_outlier_bound = [500.0 for model in models]
+upper_plotting_bound = [100.0, 300.0, 300.0, 1000.0, 1000.0, 1000.0]
+upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
 plot_separate = true
 
@@ -273,7 +273,11 @@ for k in eachindex(models)
             err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
 
             #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
-            scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n], yerror = (err_lower, err_upper))
+            if !CI_for_means
+                scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n], yerror = (err_lower, err_upper))
+            else
+                scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
+            end
             if isfinite(upper_plotting_bound[k])
                 scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
             end
