@@ -24,30 +24,30 @@ Coverage for model VPA and point 2 updates, Sandwich: 1.0
 Coverage for model VPA and point 3 updates, InverseHessian: 1.0
 Coverage for model VPA and point 3 updates, Sandwich: 1.0
 Infinite CIs:
-Infinite CIs for model CBZ and point 1 no updates, InverseHessian: 0.0
-Infinite CIs for model CBZ and point 1 no updates, Sandwich: 0.0
-Infinite CIs for model CBZ and point 2 no updates, InverseHessian: 0.0
-Infinite CIs for model CBZ and point 2 no updates, Sandwich: 0.0
-Infinite CIs for model CBZ and point 3 no updates, InverseHessian: 0.0
-Infinite CIs for model CBZ and point 3 no updates, Sandwich: 0.0
-Infinite CIs for model CBZ and point 1 updates, InverseHessian: 0.0
-Infinite CIs for model CBZ and point 1 updates, Sandwich: 0.0
-Infinite CIs for model CBZ and point 2 updates, InverseHessian: 0.0
-Infinite CIs for model CBZ and point 2 updates, Sandwich: 0.0
-Infinite CIs for model CBZ and point 3 updates, InverseHessian: 0.0
-Infinite CIs for model CBZ and point 3 updates, Sandwich: 0.0
-Infinite CIs for model VPA and point 1 no updates, InverseHessian: 0.0
-Infinite CIs for model VPA and point 1 no updates, Sandwich: 0.0
-Infinite CIs for model VPA and point 2 no updates, InverseHessian: 0.0
-Infinite CIs for model VPA and point 2 no updates, Sandwich: 0.0
-Infinite CIs for model VPA and point 3 no updates, InverseHessian: 0.0
-Infinite CIs for model VPA and point 3 no updates, Sandwich: 0.0
-Infinite CIs for model VPA and point 1 updates, InverseHessian: 0.0
-Infinite CIs for model VPA and point 1 updates, Sandwich: 0.0
-Infinite CIs for model VPA and point 2 updates, InverseHessian: 0.0
-Infinite CIs for model VPA and point 2 updates, Sandwich: 0.0
-Infinite CIs for model VPA and point 3 updates, InverseHessian: 0.0
-Infinite CIs for model VPA and point 3 updates, Sandwich: 0.0
+Infinite CIs for model CBZ and point 1 no updates, InverseHessian: 0.68
+Infinite CIs for model CBZ and point 1 no updates, Sandwich: 0.03
+Infinite CIs for model CBZ and point 2 no updates, InverseHessian: 0.81
+Infinite CIs for model CBZ and point 2 no updates, Sandwich: 0.08
+Infinite CIs for model CBZ and point 3 no updates, InverseHessian: 0.78
+Infinite CIs for model CBZ and point 3 no updates, Sandwich: 0.05
+Infinite CIs for model CBZ and point 1 updates, InverseHessian: 0.53
+Infinite CIs for model CBZ and point 1 updates, Sandwich: 0.01
+Infinite CIs for model CBZ and point 2 updates, InverseHessian: 0.81
+Infinite CIs for model CBZ and point 2 updates, Sandwich: 0.07
+Infinite CIs for model CBZ and point 3 updates, InverseHessian: 0.7
+Infinite CIs for model CBZ and point 3 updates, Sandwich: 0.1
+Infinite CIs for model VPA and point 1 no updates, InverseHessian: 1.0
+Infinite CIs for model VPA and point 1 no updates, Sandwich: 1.0
+Infinite CIs for model VPA and point 2 no updates, InverseHessian: 1.0
+Infinite CIs for model VPA and point 2 no updates, Sandwich: 1.0
+Infinite CIs for model VPA and point 3 no updates, InverseHessian: 1.0
+Infinite CIs for model VPA and point 3 no updates, Sandwich: 1.0
+Infinite CIs for model VPA and point 1 updates, InverseHessian: 0.63
+Infinite CIs for model VPA and point 1 updates, Sandwich: 0.28
+Infinite CIs for model VPA and point 2 updates, InverseHessian: 0.73
+Infinite CIs for model VPA and point 2 updates, Sandwich: 0.08
+Infinite CIs for model VPA and point 3 updates, InverseHessian: 0.68
+Infinite CIs for model VPA and point 3 updates, Sandwich: 0.03
 Outliers for 1 in model CBZ  no updates by outlier bound: Float64[]
 Outliers for 1 in model CBZ  no updates by plotting bound: Float64[]
 Outliers for 2 in model CBZ  no updates by outlier bound: Float64[]
@@ -60,9 +60,9 @@ Outliers for 2 in model CBZ  updates by outlier bound: Float64[]
 Outliers for 2 in model CBZ  updates by plotting bound: Float64[]
 Outliers for 3 in model CBZ  updates by outlier bound: Float64[]
 Outliers for 3 in model CBZ  updates by plotting bound: Float64[]
-P-value for mean difference for 1 in model CBZ: 0.001
-P-value for mean difference for 2 in model CBZ: 0.047
-P-value for mean difference for 3 in model CBZ: 0.509
+P-value for mean difference for 1 in model CBZ: 0.002
+P-value for mean difference for 2 in model CBZ: 0.05
+P-value for mean difference for 3 in model CBZ: 0.499
 Outliers for 1 in model VPA  no updates by outlier bound: Float64[]
 Outliers for 1 in model VPA  no updates by plotting bound: Float64[]
 Outliers for 2 in model VPA  no updates by outlier bound: Float64[]
@@ -75,6 +75,6 @@ Outliers for 2 in model VPA  updates by outlier bound: Float64[]
 Outliers for 2 in model VPA  updates by plotting bound: Float64[]
 Outliers for 3 in model VPA  updates by outlier bound: Float64[]
 Outliers for 3 in model VPA  updates by plotting bound: Float64[]
-P-value for mean difference for 1 in model VPA: 0.988
+P-value for mean difference for 1 in model VPA: 0.987
 P-value for mean difference for 2 in model VPA: 0.001
 P-value for mean difference for 3 in model VPA: 0.001

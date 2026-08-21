@@ -5,40 +5,36 @@ using Distributions
 using Random
 
 #save figures after running?
-saving = true
-save_path = "./PK_reg"
+saving = false
+save_path = "./UpdatedModifiers"
 
 #files to read data from, relative to 
-files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt", "./PK_reg/CBZ_725.txt"], 
-         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt", "./PK_reg/LEV_725.txt"],
-         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt", "./PK_reg/VPA_725.txt"],
-         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt", "./PK_reg/LTG_725.txt"]]
-files2 = []
+files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
+files2 = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
 #Do space before name if not empty, else empty string
-names_distinction = ("", " just Bool")
+names_distinction = (" no updates", " updates")
 #models each subarray corresponds to
-models = ["CBZ", "LEV", "VPA", "LTG"]
+models = ["CBZ", "VPA"]
 #colour for each model
-colours = [[:blue, :green, :red, :purple],[]]
+colours = [[:blue, :red], [:dodgerblue, :salmon]]
 #quantity of interest
-quant = "regularities of PK measurements"
-short_quant = "PK_reg"
-#corresponding values of interest
-values = [[0.75, 1, 3.75, 7, 7.25] for model in models]
-#Legend setting for plotting
+quant = "modifiers with updates"
+short_quant = "UpdatedModifiers"
+#corresponding values of interest for each model
+values = [[1,2,3] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [2.0 for model in models]
-upper_outlier_bound = [100.0 for model in models]
+upper_plotting_bound = [Inf for model in models]
+upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
-plot_separate = true
+plot_separate = false
 
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
 verbose = false
-CI_for_means = false
+CI_for_means = true
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -105,11 +101,11 @@ for k in eachindex(to_read)
 end
 
 #pick variable of interest
-interests = rel_squared_errors_all
+interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
 #give name
-name = "relative squared errors"
-shorter_name = "RSE"
-short_name = "RSE"
+name = "dose parameter relative error"
+shorter_name = "relative error"
+short_name = "dose_param"
 
 function in_interval(x, y)
     if x isa Number 
