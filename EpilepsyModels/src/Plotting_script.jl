@@ -5,34 +5,33 @@ using Distributions
 using Random
 
 #save figures after running?
-saving = true
-save_path = "./Pop_Size"
+saving = false
+save_path = "./Obs_Duration"
 
 #files to read data from, relative to 
-files = [["./Pop_Size/PopSize_Big4_2.txt", "./Pop_Size/PopSize_Big4_5.txt", "./Pop_Size/PopSize_Big4_10.txt", "./Pop_Size/PopSize_Big4_20.txt", "./Pop_Size/PopSize_Big4_50.txt"],
-        ["./Pop_Size/PopSize_VPA_2.txt", "./Pop_Size/PopSize_VPA_5.txt", "./Pop_Size/PopSize_VPA_10.txt", "./Pop_Size/PopSize_VPA_20.txt", "./Pop_Size/PopSize_VPA_50.txt"],
-        ["./Pop_Size/PopSize_SANAD_2.txt", "./Pop_Size/PopSize_SANAD_5.txt", "./Pop_Size/PopSize_SANAD_10.txt", "./Pop_Size/PopSize_SANAD_20.txt", "./Pop_Size/PopSize_SANAD_50.txt"]
+files = [["./Obs_Duration/Obs_Big4_5.txt", "./Obs_Duration/Obs_Big4_10.txt", "./Obs_Duration/Obs_Big4_20.txt", "./Obs_Duration/Obs_Big4_30.txt", "./Obs_Duration/Obs_Big4_50.txt", "./Obs_Duration/Obs_Big4_70.txt"],
         ]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Big4", "VPA", "SANAD"]
+models = ["Big4"]
 #colour for each model
 colours = [[:magenta, :orange, :brown], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "population size"
-short_quant = "Pop_Size"
+quant = "observation duration"
+short_quant = "Obs_Dur"
 #corresponding values of interest for each model
-values = [[2,5,10,20,50] for model in models]
+values = [[5,10,20,30,50, 70] for model in models]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50.0,50.0,200.0]
+upper_plotting_bound = [50.0 for model in models]
 upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
+
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
