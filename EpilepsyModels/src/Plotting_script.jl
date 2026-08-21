@@ -6,29 +6,31 @@ using Random
 
 #save figures after running?
 saving = true
-save_path = "./Modifiers"
+save_path = "./PK_reg"
 
 #files to read data from, relative to 
-files = [["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_Basic_$(i).txt" for i in [1,8,9,10]],
-        ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,2,3,4]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,5,6,7]], ["./Modifiers/Modifiers_NB_$(i).txt" for i in [1,8,9,10]]
-        ]
+files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt", "./PK_reg/CBZ_725.txt"], 
+         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt", "./PK_reg/LEV_725.txt"],
+         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt", "./PK_reg/VPA_725.txt"],
+         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt", "./PK_reg/LTG_725.txt"]]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Basic, 1", "Basic, 2", "Basic, 3", "NB, 1", "NB, 2", "NB, 3"]
+models = ["CBZ", "LEV", "VPA", "LTG"]
 #colour for each model
-colours = [[:teal, :mediumturquoise, :cyan, :violet, :fuchsia, :darkorchid], [:cyan, :fuchsia, :orange]]
+colours = [[:blue, :green, :red, :purple],[]]
 #quantity of interest
-quant = "modifiers"
-short_quant = "Modifiers"
-#corresponding values of interest for each model
-values = [["none", "small", "medium", "wide"] for model in models]#Legend setting for plotting
+quant = "regularities of PK measurements"
+short_quant = "PK_reg"
+#corresponding values of interest
+values = [[0.75, 1, 3.75, 7, 7.25] for model in models]
+#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [100.0, 300.0, 300.0, 1000.0, 1000.0, 1000.0]
-upper_outlier_bound = [Inf for model in models]
+upper_plotting_bound = [2.0 for model in models]
+upper_outlier_bound = [100.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
 

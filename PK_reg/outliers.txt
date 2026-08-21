@@ -1,40 +1,122 @@
-Outliers for 0.75 in model CBZ by outlier bound: Any[]
-Outliers for 0.75 in model CBZ by plotting bound: [9.806062453885792]
-Outliers for 1.0 in model CBZ by outlier bound: [840.2204348882261]
-Outliers for 1.0 in model CBZ by plotting bound: [840.2204348882261, 4.294314262761719, 98.22635516252681, 3.7343925025210285, 8.594354554968728, 8.533673264059685, 8.540333440244039]
-Outliers for 3.75 in model CBZ by outlier bound: Any[]
-Outliers for 3.75 in model CBZ by plotting bound: [3.0377993245412, 10.837064989872173, 2.3672650478897688, 6.625461531331354, 8.528435336877498, 8.531781551562442, 8.531807909732763, 8.531071726755107, 8.530723711979801, 8.544956182421414]
-Outliers for 7.0 in model CBZ by outlier bound: Any[]
-Outliers for 7.0 in model CBZ by plotting bound: [3.860945897820218, 3.905033854284172, 8.527480023951181, 8.53612667180429, 8.542009287653816, 7.295130396147418, 8.540528711319991, 8.535634132477092, 8.532078169741297, 8.533425312979116, 8.5344470941535, 8.540407776011811, 8.534891392711502, 8.528408748512392, 8.545269192407282, 8.546040430131885, 8.530455656960125, 8.533200877509751, 8.542449571687177]
-Outliers for 7.25 in model CBZ by outlier bound: Any[]
-Outliers for 7.25 in model CBZ by plotting bound: [8.53307357311349, 8.532604876443608, 8.528629472379787, 8.542210416040236, 8.533342705263111, 8.534428595728395, 8.540274145826825, 8.528220287505643, 8.530018380975006, 8.52790818706748, 8.550155797306688, 8.532486843561546, 8.545928388684171, 8.542164900516173, 8.536803264780746, 8.539945443197206, 8.533378772262111]
-Outliers for 0.75 in model LEV by outlier bound: Any[]
-Outliers for 0.75 in model LEV by plotting bound: Any[]
-Outliers for 1.0 in model LEV by outlier bound: Any[]
-Outliers for 1.0 in model LEV by plotting bound: Any[]
-Outliers for 3.75 in model LEV by outlier bound: Any[]
-Outliers for 3.75 in model LEV by plotting bound: Any[]
-Outliers for 7.0 in model LEV by outlier bound: Any[]
-Outliers for 7.0 in model LEV by plotting bound: [3.546868443618886]
-Outliers for 7.25 in model LEV by outlier bound: Any[]
-Outliers for 7.25 in model LEV by plotting bound: Any[]
-Outliers for 0.75 in model VPA by outlier bound: Any[]
-Outliers for 0.75 in model VPA by plotting bound: [12.178047990345423]
-Outliers for 1.0 in model VPA by outlier bound: Any[]
-Outliers for 1.0 in model VPA by plotting bound: [12.127778110465588, 4.5675837934948476]
-Outliers for 3.75 in model VPA by outlier bound: Any[]
-Outliers for 3.75 in model VPA by plotting bound: [12.306146291761918]
-Outliers for 7.0 in model VPA by outlier bound: Any[]
-Outliers for 7.0 in model VPA by plotting bound: [10.434765621702587, 4.782452928249907, 14.681965592668323, 13.842249701613452]
-Outliers for 7.25 in model VPA by outlier bound: Any[]
-Outliers for 7.25 in model VPA by plotting bound: [13.930299777069218, 12.093865026312077]
-Outliers for 0.75 in model LTG by outlier bound: Any[]
-Outliers for 0.75 in model LTG by plotting bound: [3.4728365575662177]
-Outliers for 1.0 in model LTG by outlier bound: Any[]
-Outliers for 1.0 in model LTG by plotting bound: [2.010389512339252]
-Outliers for 3.75 in model LTG by outlier bound: Any[]
-Outliers for 3.75 in model LTG by plotting bound: [2.4755368038229246]
-Outliers for 7.0 in model LTG by outlier bound: Any[]
-Outliers for 7.0 in model LTG by plotting bound: [2.173205139500159, 2.488401109354835, 2.9642540442590195, 2.9963342824664245]
-Outliers for 7.25 in model LTG by outlier bound: Any[]
-Outliers for 7.25 in model LTG by plotting bound: [2.1989712435675335, 2.0811259236626913, 2.4681152201026944, 2.491969489772379, 2.0815883718086154, 2.622800622980818, 2.942966468558219, 2.4847177999695957]
+Coverage overall: 
+Coverage for model CBZ and point 0.75, InverseHessian: 1.0
+Coverage for model CBZ and point 0.75, Sandwich: 1.0
+Coverage for model CBZ and point 1.0, InverseHessian: 1.0
+Coverage for model CBZ and point 1.0, Sandwich: 1.0
+Coverage for model CBZ and point 3.75, InverseHessian: 1.0
+Coverage for model CBZ and point 3.75, Sandwich: 1.0
+Coverage for model CBZ and point 7.0, InverseHessian: 1.0
+Coverage for model CBZ and point 7.0, Sandwich: 1.0
+Coverage for model CBZ and point 7.25, InverseHessian: 1.0
+Coverage for model CBZ and point 7.25, Sandwich: 1.0
+Coverage for model LEV and point 0.75, InverseHessian: 1.0
+Coverage for model LEV and point 0.75, Sandwich: 1.0
+Coverage for model LEV and point 1.0, InverseHessian: 1.0
+Coverage for model LEV and point 1.0, Sandwich: 1.0
+Coverage for model LEV and point 3.75, InverseHessian: 1.0
+Coverage for model LEV and point 3.75, Sandwich: 1.0
+Coverage for model LEV and point 7.0, InverseHessian: 1.0
+Coverage for model LEV and point 7.0, Sandwich: 1.0
+Coverage for model LEV and point 7.25, InverseHessian: 1.0
+Coverage for model LEV and point 7.25, Sandwich: 1.0
+Coverage for model VPA and point 0.75, InverseHessian: 1.0
+Coverage for model VPA and point 0.75, Sandwich: 1.0
+Coverage for model VPA and point 1.0, InverseHessian: 1.0
+Coverage for model VPA and point 1.0, Sandwich: 1.0
+Coverage for model VPA and point 3.75, InverseHessian: 1.0
+Coverage for model VPA and point 3.75, Sandwich: 1.0
+Coverage for model VPA and point 7.0, InverseHessian: 1.0
+Coverage for model VPA and point 7.0, Sandwich: 1.0
+Coverage for model VPA and point 7.25, InverseHessian: 1.0
+Coverage for model VPA and point 7.25, Sandwich: 1.0
+Coverage for model LTG and point 0.75, InverseHessian: 1.0
+Coverage for model LTG and point 0.75, Sandwich: 1.0
+Coverage for model LTG and point 1.0, InverseHessian: 1.0
+Coverage for model LTG and point 1.0, Sandwich: 1.0
+Coverage for model LTG and point 3.75, InverseHessian: 1.0
+Coverage for model LTG and point 3.75, Sandwich: 1.0
+Coverage for model LTG and point 7.0, InverseHessian: 1.0
+Coverage for model LTG and point 7.0, Sandwich: 1.0
+Coverage for model LTG and point 7.25, InverseHessian: 1.0
+Coverage for model LTG and point 7.25, Sandwich: 1.0
+Infinite CIs:
+Infinite CIs for model CBZ and point 0.75, InverseHessian: 0.15
+Infinite CIs for model CBZ and point 0.75, Sandwich: 0.01
+Infinite CIs for model CBZ and point 1.0, InverseHessian: 0.14
+Infinite CIs for model CBZ and point 1.0, Sandwich: 0.04
+Infinite CIs for model CBZ and point 3.75, InverseHessian: 0.14
+Infinite CIs for model CBZ and point 3.75, Sandwich: 0.03
+Infinite CIs for model CBZ and point 7.0, InverseHessian: 0.19
+Infinite CIs for model CBZ and point 7.0, Sandwich: 0.02
+Infinite CIs for model CBZ and point 7.25, InverseHessian: 0.22
+Infinite CIs for model CBZ and point 7.25, Sandwich: 0.03
+Infinite CIs for model LEV and point 0.75, InverseHessian: 0.01
+Infinite CIs for model LEV and point 0.75, Sandwich: 0.0
+Infinite CIs for model LEV and point 1.0, InverseHessian: 0.24
+Infinite CIs for model LEV and point 1.0, Sandwich: 0.06
+Infinite CIs for model LEV and point 3.75, InverseHessian: 0.07
+Infinite CIs for model LEV and point 3.75, Sandwich: 0.03
+Infinite CIs for model LEV and point 7.0, InverseHessian: 0.42
+Infinite CIs for model LEV and point 7.0, Sandwich: 0.07
+Infinite CIs for model LEV and point 7.25, InverseHessian: 0.16
+Infinite CIs for model LEV and point 7.25, Sandwich: 0.05
+Infinite CIs for model VPA and point 0.75, InverseHessian: 0.14
+Infinite CIs for model VPA and point 0.75, Sandwich: 0.81
+Infinite CIs for model VPA and point 1.0, InverseHessian: 0.12
+Infinite CIs for model VPA and point 1.0, Sandwich: 0.8
+Infinite CIs for model VPA and point 3.75, InverseHessian: 0.09
+Infinite CIs for model VPA and point 3.75, Sandwich: 0.86
+Infinite CIs for model VPA and point 7.0, InverseHessian: 0.15
+Infinite CIs for model VPA and point 7.0, Sandwich: 0.73
+Infinite CIs for model VPA and point 7.25, InverseHessian: 0.05
+Infinite CIs for model VPA and point 7.25, Sandwich: 0.85
+Infinite CIs for model LTG and point 0.75, InverseHessian: 0.09
+Infinite CIs for model LTG and point 0.75, Sandwich: 0.1
+Infinite CIs for model LTG and point 1.0, InverseHessian: 0.29
+Infinite CIs for model LTG and point 1.0, Sandwich: 0.1
+Infinite CIs for model LTG and point 3.75, InverseHessian: 0.26
+Infinite CIs for model LTG and point 3.75, Sandwich: 0.09
+Infinite CIs for model LTG and point 7.0, InverseHessian: 0.61
+Infinite CIs for model LTG and point 7.0, Sandwich: 0.1
+Infinite CIs for model LTG and point 7.25, InverseHessian: 0.24
+Infinite CIs for model LTG and point 7.25, Sandwich: 0.09
+Outliers for 0.75 in model CBZ  by outlier bound: Any[]
+Outliers for 0.75 in model CBZ  by plotting bound: [9.806062453885792]
+Outliers for 1.0 in model CBZ  by outlier bound: [840.2204348882261]
+Outliers for 1.0 in model CBZ  by plotting bound: [840.2204348882261, 4.294314262761719, 98.22635516252681, 3.7343925025210285, 8.594354554968728, 8.533673264059685, 8.540333440244039]
+Outliers for 3.75 in model CBZ  by outlier bound: Any[]
+Outliers for 3.75 in model CBZ  by plotting bound: [3.0377993245412, 10.837064989872173, 2.3672650478897688, 6.625461531331354, 8.528435336877498, 8.531781551562442, 8.531807909732763, 8.531071726755107, 8.530723711979801, 8.544956182421414]
+Outliers for 7.0 in model CBZ  by outlier bound: Any[]
+Outliers for 7.0 in model CBZ  by plotting bound: [3.860945897820218, 3.905033854284172, 8.527480023951181, 8.53612667180429, 8.542009287653816, 7.295130396147418, 8.540528711319991, 8.535634132477092, 8.532078169741297, 8.533425312979116, 8.5344470941535, 8.540407776011811, 8.534891392711502, 8.528408748512392, 8.545269192407282, 8.546040430131885, 8.530455656960125, 8.533200877509751, 8.542449571687177]
+Outliers for 7.25 in model CBZ  by outlier bound: Any[]
+Outliers for 7.25 in model CBZ  by plotting bound: [8.53307357311349, 8.532604876443608, 8.528629472379787, 8.542210416040236, 8.533342705263111, 8.534428595728395, 8.540274145826825, 8.528220287505643, 8.530018380975006, 8.52790818706748, 8.550155797306688, 8.532486843561546, 8.545928388684171, 8.542164900516173, 8.536803264780746, 8.539945443197206, 8.533378772262111]
+Outliers for 0.75 in model LEV  by outlier bound: Any[]
+Outliers for 0.75 in model LEV  by plotting bound: Any[]
+Outliers for 1.0 in model LEV  by outlier bound: Any[]
+Outliers for 1.0 in model LEV  by plotting bound: Any[]
+Outliers for 3.75 in model LEV  by outlier bound: Any[]
+Outliers for 3.75 in model LEV  by plotting bound: Any[]
+Outliers for 7.0 in model LEV  by outlier bound: Any[]
+Outliers for 7.0 in model LEV  by plotting bound: [3.546868443618886]
+Outliers for 7.25 in model LEV  by outlier bound: Any[]
+Outliers for 7.25 in model LEV  by plotting bound: Any[]
+Outliers for 0.75 in model VPA  by outlier bound: Any[]
+Outliers for 0.75 in model VPA  by plotting bound: [12.178047990345423]
+Outliers for 1.0 in model VPA  by outlier bound: Any[]
+Outliers for 1.0 in model VPA  by plotting bound: [12.127778110465588, 4.5675837934948476]
+Outliers for 3.75 in model VPA  by outlier bound: Any[]
+Outliers for 3.75 in model VPA  by plotting bound: [12.306146291761918]
+Outliers for 7.0 in model VPA  by outlier bound: Any[]
+Outliers for 7.0 in model VPA  by plotting bound: [10.434765621702587, 4.782452928249907, 14.681965592668323, 13.842249701613452]
+Outliers for 7.25 in model VPA  by outlier bound: Any[]
+Outliers for 7.25 in model VPA  by plotting bound: [13.930299777069218, 12.093865026312077]
+Outliers for 0.75 in model LTG  by outlier bound: Any[]
+Outliers for 0.75 in model LTG  by plotting bound: [3.4728365575662177]
+Outliers for 1.0 in model LTG  by outlier bound: Any[]
+Outliers for 1.0 in model LTG  by plotting bound: [2.010389512339252]
+Outliers for 3.75 in model LTG  by outlier bound: Any[]
+Outliers for 3.75 in model LTG  by plotting bound: [2.4755368038229246]
+Outliers for 7.0 in model LTG  by outlier bound: Any[]
+Outliers for 7.0 in model LTG  by plotting bound: [2.173205139500159, 2.488401109354835, 2.9642540442590195, 2.9963342824664245]
+Outliers for 7.25 in model LTG  by outlier bound: Any[]
+Outliers for 7.25 in model LTG  by plotting bound: [2.1989712435675335, 2.0811259236626913, 2.4681152201026944, 2.491969489772379, 2.0815883718086154, 2.622800622980818, 2.942966468558219, 2.4847177999695957]
