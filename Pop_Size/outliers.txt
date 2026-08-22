@@ -29,6 +29,7 @@ Coverage for model SANAD and point 20, InverseHessian: 1.0
 Coverage for model SANAD and point 20, Sandwich: 1.0
 Coverage for model SANAD and point 50, InverseHessian: 1.0
 Coverage for model SANAD and point 50, Sandwich: 1.0
+
 Infinite CIs:
 Infinite CIs for model Big4 and point 2, InverseHessian: 1.0
 Infinite CIs for model Big4 and point 2, Sandwich: 1.0
@@ -60,6 +61,69 @@ Infinite CIs for model SANAD and point 20, InverseHessian: 0.04
 Infinite CIs for model SANAD and point 20, Sandwich: 0.01
 Infinite CIs for model SANAD and point 50, InverseHessian: 0.01020408163265306
 Infinite CIs for model SANAD and point 50, Sandwich: 0.01020408163265306
+
+Sizes CIs:
+Average size CIs for model Big4 and point 2, InverseHessian: Inf
+Average size CIs for model Big4 and point 2, InverseHessian for finite: NaN
+Average size CIs for model Big4 and point 2, Sandwich: Inf
+Average size CIs for model Big4 and point 2, Sandwich for finite: NaN
+Average size CIs for model Big4 and point 5, InverseHessian: Inf
+Average size CIs for model Big4 and point 5, InverseHessian for finite: NaN
+Average size CIs for model Big4 and point 5, Sandwich: Inf
+Average size CIs for model Big4 and point 5, Sandwich for finite: NaN
+Average size CIs for model Big4 and point 10, InverseHessian: Inf
+Average size CIs for model Big4 and point 10, InverseHessian for finite: NaN
+Average size CIs for model Big4 and point 10, Sandwich: Inf
+Average size CIs for model Big4 and point 10, Sandwich for finite: NaN
+Average size CIs for model Big4 and point 20, InverseHessian: Inf
+Average size CIs for model Big4 and point 20, InverseHessian for finite: NaN
+Average size CIs for model Big4 and point 20, Sandwich: Inf
+Average size CIs for model Big4 and point 20, Sandwich for finite: NaN
+Average size CIs for model Big4 and point 50, InverseHessian: Inf
+Average size CIs for model Big4 and point 50, InverseHessian for finite: NaN
+Average size CIs for model Big4 and point 50, Sandwich: Inf
+Average size CIs for model Big4 and point 50, Sandwich for finite: 6.650000787983025e48
+Average size CIs for model VPA and point 2, InverseHessian: Inf
+Average size CIs for model VPA and point 2, InverseHessian for finite: NaN
+Average size CIs for model VPA and point 2, Sandwich: Inf
+Average size CIs for model VPA and point 2, Sandwich for finite: 1.6100664653583894e250
+Average size CIs for model VPA and point 5, InverseHessian: Inf
+Average size CIs for model VPA and point 5, InverseHessian for finite: 1.6330180971909387e7
+Average size CIs for model VPA and point 5, Sandwich: Inf
+Average size CIs for model VPA and point 5, Sandwich for finite: 1.3594457418007065e299
+Average size CIs for model VPA and point 10, InverseHessian: Inf
+Average size CIs for model VPA and point 10, InverseHessian for finite: 460611.2397159916
+Average size CIs for model VPA and point 10, Sandwich: Inf
+Average size CIs for model VPA and point 10, Sandwich for finite: 1.2749710211981515e285
+Average size CIs for model VPA and point 20, InverseHessian: Inf
+Average size CIs for model VPA and point 20, InverseHessian for finite: 318.3028783200717
+Average size CIs for model VPA and point 20, Sandwich: Inf
+Average size CIs for model VPA and point 20, Sandwich for finite: 8.053183307722868e300
+Average size CIs for model VPA and point 50, InverseHessian: Inf
+Average size CIs for model VPA and point 50, InverseHessian for finite: 55.151802396254645
+Average size CIs for model VPA and point 50, Sandwich: Inf
+Average size CIs for model VPA and point 50, Sandwich for finite: 1.449849638354405e303
+Average size CIs for model SANAD and point 2, InverseHessian: Inf
+Average size CIs for model SANAD and point 2, InverseHessian for finite: NaN
+Average size CIs for model SANAD and point 2, Sandwich: Inf
+Average size CIs for model SANAD and point 2, Sandwich for finite: NaN
+Average size CIs for model SANAD and point 5, InverseHessian: Inf
+Average size CIs for model SANAD and point 5, InverseHessian for finite: 8.545362803893553e6
+Average size CIs for model SANAD and point 5, Sandwich: Inf
+Average size CIs for model SANAD and point 5, Sandwich for finite: 9.68226507071356e305
+Average size CIs for model SANAD and point 10, InverseHessian: Inf
+Average size CIs for model SANAD and point 10, InverseHessian for finite: 5.285938634177526e10
+Average size CIs for model SANAD and point 10, Sandwich: Inf
+Average size CIs for model SANAD and point 10, Sandwich for finite: 9.58068186049857e259
+Average size CIs for model SANAD and point 20, InverseHessian: Inf
+Average size CIs for model SANAD and point 20, InverseHessian for finite: 3257.6059518010284
+Average size CIs for model SANAD and point 20, Sandwich: Inf
+Average size CIs for model SANAD and point 20, Sandwich for finite: 2.0019637670827797e203
+Average size CIs for model SANAD and point 50, InverseHessian: Inf
+Average size CIs for model SANAD and point 50, InverseHessian for finite: 238.8134875695374
+Average size CIs for model SANAD and point 50, Sandwich: Inf
+Average size CIs for model SANAD and point 50, Sandwich for finite: 4.255060549071566e142
+
 Outliers for 2 in model Big4  by outlier bound: Any[]
 Outliers for 2 in model Big4  by plotting bound: [274.34208483801575, 51.12118840682018, 255.48205437627135]
 Outliers for 5 in model Big4  by outlier bound: [578.7080802321801]

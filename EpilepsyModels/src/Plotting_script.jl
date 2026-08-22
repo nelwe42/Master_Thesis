@@ -5,34 +5,32 @@ using Distributions
 using Random
 
 #save figures after running?
-saving = true
-save_path = "./SeizureFreq"
+saving = false
+save_path = "./PK_reg"
 
 #files to read data from, relative to 
-files = [["./SeizureFreq/SeizureFreq_Basic_1_false.txt", "./SeizureFreq/SeizureFreq_Basic_2_false.txt", "./SeizureFreq/SeizureFreq_Basic_5_false.txt", "./SeizureFreq/SeizureFreq_Basic_10_false.txt"], 
-        ["./SeizureFreq/SeizureFreq_NB_1_false.txt", "./SeizureFreq/SeizureFreq_NB_2_false.txt", "./SeizureFreq/SeizureFreq_NB_5_false.txt", "./SeizureFreq/SeizureFreq_NB_10_false.txt"], 
-        ]
-files2 = [["./SeizureFreq/SeizureFreq_Basic_1_true.txt", "./SeizureFreq/SeizureFreq_Basic_2_true.txt", "./SeizureFreq/SeizureFreq_Basic_5_true.txt", "./SeizureFreq/SeizureFreq_Basic_10_true.txt"], 
-        ["./SeizureFreq/SeizureFreq_NB_1_true.txt", "./SeizureFreq/SeizureFreq_NB_2_true.txt", "./SeizureFreq/SeizureFreq_NB_5_true.txt", "./SeizureFreq/SeizureFreq_NB_10_true.txt"], 
-        ["./SeizureFreq/SeizureFreq_VPA_5.txt", "./SeizureFreq/SeizureFreq_VPA_10.txt", "./SeizureFreq/SeizureFreq_VPA_15.txt", "./SeizureFreq/SeizureFreq_VPA_20.txt"], 
-        ]
+files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt", "./PK_reg/CBZ_725.txt"], 
+         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt", "./PK_reg/LEV_725.txt"],
+         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt", "./PK_reg/VPA_725.txt"],
+         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt", "./PK_reg/LTG_725.txt"]]
+files2 = []
 #Do space before name if not empty, else empty string
-names_distinction = (" seizure counts", " just Bool")
+names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Basic", "Negative Binomial", "VPA"]
+models = ["CBZ", "LEV", "VPA", "LTG"]
 #colour for each model
-colours = [[:teal, :violet], [:cyan, :fuchsia, :orange]]
+colours = [[:blue, :green, :red, :purple],[]]
 #quantity of interest
-quant = "seizure measurement frequency"
-short_quant = "Seizure_Freq"
-#corresponding values of interest for each model
-values = [[1,2,5,10], [1,2,5,10],[5,10,15,20]]
+quant = "regularities of PK measurements"
+short_quant = "PK_reg"
+#corresponding values of interest
+values = [[0.75, 1, 3.75, 7, 7.25] for model in models]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [2.0, 40.0, 50.0]
-upper_outlier_bound = [150.0, 300.0, 500.0]
+upper_plotting_bound = [2.0 for model in models]
+upper_outlier_bound = [100.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
 
@@ -40,7 +38,10 @@ confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
 verbose = false
-CI_for_means = true
+CI_for_means = false
+both_CIs = false
+CI_plotting = true
+CI_cutoff = 300.0
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -125,6 +126,22 @@ function in_interval(x, y)
     end
 end
 
+function size_Tuple(x)
+    if x isa Tuple
+        return abs(x[2]-x[1])
+    else
+        a = Vector{Float64}(undef, length(x))
+        for i in eachindex(x)
+            a[i] = abs(x[i][2]-x[i][1])
+        end
+        return max(a...)
+    end
+end
+
+function size_CI(x)
+    return max(vcat([size_Tuple(x.PK[key]) for key in keys(x.PK)],[size_Tuple(x.Seizure[key]) for key in keys(x.Seizure)])...)
+end
+
 function finite_Tuple(y)
     if y isa Number
         return isfinite(y)
@@ -195,6 +212,7 @@ for k in eachindex(models)
         end
     end
 end
+println()
 
 #Determine infinite CIs
 println("Infinite CIs:")
@@ -209,6 +227,56 @@ for k in eachindex(models)
             end
         end
     end
+end
+println()
+
+#Determine sizes CIs
+sizes_full = [[[[] for value in values[model]] for model in eachindex(models)], [[[] for value in values[model]] for model in eachindex(models)]]
+mean_CI_size_finite = [[[[] for value in values[model]] for model in eachindex(models)], [[[] for value in values[model]] for model in eachindex(models)]]
+println("Sizes CIs:")
+for k in eachindex(models)
+    for n in eachindex(to_read)
+        if isassigned(estimates_all[n],k) && !isempty(estimates_all[n][k])
+            for point in eachindex(estimates_all[n][k])
+                for key in keys(CIs_all[n][k][point][1])
+                    sizes = [size_CI(entry[key]) for entry in CIs_all[n][k][point]]
+                    push!(sizes_full[n][k][point], sizes)
+                    println("Average size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key): ", sum(sizes)/length(sizes))
+                    sizes2 = [size for size in sizes if isfinite(size)]
+                    println("Average size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", sum(sizes2)/length(sizes2))
+                    println("Maximal size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", max(sizes2...))
+                    println("Minimal size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", min(sizes2...))
+                    push!(mean_CI_size_finite[n][k][point], sum(sizes2)/length(sizes2))
+                end
+            end
+        end
+    end
+end
+println()
+
+if CI_plotting
+    pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of finite CI size", title = "Means of finite CI size for \n different "*lowercasefirst(quant))
+    for k in eachindex(models)
+        for n in 1:2
+            if !isempty(CIs_all[n])
+                if !isempty(CIs_all[n][k]) && !isempty(CIs_all[n][k][1])
+                    for key in eachindex(keys(CIs_all[n][k][1][1]))
+                        mean_sizes = [min(point[key],CI_cutoff) for point in mean_CI_size_finite[n][k]]
+                        full_sizes = [[inst[key] for inst in point] for point in sizes_full[n][k]]
+                        #err_lower = q*[std(full_sizes[i])/sqrt(length(full_sizes[i])) for i in eachindex(sizes_full[n][k])]
+                        #err_upper = err_lower
+                        #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
+                        plot!(values[k], mean_sizes, linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n])
+                    end
+                end
+            end
+        end
+        if eltype(values[k]) <: Number
+            plot!(xticks = values[k], xrotation = 75)
+        end
+        plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+    end
+    display(pl3)
 end
 
 if spaced_accordingly
@@ -277,7 +345,7 @@ for k in eachindex(models)
             err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
 
             #plot!(values2, means2, linecolor = colours[k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k])
-            if !CI_for_means
+            if (!CI_for_means || both_CIs)
                 scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n], yerror = (err_lower, err_upper))
             else
                 scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
@@ -345,7 +413,7 @@ for k in eachindex(models)
         if !isempty(means_truncated[n][k])
             err_lower = means_full[n][k][1] .- [CI[1] for CI in CI_means_full[n][k][1]]
             err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
-            if CI_for_means 
+            if (CI_for_means || both_CIs)
                 plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
             else
                 plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
@@ -368,7 +436,7 @@ if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[
                 #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
                 err_lower = means_full[n][k][1] .- [CI[1] for CI in CI_means_full[n][k][1]]
                 err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
-                if CI_for_means 
+                if (CI_for_means || both_CIs)
                     plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
                 else
                     plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
