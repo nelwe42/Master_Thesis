@@ -6,28 +6,33 @@ using Random
 
 #save figures after running?
 saving = true
-save_path = "./WrongModel"
+save_path = "./SeizureFreq"
 
 #files to read data from, relative to 
-files = [["./WrongModel/WrongModel_SeizureBasic_to_SeizureNegativeBinomial.txt"], ["./WrongModel/WrongModel_SeizureNegativeBinomial_to_SeizureBasic.txt"], ["./WrongModel/WrongModel_SeizureBasic_to_SeizureVPA.txt"]]
-files2 = []
+files = [["./SeizureFreq/SeizureFreq_Basic_1_false.txt", "./SeizureFreq/SeizureFreq_Basic_2_false.txt", "./SeizureFreq/SeizureFreq_Basic_5_false.txt", "./SeizureFreq/SeizureFreq_Basic_10_false.txt"], 
+        ["./SeizureFreq/SeizureFreq_NB_1_false.txt", "./SeizureFreq/SeizureFreq_NB_2_false.txt", "./SeizureFreq/SeizureFreq_NB_5_false.txt", "./SeizureFreq/SeizureFreq_NB_10_false.txt"], 
+        ]
+files2 = [["./SeizureFreq/SeizureFreq_Basic_1_true.txt", "./SeizureFreq/SeizureFreq_Basic_2_true.txt", "./SeizureFreq/SeizureFreq_Basic_5_true.txt", "./SeizureFreq/SeizureFreq_Basic_10_true.txt"], 
+        ["./SeizureFreq/SeizureFreq_NB_1_true.txt", "./SeizureFreq/SeizureFreq_NB_2_true.txt", "./SeizureFreq/SeizureFreq_NB_5_true.txt", "./SeizureFreq/SeizureFreq_NB_10_true.txt"], 
+        ["./SeizureFreq/SeizureFreq_VPA_5.txt", "./SeizureFreq/SeizureFreq_VPA_10.txt", "./SeizureFreq/SeizureFreq_VPA_15.txt", "./SeizureFreq/SeizureFreq_VPA_20.txt"], 
+        ]
 #Do space before name if not empty, else empty string
-names_distinction = ("", " just Bool")
+names_distinction = (" seizure counts", " just Bool")
 #models each subarray corresponds to
-models = ["Basic", "VPA", "SANAD"]
+models = ["Basic", "Negative Binomial", "VPA"]
 #colour for each model
-colours = [[:teal, :orange, :brown], [:cyan, :fuchsia, :orange]]
+colours = [[:teal, :violet], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "update regularity"
-short_quant = "UpdateReg"
+quant = "seizure measurement frequency"
+short_quant = "Seizure_Freq"
 #corresponding values of interest for each model
-values = [[1,2,5,15,30] for model in models]
+values = [[1,2,5,10], [1,2,5,10],[5,10,15,20]]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [500.0, 50.0, 50.0]
-upper_outlier_bound = [500.0 for model in models]
+upper_plotting_bound = [2.0, 40.0, 50.0]
+upper_outlier_bound = [150.0, 300.0, 500.0]
 spaced_accordingly = false
 plot_separate = true
 
@@ -35,7 +40,7 @@ confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
 verbose = false
-CI_for_means = false
+CI_for_means = true
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -88,7 +93,7 @@ for k in eachindex(to_read)
                     append!(CIs, eval(Meta.parse(text)))
                 end
             end
-            #estimates = [ComponentArray(PK = ComponentArray(est.PK), Seizure = ComponentArray(est.Seizure)) for est in estimates]
+            estimates = [ComponentArray(PK = ComponentArray(est.PK), Seizure = ComponentArray(est.Seizure)) for est in estimates]
             push!(estimates_all[k][j], estimates)
             push!(abs_errors_all[k][j], abs_errors)
             push!(rel_errors_all[k][j], rel_errors)
@@ -101,7 +106,6 @@ for k in eachindex(to_read)
     end
 end
 
-#=
 #pick variable of interest
 interests = rel_squared_errors_all
 #give name
@@ -361,7 +365,14 @@ if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[
         pl35 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Overall means"))
         for k in eachindex(models)
             if !isempty(means_full[n][k])
-                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+                #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+                err_lower = means_full[n][k][1] .- [CI[1] for CI in CI_means_full[n][k][1]]
+                err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
+                if CI_for_means 
+                    plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
+                else
+                    plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+                end
             end
             if eltype(values[k]) <: Number
                 plot!(xticks = values[k], xrotation = 75)
@@ -392,9 +403,8 @@ if saving
         i+=2
     end
 end
-=#
 
-
+#=
 #Do plots for wrong model
 model_colours = [:violet, :teal, :orange]
 model_colours_other = [:teal, :violet, :teal]
@@ -628,3 +638,4 @@ for k in eachindex(files)
     end 
 #end        
 end
+=#
