@@ -1,3 +1,65 @@
+Coverage overall: 
+Coverage for model Basic and point 1, InverseHessian: 1.0
+Coverage for model Basic and point 1, Sandwich: 1.0
+Coverage for model Basic and point 2, InverseHessian: 1.0
+Coverage for model Basic and point 2, Sandwich: 1.0
+Coverage for model Basic and point 5, InverseHessian: 1.0
+Coverage for model Basic and point 5, Sandwich: 1.0
+Coverage for model Basic and point 15, InverseHessian: 1.0
+Coverage for model Basic and point 15, Sandwich: 1.0
+Coverage for model Basic and point 30, InverseHessian: 1.0
+Coverage for model Basic and point 30, Sandwich: 1.0
+Coverage for model VPA and point 1, InverseHessian: 1.0
+Coverage for model VPA and point 1, Sandwich: 1.0
+Coverage for model VPA and point 2, InverseHessian: 1.0
+Coverage for model VPA and point 2, Sandwich: 1.0
+Coverage for model VPA and point 5, InverseHessian: 1.0
+Coverage for model VPA and point 5, Sandwich: 1.0
+Coverage for model VPA and point 15, InverseHessian: 1.0
+Coverage for model VPA and point 15, Sandwich: 1.0
+Coverage for model VPA and point 30, InverseHessian: 1.0
+Coverage for model VPA and point 30, Sandwich: 1.0
+Coverage for model SANAD and point 1, InverseHessian: 1.0
+Coverage for model SANAD and point 1, Sandwich: 1.0
+Coverage for model SANAD and point 2, InverseHessian: 1.0
+Coverage for model SANAD and point 2, Sandwich: 1.0
+Coverage for model SANAD and point 5, InverseHessian: 1.0
+Coverage for model SANAD and point 5, Sandwich: 1.0
+Coverage for model SANAD and point 15, InverseHessian: 1.0
+Coverage for model SANAD and point 15, Sandwich: 1.0
+Coverage for model SANAD and point 30, InverseHessian: 1.0
+Coverage for model SANAD and point 30, Sandwich: 1.0
+Infinite CIs:
+Infinite CIs for model Basic and point 1, InverseHessian: 1.0
+Infinite CIs for model Basic and point 1, Sandwich: 0.96
+Infinite CIs for model Basic and point 2, InverseHessian: 1.0
+Infinite CIs for model Basic and point 2, Sandwich: 1.0
+Infinite CIs for model Basic and point 5, InverseHessian: 1.0
+Infinite CIs for model Basic and point 5, Sandwich: 1.0
+Infinite CIs for model Basic and point 15, InverseHessian: 1.0
+Infinite CIs for model Basic and point 15, Sandwich: 1.0
+Infinite CIs for model Basic and point 30, InverseHessian: 1.0
+Infinite CIs for model Basic and point 30, Sandwich: 1.0
+Infinite CIs for model VPA and point 1, InverseHessian: 1.0
+Infinite CIs for model VPA and point 1, Sandwich: 1.0
+Infinite CIs for model VPA and point 2, InverseHessian: 1.0
+Infinite CIs for model VPA and point 2, Sandwich: 1.0
+Infinite CIs for model VPA and point 5, InverseHessian: 1.0
+Infinite CIs for model VPA and point 5, Sandwich: 1.0
+Infinite CIs for model VPA and point 15, InverseHessian: 1.0
+Infinite CIs for model VPA and point 15, Sandwich: 1.0
+Infinite CIs for model VPA and point 30, InverseHessian: 1.0
+Infinite CIs for model VPA and point 30, Sandwich: 1.0
+Infinite CIs for model SANAD and point 1, InverseHessian: 1.0
+Infinite CIs for model SANAD and point 1, Sandwich: 0.9431818181818182
+Infinite CIs for model SANAD and point 2, InverseHessian: 1.0
+Infinite CIs for model SANAD and point 2, Sandwich: 0.9883720930232558
+Infinite CIs for model SANAD and point 5, InverseHessian: 1.0
+Infinite CIs for model SANAD and point 5, Sandwich: 1.0
+Infinite CIs for model SANAD and point 15, InverseHessian: 1.0
+Infinite CIs for model SANAD and point 15, Sandwich: 1.0
+Infinite CIs for model SANAD and point 30, InverseHessian: 1.0
+Infinite CIs for model SANAD and point 30, Sandwich: 1.0
 Outliers for 1 in model Basic  by outlier bound: [555.9106481582999, 518.1019802445771, 573.11600044294, 548.1708991196649, 501.6494877003383, 550.4508964728718]
 Outliers for 1 in model Basic  by plotting bound: [555.9106481582999, 518.1019802445771, 573.11600044294, 548.1708991196649, 501.6494877003383, 550.4508964728718]
 Outliers for 2 in model Basic  by outlier bound: Any[]
