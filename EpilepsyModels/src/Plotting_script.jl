@@ -6,13 +6,10 @@ using Random
 
 #save figures after running?
 saving = true
-save_path = "./UpdateReg"
+save_path = "./WrongModel"
 
 #files to read data from, relative to 
-files = [["./UpdateReg/UpdateReg_Basic_1.txt", "./UpdateReg/UpdateReg_Basic_2.txt", "./UpdateReg/UpdateReg_Basic_5.txt", "./UpdateReg/UpdateReg_Basic_15.txt", "./UpdateReg/UpdateReg_Basic_30.txt"],
-        ["./UpdateReg/UpdateReg_VPA_1.txt", "./UpdateReg/UpdateReg_VPA_2.txt", "./UpdateReg/UpdateReg_VPA_5.txt", "./UpdateReg/UpdateReg_VPA_15.txt", "./UpdateReg/UpdateReg_VPA_30.txt"],
-        ["./UpdateReg/UpdateReg_SANAD_1.txt", "./UpdateReg/UpdateReg_SANAD_2.txt", "./UpdateReg/UpdateReg_SANAD_5.txt", "./UpdateReg/UpdateReg_SANAD_15.txt", "./UpdateReg/UpdateReg_SANAD_30.txt"]
-        ]
+files = [["./WrongModel/WrongModel_SeizureBasic_to_SeizureNegativeBinomial.txt"], ["./WrongModel/WrongModel_SeizureNegativeBinomial_to_SeizureBasic.txt"], ["./WrongModel/WrongModel_SeizureBasic_to_SeizureVPA.txt"]]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
@@ -91,7 +88,7 @@ for k in eachindex(to_read)
                     append!(CIs, eval(Meta.parse(text)))
                 end
             end
-            estimates = [ComponentArray(PK = ComponentArray(est.PK), Seizure = ComponentArray(est.Seizure)) for est in estimates]
+            #estimates = [ComponentArray(PK = ComponentArray(est.PK), Seizure = ComponentArray(est.Seizure)) for est in estimates]
             push!(estimates_all[k][j], estimates)
             push!(abs_errors_all[k][j], abs_errors)
             push!(rel_errors_all[k][j], rel_errors)
@@ -104,6 +101,7 @@ for k in eachindex(to_read)
     end
 end
 
+#=
 #pick variable of interest
 interests = rel_squared_errors_all
 #give name
@@ -394,9 +392,9 @@ if saving
         i+=2
     end
 end
+=#
 
 
-#=
 #Do plots for wrong model
 model_colours = [:violet, :teal, :orange]
 model_colours_other = [:teal, :violet, :teal]
@@ -407,7 +405,7 @@ comp_plots = Plots.Plot[]
 estimates = [ComponentArray(PK = ComponentArray(estimates_all[1][k][1][1].PK), Seizure = ComponentArray(estimates_all[1][k][1][1].Seizure)) for k in eachindex(files)]
 for k in eachindex(files)
     for j in eachindex(estimates_all[1][k][1][1].Seizure)
-        pl = plot(title = "Distribution of $(j)", ylabel = "Parameter")
+        pl = plot(title = "Distribution of $(j)", ylabel = "Parameter", xtickfontsize = 11)
         param_estimates = [(j == :b ? estimate.Seizure[j][1] : estimate.Seizure[j]) for estimate in estimates_all[1][k][1]]
         if !(j== :b)
             estimates[k].Seizure[j] = mean(param_estimates)
@@ -469,7 +467,7 @@ PK_timepoints = wo_treatment:3.75:Obs_Duration
 drug_appropriate_dosing = true
 max_threads_simul = Threads.nthreads()
 ODE_options = (AutoTsit5(Rosenbrock23()),)
-time = [(0.0, 10.0), (0.0, 10.0), (0.0, 20.0)]
+time = [(0.0, 8.0), (0.0, 8.0), (0.0, 20.0)]
 
 for k in eachindex(files)
     Random.seed!(42)
@@ -573,7 +571,9 @@ for k in eachindex(files)
     for k in 1:5
         println(data[1].dosing[k])
     end
-
+    #if parsed2==3
+    #empty!(data[1].dosing)
+    #EpilepsyModels.assign_dose!(BasicDoses(150.0,2), data[1], names = pk_model.keys, timeframe = Obs_Duration)
     #Now plot for both, sols use true parameters for both
     sols = [EpilepsyModels.solve_PK(mod.pk_model,mod.pk_model.θ, data[i], endpoint = Obs_Duration, options = ODE_options) for i in eachindex(data)]
     i = 1
@@ -610,9 +610,10 @@ for k in eachindex(files)
             violin!(["$(intervals[j])"], Float64.(samples_true[j]), label = (j==1 ? "True model and parameters" : ""), colour = model_colours_other[parsed2], ylims = [0.0, 30.0])
         end
         if parsed2 == 3
-            plot!(stringed, [10 for string in stringed], label = "50% reduction threshold \n compared to baseline", linecolour = :black, linewidth = 3, legend = :topleft)
+            plot!(stringed, [10 for string in stringed], label = "Mean success probability of \n wrong model estimate", linecolour = model_colours[parsed2], linewidth = 3)
+            plot!(stringed, [10 for string in stringed], label = "50% reduction threshold \n compared to baseline", linecolour = :black, linewidth = 3, legend = :topleft, legendfontsize=9, legendcolumns=2)
         end
-        plot!(twinx(), stringed, samples_estimate_means, label = "Mean success probability of \n wrong model estimate", colour = model_colours[parsed2], linewidth = 5,  grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5], legend = :topright)
+        plot!(twinx(), stringed, samples_estimate_means, label = "", colour = model_colours[parsed2], linewidth = 5,  grid = false, ylabel = "Success Probability", ylim = [0.0, 1.5])
     else
         samples_true_means = [mean(samples) for samples in samples_true]
         samples_estimate_means = [mean(samples) for samples in samples_estimate]
@@ -624,6 +625,6 @@ for k in eachindex(files)
     push!(comp_plots, pl2)   
     if saving
         savefig(pl2, joinpath(save_path,"Comparison_$(model_names[k])_on_$(model_names_other[k]).png"))
-    end         
+    end 
+#end        
 end
-=#
