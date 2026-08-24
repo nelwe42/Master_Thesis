@@ -6,33 +6,29 @@ using Random
 
 #save figures after running?
 saving = false
-save_path = "./PK_reg"
+save_path = "./UpdatedModifiers"
 
 #files to read data from, relative to 
-files = [["./PK_reg/CBZ_075.txt", "./PK_reg/CBZ_1.txt", "./PK_reg/CBZ_375.txt", "./PK_reg/CBZ_7.txt", "./PK_reg/CBZ_725.txt"], 
-         ["./PK_reg/LEV_075.txt", "./PK_reg/LEV_1.txt", "./PK_reg/LEV_375.txt", "./PK_reg/LEV_7.txt", "./PK_reg/LEV_725.txt"],
-         ["./PK_reg/VPA_075.txt", "./PK_reg/VPA_1.txt", "./PK_reg/VPA_375.txt", "./PK_reg/VPA_7.txt", "./PK_reg/VPA_725.txt"],
-         ["./PK_reg/LTG_075.txt", "./PK_reg/LTG_1.txt", "./PK_reg/LTG_375.txt", "./PK_reg/LTG_7.txt", "./PK_reg/LTG_725.txt"]]
-files2 = []
+files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
+files2 = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
 #Do space before name if not empty, else empty string
-names_distinction = ("", " just Bool")
+names_distinction = (" no updates", " updates")
 #models each subarray corresponds to
-models = ["CBZ", "LEV", "VPA", "LTG"]
+models = ["CBZ", "VPA"]
 #colour for each model
-colours = [[:blue, :green, :red, :purple],[]]
+colours = [[:blue, :red], [:dodgerblue, :salmon]]
 #quantity of interest
-quant = "regularities of PK measurements"
-short_quant = "PK_reg"
-#corresponding values of interest
-values = [[0.75, 1, 3.75, 7, 7.25] for model in models]
-#Legend setting for plotting
+quant = "modifiers with updates"
+short_quant = "UpdatedModifiers"
+#corresponding values of interest for each model
+values = [[1,2,3] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [2.0 for model in models]
-upper_outlier_bound = [100.0 for model in models]
+upper_plotting_bound = [Inf for model in models]
+upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
-plot_separate = true
+plot_separate = false
 
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
@@ -41,7 +37,7 @@ verbose = false
 CI_for_means = false
 both_CIs = false
 CI_plotting = true
-CI_cutoff = 300.0
+CI_cutoff = Inf #3000.0
 
 #Note for more than two in to read, only first two will be plotted against each other
 to_read = (files, files2)
@@ -244,8 +240,8 @@ for k in eachindex(models)
                     println("Average size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key): ", sum(sizes)/length(sizes))
                     sizes2 = [size for size in sizes if isfinite(size)]
                     println("Average size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", sum(sizes2)/length(sizes2))
-                    println("Maximal size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", max(sizes2...))
-                    println("Minimal size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", min(sizes2...))
+                    println("Maximal size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", max((isempty(sizes2) ? NaN : sizes2)...))
+                    println("Minimal size CIs for model $(models[k]) and point $(values[k][point])$(names_distinction[n]), $(key) for finite: ", min((isempty(sizes2) ? NaN : sizes2)...))
                     push!(mean_CI_size_finite[n][k][point], sum(sizes2)/length(sizes2))
                 end
             end
@@ -255,18 +251,20 @@ end
 println()
 
 if CI_plotting
-    pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of finite CI size", title = "Means of finite CI size for \n different "*lowercasefirst(quant))
+    pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of finite CI size", title = (verbose ? "Means of finite CI size for \n different "*lowercasefirst(quant) : "Means of finite CI size"), ylims = (0.0, CI_cutoff))
     for k in eachindex(models)
         for n in 1:2
             if !isempty(CIs_all[n])
                 if !isempty(CIs_all[n][k]) && !isempty(CIs_all[n][k][1])
                     for key in eachindex(keys(CIs_all[n][k][1][1]))
-                        mean_sizes = [min(point[key],CI_cutoff) for point in mean_CI_size_finite[n][k]]
+                        mean_sizes = [point[key] for point in mean_CI_size_finite[n][k]]
                         full_sizes = [[inst[key] for inst in point] for point in sizes_full[n][k]]
                         #err_lower = q*[std(full_sizes[i])/sqrt(length(full_sizes[i])) for i in eachindex(sizes_full[n][k])]
                         #err_upper = err_lower
                         #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
-                        plot!(values[k], mean_sizes, linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n])
+                        if any(isfinite.(mean_sizes)) && any([in_interval(mean, (0.0, CI_cutoff)) for mean in mean_sizes])
+                            plot!(values[k], mean_sizes, linecolor = colours[n][k], alpha = 1/key, linewidth = 2, label = "means for "*models[k]*names_distinction[n]*", $(keys(CIs_all[n][k][1][1])[key])")
+                        end
                     end
                 end
             end
@@ -274,7 +272,7 @@ if CI_plotting
         if eltype(values[k]) <: Number
             plot!(xticks = values[k], xrotation = 75)
         end
-        plot!(legend=:outerbottom, legendcolumns=legendcolumns)
+        plot!(legend=:outerbottom, legendcolumns=1)
     end
     display(pl3)
 end
