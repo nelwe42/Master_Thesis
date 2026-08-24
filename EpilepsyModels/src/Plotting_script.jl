@@ -5,28 +5,28 @@ using Distributions
 using Random
 
 #save figures after running?
-saving = false
-save_path = "./UpdatedModifiers"
+saving = true
+save_path = "./Sampling"
 
 #files to read data from, relative to 
-files = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
-files2 = [["./UpdatedModifiers/UpdatedModifiers_PKCBZ_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
+files = [["./Sampling/Big4_Frequent.txt"], ["./Sampling/VPA_Frequent.txt"], ["./Sampling/SANAD_Frequent.txt"]]
+files2 = [["./Sampling/Sampling_PKBigFour.txt"], ["./Sampling/Sampling_PKVPA.txt"], ["./Sampling/Sampling_PKLEV.txt"]]
 #Do space before name if not empty, else empty string
-names_distinction = (" no updates", " updates")
+names_distinction = (" frequentistic", " sampled")
 #models each subarray corresponds to
-models = ["CBZ", "VPA"]
+models = ["Big4", "VPA", "SANAD"]
 #colour for each model
-colours = [[:blue, :red], [:dodgerblue, :salmon]]
+colours = [[:magenta, :orange, :brown], [:purple, :orange3, :black]]
 #quantity of interest
-quant = "modifiers with updates"
-short_quant = "UpdatedModifiers"
+quant = "sampling"
+short_quant = "Sampling"
 #corresponding values of interest for each model
-values = [[1,2,3] for model in models]#Legend setting for plotting
+values = [[""] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [Inf for model in models]
-upper_outlier_bound = [Inf for model in models]
+upper_plotting_bound = [10^5 for model in models]
+upper_outlier_bound = [10^5 for model in models]
 spaced_accordingly = false
 plot_separate = false
 
@@ -123,7 +123,7 @@ function in_interval(x, y)
 end
 
 function size_Tuple(x)
-    if x isa Tuple
+    if x isa Tuple || eltype(x) <: Number
         return abs(x[2]-x[1])
     else
         a = Vector{Float64}(undef, length(x))
@@ -263,6 +263,7 @@ if CI_plotting
                         #err_upper = err_lower
                         #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
                         if any(isfinite.(mean_sizes)) && any([in_interval(mean, (0.0, CI_cutoff)) for mean in mean_sizes])
+                            scatter!(values[k], mean_sizes, linecolor = colours[n][k], alpha = 1/key, mc = 2, label = "")
                             plot!(values[k], mean_sizes, linecolor = colours[n][k], alpha = 1/key, linewidth = 2, label = "means for "*models[k]*names_distinction[n]*", $(keys(CIs_all[n][k][1][1])[key])")
                         end
                     end
@@ -276,6 +277,22 @@ if CI_plotting
     end
     display(pl3)
 end
+
+#=
+#Do space before name if not empty, else empty string
+frequent_or_sampled = 2
+if frequent_or_sampled == 1
+    names_distinction = (" inverse hessian", " sandwich")
+else
+    names_distinction = (" quantiles", " hpd")
+end
+#pick variable of interest
+interests = [[[[size[n] for size in sizes_full[frequent_or_sampled][k][1]]] for k in eachindex(models)] for n in 1:2]
+#give name
+name = "size of credible intervals"
+shorter_name = "CI size"
+short_name = "CI"
+=#
 
 if spaced_accordingly
     values2 = deepcopy(values)
@@ -322,14 +339,20 @@ for k in eachindex(models)
             for i in eachindex(interest2)
                 if n==1 && !isnothing(interest_list[2]) && (i ≤ length(interest_list[2])) && !isempty(interest_list[2][i]) 
                     label = (label_set[n]) ? "" : names_distinction[n]
-                    violin!([values2[k][i]], interest2[i], side = :left, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
-                    label_set[n] = true
+                    if !isempty(interest2[i])
+                        violin!([values2[k][i]], interest2[i], side = :left, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
+                        label_set[n] = true
+                    end
                 elseif n==2 && !isnothing(interest_list[1]) && (i ≤ length(interest_list[1])) && !isempty(interest_list[1][i]) 
                     label = (label_set[n]) ? "" : names_distinction[n]
-                    violin!([values2[k][i]], interest2[i], side = :right, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
-                    label_set[n] = true
+                    if !isempty(interest2[i])
+                        violin!([values2[k][i]], interest2[i], side = :right, outliers=false, label = label, alpha = 0.5, color = colours[n][k])
+                        label_set[n] = true
+                    end
                 else
-                    violin!([values2[k][i]], interest2[i], outliers=false, label = "", alpha = 0.5, color = colours[n][k])
+                    if !isempty(interest2[i])
+                        violin!([values2[k][i]], interest2[i], outliers=false, label = "", alpha = 0.5, color = colours[n][k])
+                    end
                 end
             end
             #Calculate means and store for later
@@ -362,8 +385,10 @@ for k in eachindex(models)
     if all([isassigned(interest_for_perm,i) for i in eachindex(interest_for_perm)])
         shorter = (length(interest_for_perm[1]) < length(interest_for_perm[2]) ? interest_for_perm[1] : interest_for_perm[2])
         for i in eachindex(shorter)
-            p = perm_test(interest_for_perm[1][i], interest_for_perm[2][i])
-            println("P-value for mean difference for $(values[k][i]) in model "*models[k]*": ", p)
+            if !isempty(interest_for_perm[1][i]) && !isempty(interest_for_perm[2][i])
+                p = perm_test(interest_for_perm[1][i], interest_for_perm[2][i])
+                println("P-value for mean difference for $(values[k][i]) in model "*models[k]*": ", p)
+                end
         end
     end
     plot!(legend=:outerbottom, legendcolumns=1)

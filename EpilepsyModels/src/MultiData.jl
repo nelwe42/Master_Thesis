@@ -69,7 +69,7 @@ update_reg = Obs_Duration
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ", "k_abs", "c1", "v1")
+logscale = ("σ", "k_abs", "v1")
 #logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
@@ -201,7 +201,7 @@ update_reg = considered[parsed2][2]
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "UpdatedModifiers_$(typeof(pk_model).name.wrapper)_$(length(modifications))_$(update_reg == Obs_Duration).txt"
+file_name = "UpdatedModifiers_lesslogscale_$(typeof(pk_model).name.wrapper)_$(length(modifications))_$(update_reg == Obs_Duration).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 

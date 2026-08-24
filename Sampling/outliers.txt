@@ -1,0 +1,111 @@
+Coverage overall: 
+Coverage for model Big4 and point  frequentistic, InverseHessian: 1.0
+Coverage for model Big4 and point  frequentistic, Sandwich: 1.0
+Coverage for model Big4 and point  sampled, Quantiles: 1.0
+Coverage for model Big4 and point  sampled, HPD: 1.0
+Coverage for model VPA and point  frequentistic, InverseHessian: 1.0
+Coverage for model VPA and point  frequentistic, Sandwich: 1.0
+Coverage for model VPA and point  sampled, Quantiles: 1.0
+Coverage for model VPA and point  sampled, HPD: 0.9797979797979798
+Coverage for model SANAD and point  frequentistic, InverseHessian: 1.0
+Coverage for model SANAD and point  frequentistic, Sandwich: 1.0
+Coverage for model SANAD and point  sampled, Quantiles: 1.0
+Coverage for model SANAD and point  sampled, HPD: 1.0
+
+Infinite CIs:
+Infinite CIs for model Big4 and point  frequentistic, InverseHessian: 1.0
+Infinite CIs for model Big4 and point  frequentistic, Sandwich: 1.0
+Infinite CIs for model Big4 and point  sampled, Quantiles: 0.0
+Infinite CIs for model Big4 and point  sampled, HPD: 0.0
+Infinite CIs for model VPA and point  frequentistic, InverseHessian: 0.36
+Infinite CIs for model VPA and point  frequentistic, Sandwich: 0.55
+Infinite CIs for model VPA and point  sampled, Quantiles: 0.0
+Infinite CIs for model VPA and point  sampled, HPD: 0.0
+Infinite CIs for model SANAD and point  frequentistic, InverseHessian: 0.04
+Infinite CIs for model SANAD and point  frequentistic, Sandwich: 0.01
+Infinite CIs for model SANAD and point  sampled, Quantiles: 0.0
+Infinite CIs for model SANAD and point  sampled, HPD: 0.0
+
+Sizes CIs:
+Average size CIs for model Big4 and point  frequentistic, InverseHessian: Inf
+Average size CIs for model Big4 and point  frequentistic, InverseHessian for finite: NaN
+Maximal size CIs for model Big4 and point  frequentistic, InverseHessian for finite: NaN
+Minimal size CIs for model Big4 and point  frequentistic, InverseHessian for finite: NaN
+Average size CIs for model Big4 and point  frequentistic, Sandwich: Inf
+Average size CIs for model Big4 and point  frequentistic, Sandwich for finite: NaN
+Maximal size CIs for model Big4 and point  frequentistic, Sandwich for finite: NaN
+Minimal size CIs for model Big4 and point  frequentistic, Sandwich for finite: NaN
+Average size CIs for model Big4 and point  sampled, Quantiles: 117.04334559739866
+Average size CIs for model Big4 and point  sampled, Quantiles for finite: 117.04334559739866
+Maximal size CIs for model Big4 and point  sampled, Quantiles for finite: 143.4998979010639
+Minimal size CIs for model Big4 and point  sampled, Quantiles for finite: 87.53196621146124
+Average size CIs for model Big4 and point  sampled, HPD: 117.04281591691857
+Average size CIs for model Big4 and point  sampled, HPD for finite: 117.04281591691857
+Maximal size CIs for model Big4 and point  sampled, HPD for finite: 143.49987109307884
+Minimal size CIs for model Big4 and point  sampled, HPD for finite: 87.52881235926549
+Average size CIs for model VPA and point  frequentistic, InverseHessian: Inf
+Average size CIs for model VPA and point  frequentistic, InverseHessian for finite: 318.3028783200717
+Maximal size CIs for model VPA and point  frequentistic, InverseHessian for finite: 14573.582035086289
+Minimal size CIs for model VPA and point  frequentistic, InverseHessian for finite: 20.016633236604537
+Average size CIs for model VPA and point  frequentistic, Sandwich: Inf
+Average size CIs for model VPA and point  frequentistic, Sandwich for finite: 8.053183307722868e300
+Maximal size CIs for model VPA and point  frequentistic, Sandwich for finite: 3.623932483929836e302
+Minimal size CIs for model VPA and point  frequentistic, Sandwich for finite: 491.5584807415003
+Average size CIs for model VPA and point  sampled, Quantiles: 69.46830993234978
+Average size CIs for model VPA and point  sampled, Quantiles for finite: 69.46830993234978
+Maximal size CIs for model VPA and point  sampled, Quantiles for finite: 97.84043015463648
+Minimal size CIs for model VPA and point  sampled, Quantiles for finite: 35.853095185035656
+Average size CIs for model VPA and point  sampled, HPD: 64.31155921536141
+Average size CIs for model VPA and point  sampled, HPD for finite: 64.31155921536141
+Maximal size CIs for model VPA and point  sampled, HPD for finite: 97.27412986356978
+Minimal size CIs for model VPA and point  sampled, HPD for finite: 35.787295445291704
+Average size CIs for model SANAD and point  frequentistic, InverseHessian: Inf
+Average size CIs for model SANAD and point  frequentistic, InverseHessian for finite: 3257.6059518010284
+Maximal size CIs for model SANAD and point  frequentistic, InverseHessian for finite: 156941.9307145192
+Minimal size CIs for model SANAD and point  frequentistic, InverseHessian for finite: 93.08325179832221
+Average size CIs for model SANAD and point  frequentistic, Sandwich: Inf
+Average size CIs for model SANAD and point  frequentistic, Sandwich for finite: 2.0019637670827797e203
+Maximal size CIs for model SANAD and point  frequentistic, Sandwich for finite: 1.9819441294119517e205
+Minimal size CIs for model SANAD and point  frequentistic, Sandwich for finite: 9.046050445654672e8
+Average size CIs for model SANAD and point  sampled, Quantiles: 164.67726720503123
+Average size CIs for model SANAD and point  sampled, Quantiles for finite: 164.67726720503123
+Maximal size CIs for model SANAD and point  sampled, Quantiles for finite: 170.80425810476376
+Minimal size CIs for model SANAD and point  sampled, Quantiles for finite: 46.03325277895039
+Average size CIs for model SANAD and point  sampled, HPD: 164.05626279107167
+Average size CIs for model SANAD and point  sampled, HPD for finite: 164.05626279107167
+Maximal size CIs for model SANAD and point  sampled, HPD for finite: 170.7706657016328
+Minimal size CIs for model SANAD and point  sampled, HPD for finite: 45.02511768709106
+
+Outliers for  in model Big4  frequentistic by outlier bound: Any[]
+Outliers for  in model Big4  frequentistic by plotting bound: Any[]
+Outliers for  in model Big4  sampled by outlier bound: Any[]
+Outliers for  in model Big4  sampled by plotting bound: Any[]
+P-value for mean difference for  in model Big4: 0.001
+Outliers for  in model VPA  frequentistic by outlier bound: Any[]
+Outliers for  in model VPA  frequentistic by plotting bound: Any[]
+Outliers for  in model VPA  sampled by outlier bound: Any[]
+Outliers for  in model VPA  sampled by plotting bound: Any[]
+P-value for mean difference for  in model VPA: 0.001
+Outliers for  in model SANAD  frequentistic by outlier bound: Any[]
+Outliers for  in model SANAD  frequentistic by plotting bound: Any[]
+Outliers for  in model SANAD  sampled by outlier bound: Any[]
+Outliers for  in model SANAD  sampled by plotting bound: Any[]
+P-value for mean difference for  in model SANAD: 0.001
+
+
+Changed interest to CI:
+Outliers for  in model Big4  quantiles by outlier bound: Float64[]
+Outliers for  in model Big4  quantiles by plotting bound: Float64[]
+Outliers for  in model Big4  hpd by outlier bound: Float64[]
+Outliers for  in model Big4  hpd by plotting bound: Float64[]
+P-value for mean difference for  in model Big4: 0.164
+Outliers for  in model VPA  quantiles by outlier bound: Float64[]
+Outliers for  in model VPA  quantiles by plotting bound: Float64[]
+Outliers for  in model VPA  hpd by outlier bound: Float64[]
+Outliers for  in model VPA  hpd by plotting bound: Float64[]
+P-value for mean difference for  in model VPA: 0.172
+Outliers for  in model SANAD  quantiles by outlier bound: Float64[]
+Outliers for  in model SANAD  quantiles by plotting bound: Float64[]
+Outliers for  in model SANAD  hpd by outlier bound: Float64[]
+Outliers for  in model SANAD  hpd by plotting bound: Float64[]
+P-value for mean difference for  in model SANAD: 0.195
