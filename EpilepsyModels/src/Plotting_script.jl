@@ -6,27 +6,27 @@ using Random
 
 #save figures after running?
 saving = true
-save_path = "./Sampling"
+save_path = "./UpdatedModifiers"
 
 #files to read data from, relative to 
-files = [["./Sampling/Big4_Frequent.txt"], ["./Sampling/VPA_Frequent.txt"], ["./Sampling/SANAD_Frequent.txt"]]
-files2 = [["./Sampling/Sampling_PKBigFour.txt"], ["./Sampling/Sampling_PKVPA.txt"], ["./Sampling/Sampling_PKLEV.txt"]]
+files = [["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
+files2 = [["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
 #Do space before name if not empty, else empty string
-names_distinction = (" frequentistic", " sampled")
+names_distinction = (" no updates", " updates")
 #models each subarray corresponds to
-models = ["Big4", "VPA", "SANAD"]
+models = ["VPA less logscale", "VPA"]
 #colour for each model
-colours = [[:magenta, :orange, :brown], [:purple, :orange3, :black]]
+colours = [[:magenta, :red], [:purple, :salmon]]
 #quantity of interest
-quant = "sampling"
-short_quant = "Sampling"
+quant = "modifiers with updates logscale"
+short_quant = "UpdatedModifierslogscale"
 #corresponding values of interest for each model
-values = [[""] for model in models]#Legend setting for plotting
+values = [[1,2,3] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [10^5 for model in models]
-upper_outlier_bound = [10^5 for model in models]
+upper_plotting_bound = [Inf for model in models]
+upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
 plot_separate = false
 
@@ -34,7 +34,7 @@ confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 12, legendfontsize = 11)
 verbose = false
-CI_for_means = false
+CI_for_means = true
 both_CIs = false
 CI_plotting = true
 CI_cutoff = Inf #3000.0
@@ -104,11 +104,11 @@ for k in eachindex(to_read)
 end
 
 #pick variable of interest
-interests = rel_squared_errors_all
+interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
 #give name
-name = "relative squared errors"
-shorter_name = "RSE"
-short_name = "RSE"
+name = "dose parameter relative error"
+shorter_name = "relative error"
+short_name = "dose_param"
 
 function in_interval(x, y)
     if x isa Number 

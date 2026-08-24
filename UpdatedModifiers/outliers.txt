@@ -78,3 +78,186 @@ Outliers for 3 in model VPA  updates by plotting bound: Float64[]
 P-value for mean difference for 1 in model VPA: 0.987
 P-value for mean difference for 2 in model VPA: 0.001
 P-value for mean difference for 3 in model VPA: 0.001
+
+
+less logscale (just for VPA):
+Coverage overall: 
+Coverage for model VPA less logscale and point 1 no updates, InverseHessian: 1.0
+Coverage for model VPA less logscale and point 1 no updates, Sandwich: 1.0
+Coverage for model VPA less logscale and point 2 no updates, InverseHessian: 1.0
+Coverage for model VPA less logscale and point 2 no updates, Sandwich: 1.0
+Coverage for model VPA less logscale and point 3 no updates, InverseHessian: 1.0
+Coverage for model VPA less logscale and point 3 no updates, Sandwich: 1.0
+Coverage for model VPA less logscale and point 1 updates, InverseHessian: 1.0
+Coverage for model VPA less logscale and point 1 updates, Sandwich: 1.0
+Coverage for model VPA less logscale and point 2 updates, InverseHessian: 1.0
+Coverage for model VPA less logscale and point 2 updates, Sandwich: 1.0
+Coverage for model VPA less logscale and point 3 updates, InverseHessian: 1.0
+Coverage for model VPA less logscale and point 3 updates, Sandwich: 1.0
+Coverage for model VPA and point 1 no updates, InverseHessian: 1.0
+Coverage for model VPA and point 1 no updates, Sandwich: 1.0
+Coverage for model VPA and point 2 no updates, InverseHessian: 1.0
+Coverage for model VPA and point 2 no updates, Sandwich: 1.0
+Coverage for model VPA and point 3 no updates, InverseHessian: 1.0
+Coverage for model VPA and point 3 no updates, Sandwich: 1.0
+Coverage for model VPA and point 1 updates, InverseHessian: 1.0
+Coverage for model VPA and point 1 updates, Sandwich: 1.0
+Coverage for model VPA and point 2 updates, InverseHessian: 1.0
+Coverage for model VPA and point 2 updates, Sandwich: 1.0
+Coverage for model VPA and point 3 updates, InverseHessian: 1.0
+Coverage for model VPA and point 3 updates, Sandwich: 1.0
+
+Infinite CIs:
+Infinite CIs for model VPA less logscale and point 1 no updates, InverseHessian: 0.93
+Infinite CIs for model VPA less logscale and point 1 no updates, Sandwich: 0.49
+Infinite CIs for model VPA less logscale and point 2 no updates, InverseHessian: 0.92
+Infinite CIs for model VPA less logscale and point 2 no updates, Sandwich: 0.51
+Infinite CIs for model VPA less logscale and point 3 no updates, InverseHessian: 0.83
+Infinite CIs for model VPA less logscale and point 3 no updates, Sandwich: 0.48
+Infinite CIs for model VPA less logscale and point 1 updates, InverseHessian: 0.73
+Infinite CIs for model VPA less logscale and point 1 updates, Sandwich: 0.21
+Infinite CIs for model VPA less logscale and point 2 updates, InverseHessian: 0.91
+Infinite CIs for model VPA less logscale and point 2 updates, Sandwich: 0.08
+Infinite CIs for model VPA less logscale and point 3 updates, InverseHessian: 0.79
+Infinite CIs for model VPA less logscale and point 3 updates, Sandwich: 0.08
+Infinite CIs for model VPA and point 1 no updates, InverseHessian: 1.0
+Infinite CIs for model VPA and point 1 no updates, Sandwich: 1.0
+Infinite CIs for model VPA and point 2 no updates, InverseHessian: 1.0
+Infinite CIs for model VPA and point 2 no updates, Sandwich: 1.0
+Infinite CIs for model VPA and point 3 no updates, InverseHessian: 1.0
+Infinite CIs for model VPA and point 3 no updates, Sandwich: 1.0
+Infinite CIs for model VPA and point 1 updates, InverseHessian: 0.63
+Infinite CIs for model VPA and point 1 updates, Sandwich: 0.28
+Infinite CIs for model VPA and point 2 updates, InverseHessian: 0.73
+Infinite CIs for model VPA and point 2 updates, Sandwich: 0.08
+Infinite CIs for model VPA and point 3 updates, InverseHessian: 0.68
+Infinite CIs for model VPA and point 3 updates, Sandwich: 0.03
+
+Sizes CIs:
+Average size CIs for model VPA less logscale and point 1 no updates, InverseHessian: Inf
+Average size CIs for model VPA less logscale and point 1 no updates, InverseHessian for finite: 539.1268245146106
+Maximal size CIs for model VPA less logscale and point 1 no updates, InverseHessian for finite: 2019.1761246160818
+Minimal size CIs for model VPA less logscale and point 1 no updates, InverseHessian for finite: 28.566865641452555
+Average size CIs for model VPA less logscale and point 1 no updates, Sandwich: Inf
+Average size CIs for model VPA less logscale and point 1 no updates, Sandwich for finite: 2.81818661840204e80
+Maximal size CIs for model VPA less logscale and point 1 no updates, Sandwich for finite: 1.4372751753850403e82
+Minimal size CIs for model VPA less logscale and point 1 no updates, Sandwich for finite: 17.011544337367056
+Average size CIs for model VPA less logscale and point 2 no updates, InverseHessian: Inf
+Average size CIs for model VPA less logscale and point 2 no updates, InverseHessian for finite: 8.651130907496989e11
+Maximal size CIs for model VPA less logscale and point 2 no updates, InverseHessian for finite: 6.920781401200633e12
+Minimal size CIs for model VPA less logscale and point 2 no updates, InverseHessian for finite: 1971.3116410225052
+Average size CIs for model VPA less logscale and point 2 no updates, Sandwich: Inf
+Average size CIs for model VPA less logscale and point 2 no updates, Sandwich for finite: 4.688996079155516e139
+Maximal size CIs for model VPA less logscale and point 2 no updates, Sandwich for finite: 2.297608078786203e141
+Minimal size CIs for model VPA less logscale and point 2 no updates, Sandwich for finite: 20.440596777544858
+Average size CIs for model VPA less logscale and point 3 no updates, InverseHessian: Inf
+Average size CIs for model VPA less logscale and point 3 no updates, InverseHessian for finite: 3.962643514207636e8
+Maximal size CIs for model VPA less logscale and point 3 no updates, InverseHessian for finite: 3.8013911763025894e9
+Minimal size CIs for model VPA less logscale and point 3 no updates, InverseHessian for finite: 776.5633802015459
+Average size CIs for model VPA less logscale and point 3 no updates, Sandwich: Inf
+Average size CIs for model VPA less logscale and point 3 no updates, Sandwich for finite: 2.058662054231932e13
+Maximal size CIs for model VPA less logscale and point 3 no updates, Sandwich for finite: 1.0705042681804178e15
+Minimal size CIs for model VPA less logscale and point 3 no updates, Sandwich for finite: 15.664607419070506
+Average size CIs for model VPA less logscale and point 1 updates, InverseHessian: Inf
+Average size CIs for model VPA less logscale and point 1 updates, InverseHessian for finite: 33.529720978482906
+Maximal size CIs for model VPA less logscale and point 1 updates, InverseHessian for finite: 181.362926154035
+Minimal size CIs for model VPA less logscale and point 1 updates, InverseHessian for finite: 16.491218577825606
+Average size CIs for model VPA less logscale and point 1 updates, Sandwich: Inf
+Average size CIs for model VPA less logscale and point 1 updates, Sandwich for finite: 2.3303803325111507e303
+Maximal size CIs for model VPA less logscale and point 1 updates, Sandwich for finite: 1.841000462683809e305
+Minimal size CIs for model VPA less logscale and point 1 updates, Sandwich for finite: 15.935805450416836
+Average size CIs for model VPA less logscale and point 2 updates, InverseHessian: Inf
+Average size CIs for model VPA less logscale and point 2 updates, InverseHessian for finite: 2.375135177021627e6
+Maximal size CIs for model VPA less logscale and point 2 updates, InverseHessian for finite: 7.956367825165578e6
+Minimal size CIs for model VPA less logscale and point 2 updates, InverseHessian for finite: 334.6993590041127
+Average size CIs for model VPA less logscale and point 2 updates, Sandwich: Inf
+Average size CIs for model VPA less logscale and point 2 updates, Sandwich for finite: 8.940239950809366e38
+Maximal size CIs for model VPA less logscale and point 2 updates, Sandwich for finite: 8.224774689446295e40
+Minimal size CIs for model VPA less logscale and point 2 updates, Sandwich for finite: 14.16489144604327
+Average size CIs for model VPA less logscale and point 3 updates, InverseHessian: Inf
+Average size CIs for model VPA less logscale and point 3 updates, InverseHessian for finite: 1.978360098763737e10
+Maximal size CIs for model VPA less logscale and point 3 updates, InverseHessian for finite: 3.8141382132033185e11
+Minimal size CIs for model VPA less logscale and point 3 updates, InverseHessian for finite: 244.54801553451733
+Average size CIs for model VPA less logscale and point 3 updates, Sandwich: Inf
+Average size CIs for model VPA less logscale and point 3 updates, Sandwich for finite: 5.843738760667031e46
+Maximal size CIs for model VPA less logscale and point 3 updates, Sandwich for finite: 5.2429728638262136e48
+Minimal size CIs for model VPA less logscale and point 3 updates, Sandwich for finite: 19.4719821500224
+Average size CIs for model VPA and point 1 no updates, InverseHessian: Inf
+Average size CIs for model VPA and point 1 no updates, InverseHessian for finite: NaN
+Maximal size CIs for model VPA and point 1 no updates, InverseHessian for finite: NaN
+Minimal size CIs for model VPA and point 1 no updates, InverseHessian for finite: NaN
+Average size CIs for model VPA and point 1 no updates, Sandwich: Inf
+Average size CIs for model VPA and point 1 no updates, Sandwich for finite: NaN
+Maximal size CIs for model VPA and point 1 no updates, Sandwich for finite: NaN
+Minimal size CIs for model VPA and point 1 no updates, Sandwich for finite: NaN
+Average size CIs for model VPA and point 2 no updates, InverseHessian: Inf
+Average size CIs for model VPA and point 2 no updates, InverseHessian for finite: NaN
+Maximal size CIs for model VPA and point 2 no updates, InverseHessian for finite: NaN
+Minimal size CIs for model VPA and point 2 no updates, InverseHessian for finite: NaN
+Average size CIs for model VPA and point 2 no updates, Sandwich: Inf
+Average size CIs for model VPA and point 2 no updates, Sandwich for finite: NaN
+Maximal size CIs for model VPA and point 2 no updates, Sandwich for finite: NaN
+Minimal size CIs for model VPA and point 2 no updates, Sandwich for finite: NaN
+Average size CIs for model VPA and point 3 no updates, InverseHessian: Inf
+Average size CIs for model VPA and point 3 no updates, InverseHessian for finite: NaN
+Maximal size CIs for model VPA and point 3 no updates, InverseHessian for finite: NaN
+Minimal size CIs for model VPA and point 3 no updates, InverseHessian for finite: NaN
+Average size CIs for model VPA and point 3 no updates, Sandwich: Inf
+Average size CIs for model VPA and point 3 no updates, Sandwich for finite: NaN
+Maximal size CIs for model VPA and point 3 no updates, Sandwich for finite: NaN
+Minimal size CIs for model VPA and point 3 no updates, Sandwich for finite: NaN
+Average size CIs for model VPA and point 1 updates, InverseHessian: Inf
+Average size CIs for model VPA and point 1 updates, InverseHessian for finite: 33.57906848811031
+Maximal size CIs for model VPA and point 1 updates, InverseHessian for finite: 218.05901108435694
+Minimal size CIs for model VPA and point 1 updates, InverseHessian for finite: 1.6435080368137704
+Average size CIs for model VPA and point 1 updates, Sandwich: Inf
+Average size CIs for model VPA and point 1 updates, Sandwich for finite: 1.902922829995653e272
+Maximal size CIs for model VPA and point 1 updates, Sandwich for finite: 1.3652703894489453e274
+Minimal size CIs for model VPA and point 1 updates, Sandwich for finite: 6.479638435072431
+Average size CIs for model VPA and point 2 updates, InverseHessian: Inf
+Average size CIs for model VPA and point 2 updates, InverseHessian for finite: 1.4486617326953649e6
+Maximal size CIs for model VPA and point 2 updates, InverseHessian for finite: 3.0301938456187367e7
+Minimal size CIs for model VPA and point 2 updates, InverseHessian for finite: 0.9774152704260786
+Average size CIs for model VPA and point 2 updates, Sandwich: Inf
+Average size CIs for model VPA and point 2 updates, Sandwich for finite: 1.3143284158354414e20
+Maximal size CIs for model VPA and point 2 updates, Sandwich for finite: 6.87264531921187e21
+Minimal size CIs for model VPA and point 2 updates, Sandwich for finite: 11.85443899544213
+Average size CIs for model VPA and point 3 updates, InverseHessian: Inf
+Average size CIs for model VPA and point 3 updates, InverseHessian for finite: 1.0544142437249402e9
+Maximal size CIs for model VPA and point 3 updates, InverseHessian for finite: 3.3645434011205715e10
+Minimal size CIs for model VPA and point 3 updates, InverseHessian for finite: 1.0277933807819437
+Average size CIs for model VPA and point 3 updates, Sandwich: Inf
+Average size CIs for model VPA and point 3 updates, Sandwich for finite: 3.1454647249199994e57
+Maximal size CIs for model VPA and point 3 updates, Sandwich for finite: 3.051100764663221e59
+Minimal size CIs for model VPA and point 3 updates, Sandwich for finite: 12.40465811392001
+
+Outliers for 1 in model VPA less logscale  no updates by outlier bound: Float64[]
+Outliers for 1 in model VPA less logscale  no updates by plotting bound: Float64[]
+Outliers for 2 in model VPA less logscale  no updates by outlier bound: Float64[]
+Outliers for 2 in model VPA less logscale  no updates by plotting bound: Float64[]
+Outliers for 3 in model VPA less logscale  no updates by outlier bound: Float64[]
+Outliers for 3 in model VPA less logscale  no updates by plotting bound: Float64[]
+Outliers for 1 in model VPA less logscale  updates by outlier bound: Float64[]
+Outliers for 1 in model VPA less logscale  updates by plotting bound: Float64[]
+Outliers for 2 in model VPA less logscale  updates by outlier bound: Float64[]
+Outliers for 2 in model VPA less logscale  updates by plotting bound: Float64[]
+Outliers for 3 in model VPA less logscale  updates by outlier bound: Float64[]
+Outliers for 3 in model VPA less logscale  updates by plotting bound: Float64[]
+P-value for mean difference for 1 in model VPA less logscale: 0.251
+P-value for mean difference for 2 in model VPA less logscale: 0.044
+P-value for mean difference for 3 in model VPA less logscale: 0.252
+Outliers for 1 in model VPA  no updates by outlier bound: Float64[]
+Outliers for 1 in model VPA  no updates by plotting bound: Float64[]
+Outliers for 2 in model VPA  no updates by outlier bound: Float64[]
+Outliers for 2 in model VPA  no updates by plotting bound: Float64[]
+Outliers for 3 in model VPA  no updates by outlier bound: Float64[]
+Outliers for 3 in model VPA  no updates by plotting bound: Float64[]
+Outliers for 1 in model VPA  updates by outlier bound: Float64[]
+Outliers for 1 in model VPA  updates by plotting bound: Float64[]
+Outliers for 2 in model VPA  updates by outlier bound: Float64[]
+Outliers for 2 in model VPA  updates by plotting bound: Float64[]
+Outliers for 3 in model VPA  updates by outlier bound: Float64[]
+Outliers for 3 in model VPA  updates by plotting bound: Float64[]
+P-value for mean difference for 1 in model VPA: 0.987
+P-value for mean difference for 2 in model VPA: 0.001
+P-value for mean difference for 3 in model VPA: 0.001
