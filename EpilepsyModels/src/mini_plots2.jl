@@ -65,10 +65,10 @@ Max_Time = 20*60.0 #14*60.0*60.0
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
 Population_size = 20 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 10.0 #40.0
+Obs_Duration = wo_treatment + 30.0 #40.0
 PK_timepoints = (wo_treatment+0.5):2.25:(Obs_Duration-0.5) #[0.2, 0.35, 1.05, 2.3, 3.7, 4.6, 5.75, 6.01, 7.5, 8.9]
 #TODO Change this back later
-Seizure_timepoints = 0.0:5.0:Obs_Duration
+Seizure_timepoints = 0.0:1.0:Obs_Duration
 max_events = nothing
 no_counts_seizure = false
 #logscale = ("σ",)
@@ -187,7 +187,9 @@ println("Generated")
 thickness = 2
 endpoint = 21.0
 empty!(data[1].dosing)
-next_doses = [(t = i+1 + j/2, dose = 500.0, state = :d_CBZ) for i in -1:20 for j in 0:(2-1)]
+next_doses = [(t = i+1 + j/2, dose = 600.0, state = :d_CBZ) for i in -1:20 for j in 0:(2-1)]
+append!(data[1].dosing, next_doses)
+next_doses = [(t = i+1 + j/2, dose = 150.0*4, state = :d_VPA) for i in -1:20 for j in 0:(2-1)]
 append!(data[1].dosing, next_doses)
 #=
 next_doses = [(t = i+1 + j/2, dose = 750.0, state = :d_LEV) for i in 7:13 for j in 0:(2-1)]
@@ -196,11 +198,19 @@ next_doses = [(t = i+1 + j/2, dose = 200.0, state = :d_LTG) for i in 14:20 for j
 append!(data[1].dosing, next_doses)
 =#
 sol = EpilepsyModels.solve_PK(pk_model, pk_model.θ, data[1], endpoint=endpoint)
-pl = plot(xlabel="Time", ylabel="Concentration", tspan = (0, endpoint), ticks = false, thickness_scaling=thickness)
+endpoint = 14.0
+pl = plot(xlabel="", ylabel="", tspan = (0, endpoint), ticks = false, thickness_scaling=thickness)
 #plot!(sol, idxs = :s_LEV, label="", tspan = (0,endpoint), linewidth = 2, colour = :green)
-plot!(sol, idxs = :s_CBZ, label="", tspan = (0,endpoint), linewidth = 2, colour = :blue, ylims = (0,20))
+plot!(sol, idxs = :s_CBZ, label="", tspan = (0,endpoint), linewidth = 2, colour = :blue)
 #plot!(sol, idxs = :s_LTG, label="", tspan = (0,endpoint), linewidth = 2, colour = :purple)
 display(pl)
+pl3 = plot(xlabel="", ylabel="", tspan = (0, endpoint), ticks = false, thickness_scaling=thickness)
+#plot!(sol, idxs = :s_LEV, label="", tspan = (0,endpoint), linewidth = 2, colour = :green)
+plot!(sol, idxs = :s_VPA, label="", tspan = (0,endpoint), linewidth = 2, colour = :red)
+#plot!(sol, idxs = :s_LTG, label="", tspan = (0,endpoint), linewidth = 2, colour = :purple)
+display(pl3)
+endpoint = 10
+pl2 = bar(collect(1:endpoint), [count.count for count in data[1].seizure_counts if count.time[2]<=endpoint],ticks = false, label = "", thickness_scaling=thickness)
 #=
 x_values = [measurement.timepoint for measurement in data[1].measurements if (measurement.state[2] == pk_model.keys.s[1])]
 y_values = [measurement.measurement for measurement in data[1].measurements if (measurement.state[2] == pk_model.keys.s[1])]
