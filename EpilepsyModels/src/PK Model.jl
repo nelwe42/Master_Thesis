@@ -233,6 +233,47 @@ function create_ode_system(mod::PKVPA)
     return internal_model
 end
 
+#Same model for PK behaviour of Valproate with a linear effect of update number of dosing on c1
+@with_kw struct PKVPAUpdates1{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
+    θ::T=ComponentArray((k_abs = 72.0, c1 = 7.5, c2 = 0.1, c3 = 1.0, c_up = 0.0, v1 = 0.5, σ = 0.1)) 
+    cov::T2 = (:gender, :weight, :dosing_updates) 
+    set_daily_doses::T3 = ((drug_param = :d_VPA_daily, drug_var = :d_VPA, autoinduction = false, ind_param = :none),) 
+    #parameter to update and corresponding state name for updates, bool if autoinduction, name of autoinduction parameter (not present here, just for sake of completeness)
+    keys::T4 = (d = SA[:d_VPA], s = SA[:s_VPA], S = SA[:S_VPA], obs = SA[(:obs_VPA, :s_VPA)]) #for observations also records corresponding internal state
+    bounds::T5 = (lb = ComponentArray((k_abs = 20.0, c1 = 5.0, c2 = 0.0, c3 = 0.1, c_up = -1.0, v1 = 0.1, σ = 0.0)), ub = ComponentArray((k_abs = 100.0, c1 = 100.0, c2 = 2.0, c3 = 2.0, c_up = 10.0, v1 = 2.0, σ = 20.0)))
+end
+
+function create_ode_system(mod::PKVPAUpdates1) 
+    #k_abs constant, V=v1*weight
+    #-CL = c1*(dose/1000)^c2*c3^gender(1 for female, 0 for male)
+    #take make with 100 around dose to avoid zero clearance when stop taking VPA
+    #for multidrugmodel CBZ (and PB,PHT,CLB) dependence in clearance
+    #Absorption rate k_abs/V, elimination CL/V
+    θ = mod.θ
+    interpolator = ConstantInterpolation([0.0, 10.0], [1.1, 5.5])
+    type_use = typeof(interpolator).name.wrapper
+    #Define model, @mtkmodel doesnt agree with callable parameters
+    @parameters k_abs=θ.k_abs c1 = θ.c1 c2 = θ.c2 c3 = θ.c3 c_up = θ.c_up v1 = θ.v1 σ=θ.σ #normal system parameters
+    @parameters d_VPA_daily = 0.0 [tunable=false] #parameter for daily dose updated by callback
+    #callable parameters for covariates
+    @parameters (gender::type_use)(..) [tunable=false] 
+    @parameters (weight::type_use)(..) [tunable=false]
+    @parameters (dosing_updates::type_use)(..) [tunable=false]
+    @variables d_VPA(t) = 0.0  # depot compartment - no drug at beginning
+    @variables s_VPA(t) = 0.0  # internal/central compartment
+    @variables S_VPA(t) = 0.0  #Integral over dose, always compute since don't know what seizure model requires
+    @variables obs_VPA(t)
+    #d_VPA is not concentration but dose, so rate there not normalised by volume
+    eqs = [D(d_VPA) ~ -k_abs * d_VPA,
+            D(s_VPA) ~ k_abs/(v1*weight(t)) * d_VPA - ((c1+c_up*dosing_updates(t))*(max(100,d_VPA_daily)/1000)^c2*c3^gender(t))/(v1*weight(t)) * s_VPA,
+            D(S_VPA) ~ s_VPA,
+            obs_VPA ~ Normal(s_VPA, σ)]
+    
+    @mtkcompile internal_model = System(eqs, t)
+
+    return internal_model
+end
+
 #A model for the PK behavior of Lamotrigine
 @with_kw struct PKLTG{T<:ComponentArray, T2<:Tuple, T3<:Tuple, T4<:NamedTuple, T5<:NamedTuple} <: PKModelNonrandom
     θ::T=ComponentArray((k_abs = 72.0, c1 = 72.0, c2 = 0.0, c3 = 0.0, c4 = 0.0, v1 = 1.0, σ=0.5)) 
@@ -466,7 +507,7 @@ function create_problem(mod::PKModelNonrandom; dosing::AbstractVector, covariate
     param_info = [(name = info.name, type = get_covariate_type(info.type)) for info in ModelingToolkit.dump_parameters(ode_system) if info.name in mod.cov]
     #interpolate covariates from given data or try typecasting, if unsuccessful throw error
     try
-        covariate_interpolation = Dict((isa(covariates[info.name],Number) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name], covariates[info.name]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
+        covariate_interpolation = Dict(((isa(covariates[info.name],Number) || info.name==:dosing_updates) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name][1], covariates[info.name][1]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
         #Create ODE problem with callbacks
         problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     
@@ -501,7 +542,7 @@ function create_problem(mod::PKModelNonrandom, ode_system::ODESystem; person::Pe
     param_info = [(name = info.name, type = get_covariate_type(info.type)) for info in ModelingToolkit.dump_parameters(ode_system) if info.name in mod.cov]
     #interpolate covariates from given data or try typecasting, if unsuccessful throw error
     try
-        covariate_interpolation = Dict((isa(covariates[info.name],Number) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name], covariates[info.name]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
+        covariate_interpolation = Dict(((isa(covariates[info.name],Number) || info.name==:dosing_updates) && info.type<:DataInterpolations.AbstractInterpolation) ? (info.name => info.type([covariates[info.name][1], covariates[info.name][1]], [0.0, endpoint])) : (info.name => make_type(covariates[info.name], info.type)) for info in param_info)
         #Create ODE problem with callbacks
         problem = ODEProblem{true, SciMLBase.FullSpecialize}(ode_system, covariate_interpolation, (0.0, endpoint), callback = callback_set)
     

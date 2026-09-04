@@ -38,6 +38,7 @@ Input_θ_PKBasic = ComponentArray((k_el = 2.0, k_abs = 5.0, σ=0.2))
 Input_θ_PKLEV = ComponentArray((k_abs = (24*3.5), c1 = (24*4.0), c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKLEVNoAbsorption = ComponentArray((c1 = (24*4.0), c2 = 0.25, c3 = 0.122, v1 = 29.7, v2 = 2.85, σ=0.2))
 Input_θ_PKCBZ = ComponentArray((k_abs = (24*0.45), c1 = (24*1.96), c2 = 1.73, c3 = 24*1.36, v1 = 164.0/75.0, σ=0.2))
+Input_θ_PKVPAUpdates1 = ComponentArray((k_abs = (24*1.86), c1 = (24*0.577), c2 = 0.535, c3 = 0.875, c_up = 0.0, v1 = 0.28, σ=0.2))
 Input_θ_PKVPA = ComponentArray((k_abs = (24*1.86), c1 = (24*0.577), c2 = 0.535, c3 = 0.875, v1 = 0.28, σ=0.2))
 Input_θ_PKLTG = ComponentArray((k_abs = (24*1.96), c1 = (24*2.4), c2 = 0.938, c3 = 110*0.00328, c4 = 0.34, v1 = 2.14, σ=0.2))
 Input_θ_PKBigFour = ComponentArray((k_abs_LTG = (24*1.96), c1_LTG = (24*2.4), c2_LTG = 0.938, c3_LTG = 110*0.00328, c4_LTG = 0.34, c_Inh_LTG = (1-0.579), c_Ind_LTG = (1+0.546), v1_LTG = 2.14, σ_LTG=0.2,
@@ -69,7 +70,7 @@ update_reg = Obs_Duration
 #logscale = ("σ",)
 #logscale = ("σ","v1")
 #logscale = ("σ", "k_abs", "c1", "v1", "a")
-logscale = ("σ", "k_abs", "v1")
+logscale = ("σ", "k_abs", "c1", "v1")
 #logscale = ("σ_LEV", "k_abs_LEV", "c1_LEV", "v1_LEV", "σ_LTG", "k_abs_LTG", "c1_LTG", "v1_LTG","σ_CBZ", "k_abs_CBZ", "c1_CBZ", "v1_CBZ", "σ_VPA", "k_abs_VPA", "c1_VPA", "v1_VPA", "a")
 #logscale = ("σ", "k_abs", "c1", "c3", "v1", "a") 
 #logscale = ("σ", "c1", "v1", "a")
@@ -120,12 +121,13 @@ lock_path_output = joinpath("./", file_name * ".lock")
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
-pk_model = PKVPA(θ=Input_θ_PKVPA)
+#pk_model = PKVPA(θ=Input_θ_PKVPA)
+pk_model = PKVPAUpdates1(θ=Input_θ_PKVPAUpdates1)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
 #pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 
-if (typeof(pk_model).name.wrapper in [PKVPA])
+if (typeof(pk_model).name.wrapper in [PKVPA, PKVPAUpdates1])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
 if (typeof(pk_model).name.wrapper in [PKBigFour])
@@ -139,7 +141,7 @@ else
             Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[1]]
         elseif (typeof(pk_model).name.wrapper in [PKCBZ])
             Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[3]]
-        elseif (typeof(pk_model).name.wrapper in [PKVPA])
+        elseif (typeof(pk_model).name.wrapper in [PKVPA, PKVPAUpdates1])
             Input_θ_SeizureBasic_one.b = SA[Input_θ_SeizureBasic_four.b[4]]
         end
     end
@@ -160,7 +162,7 @@ else
             Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[1]]
         elseif (typeof(pk_model).name.wrapper in [PKCBZ])
             Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[3]]
-        elseif (typeof(pk_model).name.wrapper in [PKVPA])
+        elseif (typeof(pk_model).name.wrapper in [PKVPA, PKVPAUpdates1])
             Input_θ_SeizureSANAD_one.b = SA[Input_θ_SeizureSANAD_four.b[4]]
         end
     end
@@ -201,7 +203,7 @@ update_reg = considered[parsed2][2]
 #This will redirect output to txt file, not including error messages/warnings
 path = "/home/s6newell_hpc"
 #path = "."
-file_name = "UpdatedModifiers_lesslogscale_$(typeof(pk_model).name.wrapper)_$(length(modifications))_$(update_reg == Obs_Duration).txt"
+file_name = "UpdatedModifiers_UpdateInfluence_morelogscale_$(typeof(pk_model).name.wrapper)_$(length(modifications))_$(update_reg == Obs_Duration).txt"
 lock_path_output = joinpath("./", file_name * ".lock")
 
 
@@ -307,6 +309,11 @@ for a in keys(results)
     end
 end
 println()
+if hasproperty(results.datas[1][1].covariates, :dosing_updates)
+    updates = [[person.covariates.dosing_updates[1] for person in data] for data in results.datas]
+    println("Updates:")
+    println(updates)
+end
 end
 end
 end

@@ -265,6 +265,10 @@ function assign_dose!(m::BigFourDoses, person::Person; names::NamedTuple = (d = 
             #seizures controlled in last iteration, keep regiment
             info = current
         else
+            #Check if dosing updates number is part of covariates
+            if hasproperty(person.covariates, :dosing_updates)
+                person.covariates.dosing_updates[1] += 1
+            end
             #need new regiment, pick between switching drug, increasing dose, adding second
             new_assignment = rand(Bernoulli(m.prob_reassignment))
             #If increase possible, do that first

@@ -16,7 +16,7 @@ using AdvancedMH
 using MCMCChains
 
 export optimise, optimise_hierarchical, optimise_sampled, generate_data, generate_data_updating, generate_data_modified, get_negloglikelihood_evaluated, get_negloglikelihood_evaluated_hierarchical, plot_fit, multi_data_run,
-BasicDoses, PolyDosesRandom, PolyDoses, BigFourDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour,
+BasicDoses, PolyDosesRandom, PolyDoses, BigFourDoses, PKBasic, PKLEV, PKLEVNoAbsorption, PKCBZ, PKVPA, PKLTG, PKBigFour, PKVPAUpdates1,
 BasicPersonGenerator, PersonGeneratorLEV, BigFourPersonGenerator, SeizureBasic, SeizureNegativeBinomial, SeizureVPA, SeizureMult, SeizureSANAD, FullModel, Person
 
 include("Person Generator.jl")
@@ -29,6 +29,37 @@ include("Seizure Model.jl")
     seizure_model::S
     population_gen::P = BasicPersonGenerator()
     dose_gen::D = BasicDoses()
+end
+
+#Basic Constructor for PK and Seizure FullModel from just types of models
+function FullModel(PK::Type, Seizure::Type; θ_PK::Union{ComponentArray, Nothing} = nothing, θ_Seizure::Union{ComponentArray, Nothing} = nothing, appropriate_dosing::Bool = true)
+    if PK <: PKModel
+        if isnothing(θ_PK)
+            pk_model = PK()
+        else
+            if !(getaxes(θ_PK) == getaxes(PK().θ))
+                @warn "Axes of passed PK θ and default do not match"
+            end
+            pk_model = PK(θ = θ_PK)
+        end
+    else
+        error("Passed PK model type not found")
+    end
+    if Seizure <: SeizureModel
+        if isnothing(θ_Seizure)
+            seizure_model = Seizure(pk_model)
+        else
+            if !(getaxes(θ_Seizure) == getaxes(Seizure().θ))
+                @warn "Axes of passed Seizure θ and default do not match"
+            end
+            seizure_model = Seizure(θ = θ_Seizure)
+        end
+    else
+        error("Passed Seizure model type not found")
+    end
+    dose_gen = PolyDosesRandom(pk_model, appropriate_dosing)
+    person_gen = BigFourPersonGenerator()
+    return FullModel(pk_model, seizure_model, person_gen, dose_gen)
 end
 
 #For (de)transfering certain components in parameter vector into logscale

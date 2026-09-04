@@ -65,6 +65,6 @@ function generate_population(m::BigFourPersonGenerator, n::Int = 10)
                                 smoking = Float64(rand(Bernoulli(m.prob_smoking))), 
                                 seizure_type = Float64(rand(Bernoulli(m.prob_focal))),
                                 age = rand(m.age_distr),
-                                gender = genders[i])) for i in 1:n)
+                                gender = genders[i], dosing_updates = [0])) for i in 1:n)
     return population
 end

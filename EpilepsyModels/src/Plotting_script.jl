@@ -9,30 +9,31 @@ saving = true
 save_path = "./UpdatedModifiers"
 
 #files to read data from, relative to 
-files = [["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
-files2 = [["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
+files = [["./UpdatedModifiers/UpdatedModifiers_UpdateInfluence_lesslogscale_PKVPAUpdates1_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_false.txt" for i in 1:3]]
+files2 = [["./UpdatedModifiers/UpdatedModifiers_UpdateInfluence_morelogscale_PKVPAUpdates1_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
 #Do space before name if not empty, else empty string
-names_distinction = (" no updates", " updates")
+names_distinction = (" with c_up", " without c_up")
 #models each subarray corresponds to
-models = ["VPA less logscale", "VPA"]
+models = ["less logscale", "more logscale"]
 #colour for each model
 colours = [[:magenta, :red], [:purple, :salmon]]
 #quantity of interest
-quant = "modifiers with updates logscale"
-short_quant = "UpdatedModifierslogscale"
+quant = "Modified VPA"
+short_quant = "Causal"
 #corresponding values of interest for each model
-values = [[1,2,3] for model in models]#Legend setting for plotting
+values = [[1,2,3] for model in models]
+#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
 upper_plotting_bound = [Inf for model in models]
 upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
-plot_separate = false
+plot_separate = true
 
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
-default(guidefontsize = 12, legendfontsize = 11)
+default(guidefontsize = 14, titlefontsize = 15, tickfontsize = 12, legendfontsize = 14)
 verbose = false
 CI_for_means = true
 both_CIs = false
@@ -49,6 +50,7 @@ rel_squared_errors_all = [[[] for model in to_read[k]] for k in eachindex(to_rea
 times_all = [[[] for model in to_read[k]] for k in eachindex(to_read)]
 obj_diffs_all = [[[] for model in to_read[k]] for k in eachindex(to_read)]
 CIs_all = [[[] for model in to_read[k]] for k in eachindex(to_read)]
+updates_all = [[[] for model in to_read[k]] for k in eachindex(to_read)]
 for k in eachindex(to_read)
     for j in eachindex(to_read[k]) 
         for file in to_read[k][j]
@@ -60,6 +62,7 @@ for k in eachindex(to_read)
             times = []
             obj_diffs = []
             CIs = []
+            updates = []
             lines = readlines(file)
             for i in eachindex(lines)
                 if occursin("Estimates:",lines[i])
@@ -88,6 +91,8 @@ for k in eachindex(to_read)
                     index = findlast("}", text)
                     text = text[(collect(index)[1]+1):end]
                     append!(CIs, eval(Meta.parse(text)))
+                elseif occursin("Updates:",lines[i])
+                    append!(updates, eval(Meta.parse(lines[i+1])))
                 end
             end
             estimates = [ComponentArray(PK = ComponentArray(est.PK), Seizure = ComponentArray(est.Seizure)) for est in estimates]
@@ -99,12 +104,13 @@ for k in eachindex(to_read)
             push!(times_all[k][j], times)
             push!(obj_diffs_all[k][j], obj_diffs)
             push!(CIs_all[k][j], CIs)
+            push!(updates_all[k][j], updates)
         end
     end
 end
 
 #pick variable of interest
-interests = [[[[(j == 1 ? est.PK.c3 : est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
+interests = [[[[(est.PK.c2) for est in estes] for estes in rel_errors_all[k][j]] for j in eachindex(to_read[k])] for k in eachindex(to_read)]
 #give name
 name = "dose parameter relative error"
 shorter_name = "relative error"
@@ -372,7 +378,7 @@ for k in eachindex(models)
                 scatter!(values2[k], means, markercolor = colours[n][k], markershape = :star5, linewidth = 2, label = "means overall for "*models[k]*names_distinction[n])
             end
             if isfinite(upper_plotting_bound[k])
-                scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+                scatter!(values2[k], means2, markercolor = colours[n][k], markershape = :circle, linewidth = 1, alpha = 0.7, label = "means"*(isfinite(upper_plotting_bound[k]) ? " of all lower than $(upper_plotting_bound[k])" : "")*" for"*models[k]*names_distinction[n])
             end
             #Plot untruncated means only in full one?
             #plot!(values2, means2, linecolor = :blue, linewidth = 2, label = "means")
@@ -398,11 +404,11 @@ end
 
 #Overall means plots
 overall_plots = Plots.Plot[]
-pl2 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)) : "Truncated means"))
+pl2 = plot(xlabel = quant, ylabel = "mean "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Truncated mean "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)) : "Truncated means"))
 for k in eachindex(models)
     for n in 1:2
         if !isempty(means_truncated[n][k])
-            plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+            plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means"*(isfinite(upper_plotting_bound[k]) ? " of all lower than $(upper_plotting_bound[k])" : "")*" for "*models[k]*names_distinction[n])
         end
     end
     if eltype(values[k]) <: Number
@@ -415,10 +421,10 @@ display(pl2)
 
 if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_truncated[2]))
     for n in 1:2
-        pl25 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Truncated means"))
+        pl25 = plot(xlabel = quant, ylabel = "mean "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Truncated means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Truncated means"))
         for k in eachindex(models)
             if !isempty(means_truncated[n][k])
-                plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all lower than $(upper_plotting_bound[k]) for "*models[k]*names_distinction[n])
+                plot!(values[k], means_truncated[n][k], linecolor = colours[n][k], linewidth = 2, label = "means"*(isfinite(upper_plotting_bound[k]) ? " of all lower than $(upper_plotting_bound[k])" : "")*" for "*models[k]*names_distinction[n])
             end
             if eltype(values[k]) <: Number
                 plot!(xticks = values[k], xrotation = 75)
@@ -430,16 +436,16 @@ if plot_separate && any(.!isempty.(means_truncated[1])) && any(.!isempty.(means_
     end
 end
 
-pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)) : "Overall means"))
+pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "mean "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)) : "Overall means"))
 for k in eachindex(models)
     for n in 1:2
         if !isempty(means_truncated[n][k])
             err_lower = means_full[n][k][1] .- [CI[1] for CI in CI_means_full[n][k][1]]
             err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
             if (CI_for_means || both_CIs)
-                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
+                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
             else
-                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+                plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n])
             end
         end
     end
@@ -453,16 +459,16 @@ display(pl3)
 
 if plot_separate && any(.!isempty.(means_full[1])) && any(.!isempty.(means_full[2]))
     for n in 1:2
-        pl35 = plot(xlabel = quant, ylabel = "means of "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Overall means"))
+        pl35 = plot(xlabel = quant, ylabel = "mean "*(verbose ? lowercasefirst(name) : lowercasefirst(shorter_name)), title = (verbose ? ("Overall means of "*lowercasefirst(name)*" for \n different "*lowercasefirst(quant)*names_distinction[n]) : "Overall means"))
         for k in eachindex(models)
             if !isempty(means_full[n][k])
                 #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
                 err_lower = means_full[n][k][1] .- [CI[1] for CI in CI_means_full[n][k][1]]
                 err_upper = [CI[2] for CI in CI_means_full[n][k][1]] .- means_full[n][k][1]
                 if (CI_for_means || both_CIs)
-                    plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
+                    plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
                 else
-                    plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means of all for "*models[k]*names_distinction[n])
+                    plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n])
                 end
             end
             if eltype(values[k]) <: Number
