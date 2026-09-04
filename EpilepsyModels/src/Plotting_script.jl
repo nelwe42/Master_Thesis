@@ -9,27 +9,26 @@ saving = true
 save_path = "./UpdatedModifiers"
 
 #files to read data from, relative to 
-files = [["./UpdatedModifiers/UpdatedModifiers_UpdateInfluence_lesslogscale_PKVPAUpdates1_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_false.txt" for i in 1:3]]
-files2 = [["./UpdatedModifiers/UpdatedModifiers_UpdateInfluence_morelogscale_PKVPAUpdates1_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
+files = [["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_true.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_true.txt" for i in 1:3]]
+files2 = [["./UpdatedModifiers/UpdatedModifiers_lesslogscale_PKVPA_$(i)_false.txt" for i in 1:3], ["./UpdatedModifiers/UpdatedModifiers_PKVPA_$(i)_false.txt" for i in 1:3]]
 #Do space before name if not empty, else empty string
-names_distinction = (" with c_up", " without c_up")
+names_distinction = (" no updates", " updates")
 #models each subarray corresponds to
-models = ["less logscale", "more logscale"]
+models = ["VPA less logscale", "VPA"]
 #colour for each model
 colours = [[:magenta, :red], [:purple, :salmon]]
 #quantity of interest
-quant = "Modified VPA"
-short_quant = "Causal"
+quant = "modifiers with updates logscale"
+short_quant = "UpdatedModifierslogscale"
 #corresponding values of interest for each model
-values = [[1,2,3] for model in models]
-#Legend setting for plotting
+values = [[1,2,3] for model in models]#Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
 upper_plotting_bound = [Inf for model in models]
 upper_outlier_bound = [Inf for model in models]
 spaced_accordingly = false
-plot_separate = true
+plot_separate = false
 
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
