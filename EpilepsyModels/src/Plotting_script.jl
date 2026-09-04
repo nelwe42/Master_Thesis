@@ -6,39 +6,36 @@ using Random
 
 #save figures after running?
 saving = true
-save_path = "./Pop_Size"
+save_path = "./WrongModel"
 
 #files to read data from, relative to 
-files = [["./Pop_Size/PopSize_Big4_2.txt", "./Pop_Size/PopSize_Big4_5.txt", "./Pop_Size/PopSize_Big4_10.txt", "./Pop_Size/PopSize_Big4_20.txt", "./Pop_Size/PopSize_Big4_50.txt"],
-        ["./Pop_Size/PopSize_VPA_2.txt", "./Pop_Size/PopSize_VPA_5.txt", "./Pop_Size/PopSize_VPA_10.txt", "./Pop_Size/PopSize_VPA_20.txt", "./Pop_Size/PopSize_VPA_50.txt"],
-        ["./Pop_Size/PopSize_SANAD_2.txt", "./Pop_Size/PopSize_SANAD_5.txt", "./Pop_Size/PopSize_SANAD_10.txt", "./Pop_Size/PopSize_SANAD_20.txt", "./Pop_Size/PopSize_SANAD_50.txt"]
-        ]
+files = [["./WrongModel/WrongModel_SeizureBasic_to_SeizureNegativeBinomial.txt"], ["./WrongModel/WrongModel_SeizureNegativeBinomial_to_SeizureBasic.txt"], ["./WrongModel/WrongModel_SeizureBasic_to_SeizureVPA.txt"]]
 files2 = []
 #Do space before name if not empty, else empty string
 names_distinction = ("", " just Bool")
 #models each subarray corresponds to
-models = ["Big4", "VPA", "SANAD"]
+models = ["Basic", "VPA", "SANAD"]
 #colour for each model
-colours = [[:magenta, :orange, :brown], [:cyan, :fuchsia, :orange]]
+colours = [[:teal, :orange, :brown], [:cyan, :fuchsia, :orange]]
 #quantity of interest
-quant = "population size"
-short_quant = "Pop_Size"
+quant = "update regularity"
+short_quant = "UpdateReg"
 #corresponding values of interest for each model
-values = [[2,5,10,20,50] for model in models]
+values = [[1,2,5,15,30] for model in models]
 #Legend setting for plotting
 legendcolumns = isempty(names_distinction[1]) || isempty(names_distinction[2]) ? 2 : 1
 #set variable of interest below
 
-upper_plotting_bound = [50,50,200]
+upper_plotting_bound = [500.0, 50.0, 50.0]
 upper_outlier_bound = [500.0 for model in models]
 spaced_accordingly = false
 plot_separate = true
-rotate = false
 
 confidence = 0.95
 q = quantile(Normal(), (1-(1-confidence)/2))
 default(guidefontsize = 16, titlefontsize = 17, tickfontsize = 14, legendfontsize = 16)
 verbose = false
+rotate = false
 CI_for_means = false
 both_CIs = false
 CI_plotting = true
@@ -261,11 +258,11 @@ end
 println()
 
 if CI_plotting
-    pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "means of finite CI size", title = (verbose ? "Means of finite CI size for \n different "*lowercasefirst(quant) : "Means of finite CI size"), ylims = (0.0, CI_cutoff))
+    pl3 = plot(xlabel = uppercasefirst(quant), ylabel = "mean size", title = (verbose ? "Means of finite CI size for \n different "*lowercasefirst(quant) : "Means of finite CI size"), ylims = (0.0, CI_cutoff))
     for k in eachindex(models)
         for n in 1:2
             if !isempty(CIs_all[n])
-                if !isempty(CIs_all[n][k]) && !isempty(CIs_all[n][k][1])
+                if length(CIs_all[n])>=k && !isempty(CIs_all[n][k]) && !isempty(CIs_all[n][k][1])
                     for key in eachindex(keys(CIs_all[n][k][1][1]))
                         mean_sizes = [point[key] for point in mean_CI_size_finite[n][k]]
                         full_sizes = [[inst[key] for inst in point] for point in sizes_full[n][k]]
@@ -273,7 +270,7 @@ if CI_plotting
                         #err_upper = err_lower
                         #plot!(values[k], means_full[n][k], linecolor = colours[n][k], linewidth = 2, label = "means for "*models[k]*names_distinction[n], yerror=(err_lower, err_upper))
                         if any(isfinite.(mean_sizes)) && any([in_interval(mean, (0.0, CI_cutoff)) for mean in mean_sizes])
-                            scatter!(values[k], mean_sizes, linecolor = colours[n][k], alpha = 1/key, mc = 2, label = "")
+                            #scatter!(values[k], mean_sizes, linecolor = colours[n][k], alpha = 1/key, mc = 2, label = "")
                             plot!(values[k], mean_sizes, linecolor = colours[n][k], alpha = 1/key, linewidth = 2, label = "means for "*models[k]*names_distinction[n]*", $(keys(CIs_all[n][k][1][1])[key])")
                         end
                     end
@@ -523,7 +520,7 @@ for k in eachindex(files)
         else
             estimates[k].Seizure[j] = [mean(param_estimates)]
         end
-        violin!([String(j)], param_estimates, outliers=false, label = "", alpha = 0.5, color = model_colours[k])
+        violin!([String(j)], param_estimates, outliers=false, label = "", alpha = 0.5, color = model_colours[k], xtickfontsize = 14)
         display(pl)
         push!(plots[k], pl)
         if saving
@@ -578,7 +575,8 @@ PK_timepoints = wo_treatment:3.75:Obs_Duration
 drug_appropriate_dosing = true
 max_threads_simul = Threads.nthreads()
 ODE_options = (AutoTsit5(Rosenbrock23()),)
-time = [(0.0, 8.0), (0.0, 8.0), (0.0, 20.0)]
+time = [(0.0, 7.0), (0.0, 7.0), (0.0, 20.0)]
+default(guidefontsize = 16, titlefontsize = 17, xtickfontsize = 10, tickfontsize = 14, legendfontsize = 16)
 
 for k in eachindex(files)
     Random.seed!(42)
