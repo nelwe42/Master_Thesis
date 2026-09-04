@@ -63,7 +63,7 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 2*60.0 #14*60.0*60.0 
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 1 #5 #20 #10 #20
+Population_size = 5 #20 #10 #20
 wo_treatment = 0.0 #10.0
 Obs_Duration = wo_treatment + 20.0 #40.0
 PK_timepoints = wo_treatment:3.75:Obs_Duration
@@ -104,7 +104,7 @@ fail_hard = true
 run_hessian = false
 sandwich = true
 finite_diff_hessian = false
-drug_appropriate_dosing = true
+drug_appropriate_dosing = false
 hierarchical_optimisation = false
 sampling = false
 plotting = false
@@ -114,10 +114,10 @@ show_trace = true
 #pk_model = PKBasic(θ=Input_θ_PKBasic)
 #pk_model = PKLEV(θ=Input_θ_PKLEV)
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
-#pk_model = PKCBZ(θ=Input_θ_PKCBZ)
+pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
 #pk_model = PKLTG(θ=Input_θ_PKLTG)
-pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
 
 if (typeof(pk_model).name.wrapper in [PKVPA])
@@ -167,8 +167,8 @@ person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
 #dose_gen = PolyDoses(pk_model, default_dose=500.0)
 #Create appropriate dose generator based on which pk_model was chosen
-#dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
-dose_gen = BigFourDoses()
+dose_gen = PolyDosesRandom(pk_model, drug_appropriate_dosing)
+#dose_gen = BigFourDoses()
 if seizure_model isa SeizureVPA
     dose_distr = (d_VPA = (min = 150.0, avg_num = 8.0, max_num = 14), d_CBZ = (min = 200.0, avg_num = 3.0, max_num = 8))
     distr_first = (d_VPA = 1.0, d_CBZ = 0.0)
@@ -178,10 +178,10 @@ if seizure_model isa SeizureVPA
 end
 Input_θ = ComponentArray(PK = pk_model.θ, Seizure = seizure_model.θ)
 mod = FullModel(pk_model, seizure_model, person_gen, dose_gen)
-#data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_events = max_events, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
+data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_events = max_events, wo_treatment = wo_treatment, max_threads = max_threads_simul, just_Bool = no_counts_seizure, ODE_options = ODE_options)
 #modifications = ((2, Normal(0, Input_θ[2]/4)),(label2index(Input_θ,"Seizure.a")[1], Normal(0,Input_θ.Seizure.a/6)))
 #data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
-data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
+#data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
 
 
@@ -287,6 +287,7 @@ end
 
 if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #Plot fit for specified individuals
+    #default(guidefontsize = 16, titlefontsize = 17, tickfontsize = 14, legendfontsize = 15)
     individuals = [1]
     ref = length(data)
     time_seizures = (0.0,10.0)
@@ -294,6 +295,7 @@ if plotting && SciMLBase.successful_retcode(estimate.retcode)
     #estimate = (u = deepcopy(Input_θ),)
     #estimate.u.Seizure.b[1] = 7.0/29.0
     #colours = (PK=nothing, Seizure = (true_param = :brown,))
+    #colours = (PK= (true_param = :blue, estimate = :red), Seizure = (true_param = :brown,))
     colours = nothing
     plots = plot_fit(mod, data, true_param = Input_θ, estimate_param = estimate.u, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options,
     reference_covariates_index = ref, colours = colours)
@@ -365,13 +367,14 @@ a3 = [get_p(a, comed_CBZ = true, seizure_type = false) for a in x]
 a4 = [get_p(a, comed_CBZ = true, seizure_type = true) for a in x]
 
 #Single plot
-linewidth = 1.5
-pl = plot(xlabel = "VPA trough concentration (mg/l)", ylabel = "50% Seizure reduction probability", title="VPA treatment impact on $(age)-year-olds")
-plot!(x, a1, label = "Generalised Seizures and no CBZ comedication", linewidth = linewidth)
-plot!(x, a2, label = "Partial Seizures and no CBZ comedication", linewidth = linewidth)
-plot!(x, a3, label = "Generalised Seizures and CBZ comedication", linewidth = linewidth)
-plot!(x, a4, label = "Partial Seizures and CBZ comedication", linewidth = linewidth)
-plot!(legend=:outerbottom, legendcolumns=1)
+linewidth = 3
+default(guidefontsize = 16, titlefontsize = 17, tickfontsize = 11, legendfontsize = 14)
+pl = plot(xlabel = "VPA trough concentration (mg/l)", ylabel = "50% reduction prob", title="VPA treatment impact on $(age)-year-olds")
+plot!(x, a1, label = "Generalised, no CBZ", linewidth = linewidth)
+plot!(x, a2, label = "Partial, no CBZ", linewidth = linewidth)
+plot!(x, a3, label = "Generalised, CBZ", linewidth = linewidth)
+plot!(x, a4, label = "Partial, CBZ", linewidth = linewidth)
+plot!(legend=:outerbottom, legendcolumns=2)
 display(pl)
 
 #Combined plot

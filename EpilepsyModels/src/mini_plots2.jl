@@ -63,9 +63,9 @@ Samples_per_chain = 2000
 Adaptation_steps = 1000
 Max_Time = 20*60.0 #14*60.0*60.0 
 #Max_Time = 23.5*60*60 #4.0*60*60 + 30.0*60 #maximal optimisertime in seconds
-Population_size = 20 #5 #20 #10 #20
+Population_size = 1 #5 #20 #10 #20
 wo_treatment = 0.0 #10.0
-Obs_Duration = wo_treatment + 30.0 #40.0
+Obs_Duration = wo_treatment + 14.0 #40.0
 PK_timepoints = (wo_treatment+0.5):2.25:(Obs_Duration-0.5) #[0.2, 0.35, 1.05, 2.3, 3.7, 4.6, 5.75, 6.01, 7.5, 8.9]
 #TODO Change this back later
 Seizure_timepoints = 0.0:1.0:Obs_Duration
@@ -116,10 +116,10 @@ show_trace = true
 #pk_model = PKLEVNoAbsorption(θ=Input_θ_PKLEVNoAbsorption)
 #pk_model = PKCBZ(θ=Input_θ_PKCBZ)
 #pk_model = PKVPA(θ=Input_θ_PKVPA)
-#pk_model = PKLTG(θ=Input_θ_PKLTG)
-pk_model = PKBigFour(θ = Input_θ_PKBigFour)
+pk_model = PKLTG(θ=Input_θ_PKLTG)
+#pk_model = PKBigFour(θ = Input_θ_PKBigFour)
 #Set b in seizure_basic according to pk model (different daily exposures), for VPA 0.2 is too high
-
+#=
 if (typeof(pk_model).name.wrapper in [PKVPA])
     Input_θ_SeizureBasic_one.b = SA[0.05]
 end
@@ -139,12 +139,12 @@ else
     end
     seizure_model = SeizureBasic(θ = Input_θ_SeizureBasic_one)
 end
-
+=#
 #seizure_model = SeizureMult(pk_model, base_rate = base_rate, default_treat_eff = 0.2)
 #seizure_model = SeizureVPA(θ = Input_θ_SeizureVPA)
 #seizure_model = SeizureNegativeBinomial(θ = Input_θ_SeizureNegativeBinomial)
 #SeizureSANAD set b appropriately
-#=
+#base_rate = (1.0, 1.5, 2.0, 2.0, 3.0)
 if (typeof(pk_model).name.wrapper in [PKBigFour])
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_four, baseline = base_rate)
 else
@@ -161,7 +161,9 @@ else
     end
     seizure_model = SeizureSANAD(θ = Input_θ_SeizureSANAD_one, baseline = base_rate)
 end
-=#
+if (seizure_model isa SeizureNegativeBinomial || seizure_model isa SeizureMult) && pk_model isa PKVPA
+    seizure_model.θ.b[1] = 0.05
+end
 
 person_gen = BigFourPersonGenerator()
 #dose_gen = BasicDoses(default_dose=500.0, times_per_day=2)
@@ -183,6 +185,33 @@ data = generate_data(mod, Population_size, Obs_Duration, timepoints_PK = PK_time
 #data = generate_data_modified(mod, Population_size, Obs_Duration, update_reg = 5.0, modifications = modifications, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 #data = generate_data_updating(mod, Population_size, Obs_Duration, update_reg = 5.0, timepoints_PK = PK_timepoints, timepoints_seizure = Seizure_timepoints, max_threads = max_threads_simul, just_Bool = no_counts_seizure, wo_treatment = wo_treatment, ODE_options = ODE_options)
 println("Generated")
+
+#=
+individuals = [1]
+ref = nothing
+time_seizures = (0.0,10.0)
+time_pk = (0.0, Obs_Duration)
+#estimate = (u = deepcopy(Input_θ),)
+#estimate.u.Seizure.b[1] = 7.0/29.0
+default(guidefontsize = 16, titlefontsize = 17, tickfontsize = 11, legendfontsize = 16)
+colours = (PK=nothing, Seizure = (true_param = :brown,))
+plots = plot_fit(mod, data, true_param = Input_θ, individuals = individuals, endpoint = Obs_Duration, time_pk = time_pk, time_seizures = time_seizures, options = ODE_options,
+reference_covariates_index = ref, colours = colours)
+savefig("./Example_Plots/SANAD_Seizure_prob.png")
+=#
+
+default(guidefontsize = 16, titlefontsize = 17, tickfontsize = 14, legendfontsize = 16)
+sol = EpilepsyModels.solve_PK(pk_model, pk_model.θ, data[1], endpoint=Obs_Duration)
+pl = plot(title = "PK Trajectory of CBZ", xlabel = "time", ylabel = "Amount")
+plot!(sol, idxs = pk_model.keys.s[1], linecolour = :blue, linewidth = 2, label = "Concentration of CBZ")
+#set estimate
+sol = EpilepsyModels.solve_PK(pk_model, pk_model.θ, data[1], endpoint=Obs_Duration)
+plot!(sol, idxs = pk_model.keys.s[1], linecolour = :red, linewidth = 2, label = "Estimated concentration of CBZ")
+x_values = [measurement.timepoint for measurement in data[1].measurements]
+y_values = [measurement.measurement for measurement in data[1].measurements]
+plot!(x_values, y_values, seriestype = :scatter, mc = :purple, label = "", tspan = (0,Obs_Duration))
+display(pl)
+savefig("./Example_Plots/Example_$(typeof(pk_model).name.wrapper)_$(Int(data[1].dosing[1].dose)).png")
 
 thickness = 2
 endpoint = 21.0
